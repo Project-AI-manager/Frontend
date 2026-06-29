@@ -12,9 +12,9 @@ const authApi = getAuth();
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [companyName, setCompanyName] = useState("Demo Company");
-  const [fullName, setFullName] = useState("Demo Owner");
-  const [email, setEmail] = useState("owner@example.com");
+  const [companyName, setCompanyName] = useState("New Demo Company");
+  const [fullName, setFullName] = useState("New Demo Owner");
+  const [email, setEmail] = useState("new-owner@example.com");
   const [password, setPassword] = useState("demo-password");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
