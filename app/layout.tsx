@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import "./globals.css";
+
 import { Providers } from "@/components/providers";
 
+import "./globals.css";
+
 export const metadata: Metadata = {
-  title: "Едино",
-  description: "AI-сотрудник в едином окне",
+  title: "Едино — AI-менеджер в одном окне",
+  description: "AI-менеджер для продаж и поддержки: диалоги, база знаний и черновики ответов.",
 };
 
-// Шрифты не подключены намеренно — выберем вместе со стилем (нужна кириллица).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
