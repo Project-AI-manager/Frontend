@@ -1,12 +1,12 @@
 "use client";
 
-import axios from "axios";
 import { ArrowRight, CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { getAuth } from "@/lib/api/generated/auth/auth";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
@@ -31,7 +31,7 @@ export default function LoginPage() {
       });
       router.push("/inbox");
     } catch (err) {
-      setError(getErrorMessage(err, "Не удалось войти. Проверь email и пароль."));
+      setError(getApiErrorMessage(err, "Не удалось войти. Проверь email и пароль."));
     } finally {
       setIsSubmitting(false);
     }
@@ -140,14 +140,4 @@ export default function LoginPage() {
       </div>
     </main>
   );
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") {
-      return detail;
-    }
-  }
-  return fallback;
 }

@@ -3,6 +3,7 @@
 /out/
 /build
 .logs/
+.openapi/
 *.tsbuildinfo
 next-env.d.ts
 

@@ -6,7 +6,7 @@
  */
 import type {
   LoginRequest,
-  RefreshApiV1AuthRefreshPostParams,
+  RefreshRequest,
   RegisterRequest,
   TokenPair
 } from '../ai.schemas';
@@ -48,11 +48,12 @@ const loginApiV1AuthLoginPost = (
  * @summary Refresh
  */
 const refreshApiV1AuthRefreshPost = (
-    params: RefreshApiV1AuthRefreshPostParams,
+    refreshRequest: RefreshRequest,
  options?: SecondParameter<typeof apiClient<TokenPair>>,) => {
       return apiClient<TokenPair>(
       {url: `/api/v1/auth/refresh`, method: 'POST',
-        params
+      headers: {'Content-Type': 'application/json', },
+      data: refreshRequest
     },
       options);
     }

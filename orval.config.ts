@@ -2,9 +2,11 @@
 // Запуск: pnpm api:gen (когда бэкенд отдаёт /api/v1/openapi.json).
 import { defineConfig } from "orval";
 
+const input = process.env.OPENAPI_INPUT ?? "http://localhost:8000/openapi.json";
+
 export default defineConfig({
   api: {
-    input: "http://localhost:8000/openapi.json",
+    input,
     output: {
       mode: "tags-split",
       target: "lib/api/generated",
