@@ -42,6 +42,67 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+export interface KnowledgeDocumentResponse {
+  id: string;
+  title: string;
+  source_type: string;
+  storage_url: string | null;
+  status: string;
+  version: number;
+  chunks_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeCandidateApproveResponse {
+  id: string;
+  conversation_id: string;
+  question: string;
+  answer: string;
+  suggested_by: string;
+  status: string;
+  resulting_document_id: string | null;
+  created_at: string;
+  updated_at: string;
+  document?: KnowledgeDocumentResponse | null;
+}
+
+export interface KnowledgeCandidateResponse {
+  id: string;
+  conversation_id: string;
+  question: string;
+  answer: string;
+  suggested_by: string;
+  status: string;
+  resulting_document_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type KnowledgeDocumentCreateSourceType = typeof KnowledgeDocumentCreateSourceType[keyof typeof KnowledgeDocumentCreateSourceType];
+
+
+export const KnowledgeDocumentCreateSourceType = {
+  manual: 'manual',
+  txt: 'txt',
+  md: 'md',
+  url: 'url',
+} as const;
+
+export type KnowledgeDocumentCreateTags = {[key: string]: string};
+
+export interface KnowledgeDocumentCreate {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  title: string;
+  /** @minLength 1 */
+  text: string;
+  source_type?: KnowledgeDocumentCreateSourceType;
+  tags?: KnowledgeDocumentCreateTags;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -106,6 +167,10 @@ export interface MLAnswerResponse {
   used_context: boolean;
 }
 
+export interface RefreshRequest {
+  refresh_token: string;
+}
+
 export interface RegisterRequest {
   company_name: string;
   email: string;
@@ -119,13 +184,14 @@ export interface TokenPair {
   token_type?: string;
 }
 
-export type RefreshApiV1AuthRefreshPostParams = {
-refresh_token: string;
-};
-
-export type MeApiV1UsersMeGet200 = { [key: string]: unknown };
-
-export type ListTeamApiV1UsersGet200Item = { [key: string]: unknown };
+export interface UserMeResponse {
+  id: string;
+  tenant_id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  status: string;
+}
 
 export type ListConversationsApiV1ConversationsGetParams = {
 status?: string | null;
@@ -142,14 +208,6 @@ text: string;
 export type ReplyApiV1ConversationsConversationIdReplyPost200 = { [key: string]: unknown };
 
 export type EscalateApiV1ConversationsConversationIdEscalatePost200 = { [key: string]: unknown };
-
-export type ListDocumentsApiV1KnowledgeDocumentsGet200Item = { [key: string]: unknown };
-
-export type UploadDocumentApiV1KnowledgeDocumentsPost200 = { [key: string]: unknown };
-
-export type ListCandidatesApiV1KnowledgeCandidatesGet200Item = { [key: string]: unknown };
-
-export type ApproveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost200 = { [key: string]: unknown };
 
 export type ListChannelsApiV1ChannelsGet200Item = { [key: string]: unknown };
 

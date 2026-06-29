@@ -5,8 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  ListTeamApiV1UsersGet200Item,
-  MeApiV1UsersMeGet200
+  UserMeResponse
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -21,8 +20,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 const meApiV1UsersMeGet = (
 
- options?: SecondParameter<typeof apiClient<MeApiV1UsersMeGet200>>,) => {
-      return apiClient<MeApiV1UsersMeGet200>(
+ options?: SecondParameter<typeof apiClient<UserMeResponse>>,) => {
+      return apiClient<UserMeResponse>(
       {url: `/api/v1/users/me`, method: 'GET'
     },
       options);
@@ -32,8 +31,8 @@ const meApiV1UsersMeGet = (
  */
 const listTeamApiV1UsersGet = (
 
- options?: SecondParameter<typeof apiClient<ListTeamApiV1UsersGet200Item[]>>,) => {
-      return apiClient<ListTeamApiV1UsersGet200Item[]>(
+ options?: SecondParameter<typeof apiClient<UserMeResponse[]>>,) => {
+      return apiClient<UserMeResponse[]>(
       {url: `/api/v1/users`, method: 'GET'
     },
       options);

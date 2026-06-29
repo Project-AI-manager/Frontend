@@ -5,12 +5,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  ApproveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost200,
-  ListCandidatesApiV1KnowledgeCandidatesGet200Item,
-  ListDocumentsApiV1KnowledgeDocumentsGet200Item,
+  KnowledgeCandidateApproveResponse,
+  KnowledgeCandidateResponse,
+  KnowledgeDocumentCreate,
+  KnowledgeDocumentResponse,
   MLAnswerRequest,
-  MLAnswerResponse,
-  UploadDocumentApiV1KnowledgeDocumentsPost200
+  MLAnswerResponse
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -25,8 +25,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 const listDocumentsApiV1KnowledgeDocumentsGet = (
 
- options?: SecondParameter<typeof apiClient<ListDocumentsApiV1KnowledgeDocumentsGet200Item[]>>,) => {
-      return apiClient<ListDocumentsApiV1KnowledgeDocumentsGet200Item[]>(
+ options?: SecondParameter<typeof apiClient<KnowledgeDocumentResponse[]>>,) => {
+      return apiClient<KnowledgeDocumentResponse[]>(
       {url: `/api/v1/knowledge/documents`, method: 'GET'
     },
       options);
@@ -35,10 +35,12 @@ const listDocumentsApiV1KnowledgeDocumentsGet = (
  * @summary Upload Document
  */
 const uploadDocumentApiV1KnowledgeDocumentsPost = (
-
- options?: SecondParameter<typeof apiClient<UploadDocumentApiV1KnowledgeDocumentsPost200>>,) => {
-      return apiClient<UploadDocumentApiV1KnowledgeDocumentsPost200>(
-      {url: `/api/v1/knowledge/documents`, method: 'POST'
+    knowledgeDocumentCreate: KnowledgeDocumentCreate,
+ options?: SecondParameter<typeof apiClient<KnowledgeDocumentResponse>>,) => {
+      return apiClient<KnowledgeDocumentResponse>(
+      {url: `/api/v1/knowledge/documents`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: knowledgeDocumentCreate
     },
       options);
     }
@@ -61,8 +63,8 @@ const askApiV1KnowledgeAskPost = (
  */
 const listCandidatesApiV1KnowledgeCandidatesGet = (
 
- options?: SecondParameter<typeof apiClient<ListCandidatesApiV1KnowledgeCandidatesGet200Item[]>>,) => {
-      return apiClient<ListCandidatesApiV1KnowledgeCandidatesGet200Item[]>(
+ options?: SecondParameter<typeof apiClient<KnowledgeCandidateResponse[]>>,) => {
+      return apiClient<KnowledgeCandidateResponse[]>(
       {url: `/api/v1/knowledge/candidates`, method: 'GET'
     },
       options);
@@ -72,8 +74,8 @@ const listCandidatesApiV1KnowledgeCandidatesGet = (
  */
 const approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost = (
     candidateId: string,
- options?: SecondParameter<typeof apiClient<ApproveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost200>>,) => {
-      return apiClient<ApproveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost200>(
+ options?: SecondParameter<typeof apiClient<KnowledgeCandidateApproveResponse>>,) => {
+      return apiClient<KnowledgeCandidateApproveResponse>(
       {url: `/api/v1/knowledge/candidates/${candidateId}/approve`, method: 'POST'
     },
       options);

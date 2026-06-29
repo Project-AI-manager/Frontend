@@ -1,12 +1,12 @@
 "use client";
 
-import axios from "axios";
 import { ArrowRight, Building2, CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { getAuth } from "@/lib/api/generated/auth/auth";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
@@ -38,7 +38,7 @@ export default function RegisterPage() {
       });
       router.push("/onboarding");
     } catch (err) {
-      setError(getErrorMessage(err, "Не удалось создать аккаунт. Попробуй другой email."));
+      setError(getApiErrorMessage(err, "Не удалось создать аккаунт. Попробуй другой email."));
     } finally {
       setIsSubmitting(false);
     }
@@ -168,14 +168,4 @@ export default function RegisterPage() {
       </div>
     </main>
   );
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") {
-      return detail;
-    }
-  }
-  return fallback;
 }
