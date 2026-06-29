@@ -34,13 +34,11 @@ axiosInstance.interceptors.response.use(
     const isRefreshRequest = originalRequest?.url?.includes("/api/v1/auth/refresh");
     const refreshToken = getRefreshToken();
 
-    if (
-      error.response?.status !== 401 ||
-      !originalRequest ||
-      originalRequest._retry ||
-      isRefreshRequest ||
-      !refreshToken
-    ) {
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    if (!originalRequest || originalRequest._retry || isRefreshRequest || !refreshToken) {
       clearAuthTokens();
       return Promise.reject(error);
     }
