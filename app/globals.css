@@ -1,36 +1,4 @@
 @import "tailwindcss";
 
-/* Дизайн-токены distinctive professional (см. wiki/concepts/design-system.md) */
-@theme {
-  --color-ink: #15181e;
-  --color-bg: #fbfaf7;
-  --color-surface: #f4f2ec;
-  --color-border: #e7e4db;
-  --color-brand: #0f6e5c;
-  --color-brand-hover: #0b5a4b;
-
-  /* Статусы (мягкие бейджи) */
-  --color-status-auto-bg: #e7f5ec;
-  --color-status-auto-fg: #1b8a4b;
-  --color-status-escalate-bg: #fdf1dd;
-  --color-status-escalate-fg: #b5780f;
-  --color-status-closed-bg: #eef0f2;
-  --color-status-closed-fg: #5b6470;
-
-  /* Шрифты: Geologica (заголовки) + Manrope (текст), подключаются в app/layout.tsx */
-  --font-display: var(--font-geologica), system-ui, sans-serif;
-  --font-sans: var(--font-manrope), system-ui, sans-serif;
-}
-
-html,
-body {
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-display);
-}
+/* Дизайн пока не задан — стиль выбирается отдельно.
+   Здесь будут токены/тема, когда определимся. */

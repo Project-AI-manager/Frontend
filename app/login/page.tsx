@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Logo } from "@/components/navigation";
-
+// Скелет входа. Auth-API в разработке: кнопка ставит демо-cookie и пускает в кабинет.
 export default function LoginPage() {
   const router = useRouter();
 
@@ -14,33 +13,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-bg px-6 py-12">
-      <section className="w-full max-w-md rounded-[10px] border border-border bg-surface p-8 shadow-sm">
-        <div className="mb-8 text-center">
-          <Logo />
-          <h1 className="mt-6 font-display text-3xl font-black">Вход</h1>
-          <p className="mt-2 text-sm text-ink/60">Пока auth-API в разработке, кнопка ниже открывает демо-кабинет.</p>
-        </div>
-        <form className="space-y-4" onSubmit={(event) => event.preventDefault()}>
-          <label className="block">
-            <span className="text-sm font-bold">Email</span>
-            <input className="mt-2 w-full rounded-lg border border-border bg-bg px-4 py-3 outline-none focus:ring-2 focus:ring-brand" defaultValue="owner@sever.ru" />
-          </label>
-          <label className="block">
-            <span className="text-sm font-bold">Пароль</span>
-            <input type="password" className="mt-2 w-full rounded-lg border border-border bg-bg px-4 py-3 outline-none focus:ring-2 focus:ring-brand" defaultValue="demo-password" />
-          </label>
-          <button type="button" onClick={enterDemo} className="w-full rounded-lg bg-brand px-4 py-3 font-bold text-white hover:bg-brand-hover">
-            Войти в демо
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-ink/60">
-          Нет аккаунта?{" "}
-          <Link href="/register" className="font-bold text-brand">
-            Создать
-          </Link>
-        </p>
-      </section>
+    <main className="mx-auto max-w-sm px-6 py-20">
+      <h1 className="text-2xl font-bold">Вход</h1>
+      {/* TODO: форма (email, пароль) */}
+      <button onClick={enterDemo} className="mt-6 rounded border px-4 py-2">
+        Войти в демо
+      </button>
+      <p className="mt-4 text-sm">
+        <Link href="/register">Создать аккаунт</Link>
+      </p>
     </main>
   );
 }
