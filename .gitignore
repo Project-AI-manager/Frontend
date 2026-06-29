@@ -2,6 +2,7 @@
 /.next/
 /out/
 /build
+.logs/
 *.tsbuildinfo
 next-env.d.ts
 
