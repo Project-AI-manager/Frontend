@@ -5,10 +5,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  ConnectChannelApiV1ChannelsPost200,
-  ConnectChannelApiV1ChannelsPostParams,
-  ListChannelsApiV1ChannelsGet200Item,
-  WebhookApiV1ChannelsWebhookChannelTypePost200
+  ChannelConnectRequest,
+  ChannelResponse,
+  ChannelWebhookResponse
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -23,8 +22,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 const listChannelsApiV1ChannelsGet = (
 
- options?: SecondParameter<typeof apiClient<ListChannelsApiV1ChannelsGet200Item[]>>,) => {
-      return apiClient<ListChannelsApiV1ChannelsGet200Item[]>(
+ options?: SecondParameter<typeof apiClient<ChannelResponse[]>>,) => {
+      return apiClient<ChannelResponse[]>(
       {url: `/api/v1/channels`, method: 'GET'
     },
       options);
@@ -33,11 +32,12 @@ const listChannelsApiV1ChannelsGet = (
  * @summary Connect Channel
  */
 const connectChannelApiV1ChannelsPost = (
-    params: ConnectChannelApiV1ChannelsPostParams,
- options?: SecondParameter<typeof apiClient<ConnectChannelApiV1ChannelsPost200>>,) => {
-      return apiClient<ConnectChannelApiV1ChannelsPost200>(
+    channelConnectRequest: ChannelConnectRequest,
+ options?: SecondParameter<typeof apiClient<ChannelResponse>>,) => {
+      return apiClient<ChannelResponse>(
       {url: `/api/v1/channels`, method: 'POST',
-        params
+      headers: {'Content-Type': 'application/json', },
+      data: channelConnectRequest
     },
       options);
     }
@@ -46,13 +46,26 @@ const connectChannelApiV1ChannelsPost = (
  */
 const webhookApiV1ChannelsWebhookChannelTypePost = (
     channelType: string,
- options?: SecondParameter<typeof apiClient<WebhookApiV1ChannelsWebhookChannelTypePost200>>,) => {
-      return apiClient<WebhookApiV1ChannelsWebhookChannelTypePost200>(
+ options?: SecondParameter<typeof apiClient<ChannelWebhookResponse>>,) => {
+      return apiClient<ChannelWebhookResponse>(
       {url: `/api/v1/channels/webhook/${channelType}`, method: 'POST'
     },
       options);
     }
-  return {listChannelsApiV1ChannelsGet,connectChannelApiV1ChannelsPost,webhookApiV1ChannelsWebhookChannelTypePost}};
+  /**
+ * @summary Webhook With Secret
+ */
+const webhookWithSecretApiV1ChannelsWebhookChannelTypeWebhookSecretPost = (
+    channelType: string,
+    webhookSecret: string,
+ options?: SecondParameter<typeof apiClient<ChannelWebhookResponse>>,) => {
+      return apiClient<ChannelWebhookResponse>(
+      {url: `/api/v1/channels/webhook/${channelType}/${webhookSecret}`, method: 'POST'
+    },
+      options);
+    }
+  return {listChannelsApiV1ChannelsGet,connectChannelApiV1ChannelsPost,webhookApiV1ChannelsWebhookChannelTypePost,webhookWithSecretApiV1ChannelsWebhookChannelTypeWebhookSecretPost}};
 export type ListChannelsApiV1ChannelsGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChannels>['listChannelsApiV1ChannelsGet']>>>
 export type ConnectChannelApiV1ChannelsPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChannels>['connectChannelApiV1ChannelsPost']>>>
 export type WebhookApiV1ChannelsWebhookChannelTypePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChannels>['webhookApiV1ChannelsWebhookChannelTypePost']>>>
+export type WebhookWithSecretApiV1ChannelsWebhookChannelTypeWebhookSecretPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChannels>['webhookWithSecretApiV1ChannelsWebhookChannelTypeWebhookSecretPost']>>>

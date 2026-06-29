@@ -1,6 +1,5 @@
 "use client";
 
-import axios from "axios";
 import {
   AlertCircle,
   CheckCircle2,
@@ -17,6 +16,8 @@ import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
 
 type ChannelStatus = "active" | "disabled" | "error" | "unknown";
@@ -27,6 +28,7 @@ type ChannelRow = {
   name: string;
   status: ChannelStatus;
   updatedAt?: string;
+  webhookPath?: string;
 };
 
 const channelsApi = getChannels();
@@ -36,14 +38,16 @@ const widgetSnippet = `<script src="https://app.ai-manager.local/widget.js" data
 
 const onboardingSteps = [
   "Создать бота через @BotFather и получить токен.",
-  "Сохранить токен Telegram в AI Manager после готовности backend-ручки.",
-  "Подключить webhook и проверить входящее тестовое сообщение.",
-  "Синхронизировать чаты и вывести диалоги в inbox.",
+  "Сохранить токен Telegram в AI Manager через защищённую backend-ручку.",
+  "Скопировать webhook URL из подключённого канала в настройки Telegram.",
+  "Проверить входящее тестовое сообщение и убедиться, что диалог появился в inbox.",
 ];
 
 export default function ChannelsPage() {
   const [botToken, setBotToken] = useState("");
+  const [botUsername, setBotUsername] = useState("");
   const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   const {
@@ -61,6 +65,7 @@ export default function ChannelsPage() {
   const channels = useMemo(() => normalizeChannels(data), [data]);
   const telegramChannel = channels.find((channel) => channel.type === "telegram");
   const hasTelegram = Boolean(telegramChannel);
+  const telegramWebhookPath = telegramChannel?.webhookPath ?? webhookPath;
 
   const syncCards = [
     {
@@ -80,17 +85,37 @@ export default function ChannelsPage() {
     },
   ] as const;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFormMessage(null);
 
-    if (!botToken.trim()) {
+    const trimmedToken = botToken.trim();
+    const trimmedUsername = botUsername.trim();
+
+    if (!trimmedToken) {
       setFormMessage("Вставь токен Telegram-бота, чтобы подготовить подключение.");
       return;
     }
 
-    setFormMessage(
-      "Фронт готов к отправке токена, но backend-контракт пока не принимает credentials. Следующий шаг — реализовать POST /channels для Telegram.",
-    );
+    setIsSubmitting(true);
+
+    try {
+      await channelsApi.connectChannelApiV1ChannelsPost({
+        type: "telegram",
+        bot_token: trimmedToken,
+        bot_username: trimmedUsername,
+        name: "Telegram",
+      });
+      setBotToken("");
+      await refetch();
+      setFormMessage("Telegram подключён. Webhook URL обновлён в карточке справа.");
+    } catch (submitError) {
+      setFormMessage(
+        getApiErrorMessage(submitError, "Не удалось подключить Telegram. Проверь токен и доступность backend."),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function copyToClipboard(value: string, key: string) {
@@ -156,7 +181,7 @@ export default function ChannelsPage() {
                 </span>
                 <div>
                   <h3 className="font-black">Подключение Telegram-бота</h3>
-                  <p className="text-sm text-white/55">Форма готова под будущий backend-контракт Telegram.</p>
+                  <p className="text-sm text-white/55">Токен уходит напрямую в защищённый backend-контракт.</p>
                 </div>
               </div>
 
@@ -170,14 +195,29 @@ export default function ChannelsPage() {
                   onChange={(event) => setBotToken(event.target.value)}
                   className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-orange-300"
                   placeholder="123456:ABC-telegram-bot-token"
+                  disabled={isSubmitting}
                 />
                 <button
                   type="submit"
-                  className="rounded-2xl bg-orange-400 px-5 py-3 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-orange-300"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-400 px-5 py-3 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
-                  Подготовить
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {hasTelegram ? "Обновить" : "Подключить"}
                 </button>
               </div>
+
+              <label className="mt-4 block text-sm font-bold text-white/70" htmlFor="telegram-username">
+                Username бота <span className="text-white/35">(необязательно)</span>
+              </label>
+              <input
+                id="telegram-username"
+                value={botUsername}
+                onChange={(event) => setBotUsername(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-orange-300 disabled:opacity-70"
+                placeholder="ai_manager_bot"
+                disabled={isSubmitting}
+              />
 
               {formMessage ? (
                 <p className="mt-4 rounded-2xl border border-white/10 bg-white/10 p-3 text-sm text-white/75">
@@ -186,8 +226,8 @@ export default function ChannelsPage() {
               ) : null}
 
               <p className="mt-4 text-xs leading-5 text-white/45">
-                Токен не сохраняется на фронте. После backend-задачи он должен уходить в защищённую ручку,
-                шифроваться и храниться только на сервере.
+                Токен не сохраняется на фронте и не возвращается в API-ответе. Backend шифрует его
+                перед хранением на сервере.
               </p>
             </form>
 
@@ -249,8 +289,7 @@ export default function ChannelsPage() {
                   <Smartphone className="mx-auto text-orange-500" size={32} />
                   <p className="mt-3 font-black">Каналы ещё не подключены</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
-                    Это нормальное состояние для текущего backend: список каналов уже запрашивается,
-                    но подключение Telegram будет активировано следующей backend-задачей.
+                    Добавь токен Telegram-бота выше, и канал появится здесь после успешного ответа backend.
                   </p>
                 </div>
               )}
@@ -284,11 +323,11 @@ export default function ChannelsPage() {
 
           <CopyCard
             title="Webhook URL"
-            description="Адрес для входящих Telegram-событий."
+            description={hasTelegram ? "Индивидуальный адрес подключённого Telegram-канала." : "Появится с секретом после подключения канала."}
             icon={<Webhook size={20} />}
-            value={webhookPath}
+            value={telegramWebhookPath}
             copied={copied === "webhook"}
-            onCopy={() => copyToClipboard(webhookPath, "webhook")}
+            onCopy={() => copyToClipboard(telegramWebhookPath, "webhook")}
           />
 
           <CopyCard
@@ -384,21 +423,22 @@ function CopyCard({
   );
 }
 
-function normalizeChannels(value: unknown): ChannelRow[] {
+function normalizeChannels(value: ChannelResponse[] | undefined): ChannelRow[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
   return value
-    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
     .map((item, index) => {
-      const type = typeof item.type === "string" ? item.type : "unknown";
+      const type = item.type || "unknown";
       const name = typeof item.name === "string" && item.name.trim() ? item.name : channelName(type);
       const status = normalizeStatus(item.status);
-      const updatedAt = typeof item.updated_at === "string" ? item.updated_at : undefined;
-      const id = typeof item.id === "string" ? item.id : `${type}-${index}`;
+      const updatedAt = item.updated_at;
+      const id = item.id || `${type}-${index}`;
+      const webhookPathValue = item.settings.webhook_path;
+      const webhookPath = typeof webhookPathValue === "string" ? webhookPathValue : undefined;
 
-      return { id, type, name, status, updatedAt };
+      return { id, type, name, status, updatedAt, webhookPath };
     });
 }
 
@@ -449,25 +489,4 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-}
-
-function getApiErrorMessage(error: unknown, fallback: string): string {
-  if (!axios.isAxiosError(error)) {
-    return fallback;
-  }
-
-  const detail = error.response?.data?.detail;
-
-  if (typeof detail === "string") {
-    return detail;
-  }
-
-  if (Array.isArray(detail)) {
-    const firstMessage = detail.find((item) => typeof item?.msg === "string")?.msg;
-    if (firstMessage) {
-      return firstMessage;
-    }
-  }
-
-  return error.message || fallback;
 }

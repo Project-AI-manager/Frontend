@@ -5,10 +5,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  ConversationResponse,
+  ConversationThreadResponse,
   EscalateApiV1ConversationsConversationIdEscalatePost200,
-  GetConversationApiV1ConversationsConversationIdGet200,
-  ListConversationsApiV1ConversationsGet200Item,
-  ListConversationsApiV1ConversationsGetParams,
+  ListConversationItemsApiV1ConversationsGetParams,
   ReplyApiV1ConversationsConversationIdReplyPost200,
   ReplyApiV1ConversationsConversationIdReplyPostParams
 } from '../ai.schemas';
@@ -21,12 +21,12 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
   export const getConversations = () => {
 /**
- * @summary List Conversations
+ * @summary List Conversation Items
  */
-const listConversationsApiV1ConversationsGet = (
-    params?: ListConversationsApiV1ConversationsGetParams,
- options?: SecondParameter<typeof apiClient<ListConversationsApiV1ConversationsGet200Item[]>>,) => {
-      return apiClient<ListConversationsApiV1ConversationsGet200Item[]>(
+const listConversationItemsApiV1ConversationsGet = (
+    params?: ListConversationItemsApiV1ConversationsGetParams,
+ options?: SecondParameter<typeof apiClient<ConversationResponse[]>>,) => {
+      return apiClient<ConversationResponse[]>(
       {url: `/api/v1/conversations`, method: 'GET',
         params
     },
@@ -37,8 +37,8 @@ const listConversationsApiV1ConversationsGet = (
  */
 const getConversationApiV1ConversationsConversationIdGet = (
     conversationId: string,
- options?: SecondParameter<typeof apiClient<GetConversationApiV1ConversationsConversationIdGet200>>,) => {
-      return apiClient<GetConversationApiV1ConversationsConversationIdGet200>(
+ options?: SecondParameter<typeof apiClient<ConversationThreadResponse>>,) => {
+      return apiClient<ConversationThreadResponse>(
       {url: `/api/v1/conversations/${conversationId}`, method: 'GET'
     },
       options);
@@ -67,8 +67,8 @@ const escalateApiV1ConversationsConversationIdEscalatePost = (
     },
       options);
     }
-  return {listConversationsApiV1ConversationsGet,getConversationApiV1ConversationsConversationIdGet,replyApiV1ConversationsConversationIdReplyPost,escalateApiV1ConversationsConversationIdEscalatePost}};
-export type ListConversationsApiV1ConversationsGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['listConversationsApiV1ConversationsGet']>>>
+  return {listConversationItemsApiV1ConversationsGet,getConversationApiV1ConversationsConversationIdGet,replyApiV1ConversationsConversationIdReplyPost,escalateApiV1ConversationsConversationIdEscalatePost}};
+export type ListConversationItemsApiV1ConversationsGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['listConversationItemsApiV1ConversationsGet']>>>
 export type GetConversationApiV1ConversationsConversationIdGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['getConversationApiV1ConversationsConversationIdGet']>>>
 export type ReplyApiV1ConversationsConversationIdReplyPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['replyApiV1ConversationsConversationIdReplyPost']>>>
 export type EscalateApiV1ConversationsConversationIdEscalatePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['escalateApiV1ConversationsConversationIdEscalatePost']>>>

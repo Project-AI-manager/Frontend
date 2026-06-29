@@ -4,12 +4,44 @@
  * AI-сотрудник в едином окне
  * OpenAPI spec version: 0.1.0
  */
-export interface AssistantProfileSchema {
-  role_name?: string;
-  company_name?: string;
-  tone?: string;
-  language?: string;
-  sales_rules?: string[];
+export interface ChannelConnectRequest {
+  type: 'telegram';
+  /** @minLength 10 */
+  bot_token: string;
+  /** @maxLength 255 */
+  bot_username?: string;
+  /** @maxLength 255 */
+  name?: string;
+}
+
+export type ChannelResponseSettings = { [key: string]: unknown };
+
+export interface ChannelResponse {
+  id: string;
+  type: string;
+  name: string;
+  status: string;
+  settings: ChannelResponseSettings;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ChannelWebhookResponseDecision = typeof ChannelWebhookResponseDecision[keyof typeof ChannelWebhookResponseDecision] | null;
+
+
+export const ChannelWebhookResponseDecision = {
+  auto_reply: 'auto_reply',
+  escalate: 'escalate',
+} as const;
+
+export interface ChannelWebhookResponse {
+  ok?: boolean;
+  duplicate?: boolean;
+  channel_id?: string | null;
+  conversation_id?: string | null;
+  inbound_message_id?: string | null;
+  outbound_message_id?: string | null;
+  decision?: ChannelWebhookResponseDecision;
 }
 
 export type ChatTurnSchemaRole = typeof ChatTurnSchemaRole[keyof typeof ChatTurnSchemaRole];
@@ -26,6 +58,42 @@ export interface ChatTurnSchema {
   role: ChatTurnSchemaRole;
   /** @minLength 1 */
   text: string;
+}
+
+export type ConversationMessageResponseAiMeta = { [key: string]: unknown };
+
+export interface ConversationMessageResponse {
+  id: string;
+  direction: string;
+  sender_type: string;
+  text: string;
+  status: string;
+  confidence: number | null;
+  ai_meta: ConversationMessageResponseAiMeta;
+  created_at: string;
+}
+
+export interface ConversationResponse {
+  id: string;
+  channel_id: string;
+  customer_id: string;
+  customer_name: string;
+  status: string;
+  last_message_at: string | null;
+  last_message_preview: string;
+  unread_count: number;
+}
+
+export interface ConversationThreadResponse {
+  id: string;
+  channel_id: string;
+  customer_id: string;
+  customer_name: string;
+  status: string;
+  last_message_at: string | null;
+  last_message_preview: string;
+  unread_count: number;
+  messages: ConversationMessageResponse[];
 }
 
 export type ValidationErrorCtx = { [key: string]: unknown };
@@ -108,35 +176,10 @@ export interface LoginRequest {
   password: string;
 }
 
-export type MemorySnippetSchemaTags = {[key: string]: string};
-
-export interface MemorySnippetSchema {
-  id: string;
-  title: string;
-  text: string;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  score?: number;
-  source?: string;
-  tags?: MemorySnippetSchemaTags;
-}
-
 export interface MLAnswerRequest {
-  tenant_id?: string;
   /** @minLength 1 */
   message: string;
   history?: ChatTurnSchema[];
-  profile?: AssistantProfileSchema | null;
-  custom_system_prompt?: string;
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  confidence_threshold?: number;
-  auto_reply_enabled?: boolean;
-  memory?: MemorySnippetSchema[];
 }
 
 export type MLAnswerResponseDecision = typeof MLAnswerResponseDecision[keyof typeof MLAnswerResponseDecision];
@@ -193,13 +236,9 @@ export interface UserMeResponse {
   status: string;
 }
 
-export type ListConversationsApiV1ConversationsGetParams = {
+export type ListConversationItemsApiV1ConversationsGetParams = {
 status?: string | null;
 };
-
-export type ListConversationsApiV1ConversationsGet200Item = { [key: string]: unknown };
-
-export type GetConversationApiV1ConversationsConversationIdGet200 = { [key: string]: unknown };
 
 export type ReplyApiV1ConversationsConversationIdReplyPostParams = {
 text: string;
@@ -208,16 +247,6 @@ text: string;
 export type ReplyApiV1ConversationsConversationIdReplyPost200 = { [key: string]: unknown };
 
 export type EscalateApiV1ConversationsConversationIdEscalatePost200 = { [key: string]: unknown };
-
-export type ListChannelsApiV1ChannelsGet200Item = { [key: string]: unknown };
-
-export type ConnectChannelApiV1ChannelsPostParams = {
-type: string;
-};
-
-export type ConnectChannelApiV1ChannelsPost200 = { [key: string]: unknown };
-
-export type WebhookApiV1ChannelsWebhookChannelTypePost200 = { [key: string]: unknown };
 
 export type OverviewApiV1AnalyticsOverviewGet200 = { [key: string]: unknown };
 
