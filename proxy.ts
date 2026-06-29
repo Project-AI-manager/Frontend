@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Защита экранов кабинета: нет refresh-cookie → на /login.
-export function middleware(req: NextRequest) {
+// Защита экранов кабинета: нет сессии-cookie → на /login. (Next 16: middleware → proxy.)
+export function proxy(req: NextRequest) {
   const hasSession = req.cookies.has("refresh_token");
   if (!hasSession) {
     const url = req.nextUrl.clone();
