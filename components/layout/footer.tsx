@@ -2,18 +2,18 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-black/10 bg-[#14110f] text-white">
+    <footer className="border-t border-slate-800 bg-slate-950 text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-10 text-sm lg:grid-cols-[1.2fr_1fr] lg:px-8">
         <div>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-white text-sm font-black text-black">
+            <span className="flex size-10 items-center justify-center rounded-lg bg-white text-sm font-black text-blue-700">
               Е
             </span>
             <span className="text-lg font-black">Едино</span>
           </div>
           <p className="mt-4 max-w-md text-white/60">
-            AI-менеджер, который собирает обращения из каналов, ищет ответы в базе знаний и
-            помогает команде отвечать быстрее.
+            AI-сотрудник для МСП: единое окно обращений, RAG по базе знаний, эскалация
+            менеджеру и самообучение на реальных диалогах.
           </p>
         </div>
 
