@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AlertCircle,
@@ -89,37 +89,45 @@ export default function ProfilePage() {
     >
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <aside className="space-y-5">
-          <div className="glass-card rounded-[1.75rem] p-6 text-center">
-            <div className="mx-auto flex size-24 items-center justify-center rounded-[2rem] bg-black text-3xl font-black text-white">
+          <div className="glass-card rounded-lg p-6 text-center">
+            <div className="mx-auto flex size-24 items-center justify-center rounded-lg bg-[#2463eb] text-3xl font-black text-white">
               {initials}
             </div>
             <h2 className="mt-5 text-2xl font-black">
               {profile?.full_name || "Пользователь"}
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">{profile?.email ?? "email не загружен"}</p>
-            <span className="mt-4 inline-flex rounded-full bg-orange-100 px-4 py-2 text-sm font-bold text-orange-700">
+            <p className="mt-1 text-sm text-neutral-500">
+              {profile?.email ?? "email не загружен"}
+            </p>
+            <span className="mt-4 inline-flex rounded-full bg-[#eaf1ff] px-4 py-2 text-sm font-bold text-[#1546ad]">
               {profile?.role ?? "role"}
             </span>
 
             <button
               type="button"
               onClick={refreshAll}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              {isProfileFetching ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              {isProfileFetching ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <RefreshCw size={16} />
+              )}
               Обновить профиль
             </button>
             <LogoutButton />
           </div>
 
-          <div className="rounded-[1.75rem] bg-black p-6 text-white">
+          <div className="rounded-lg bg-[#2463eb] p-6 text-white">
             <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-black">
+              <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#101828]">
                 <Building2 size={22} />
               </span>
               <div>
                 <h2 className="font-black">{workspace?.name ?? "Компания"}</h2>
-                <p className="text-sm text-white/55">{workspace?.slug ?? "workspace"}</p>
+                <p className="text-sm text-white/55">
+                  {workspace?.slug ?? "workspace"}
+                </p>
               </div>
             </div>
             <div className="mt-5 space-y-3 text-sm">
@@ -129,7 +137,11 @@ export default function ProfilePage() {
                 inverted
                 truncate
               />
-              <InfoRow label="Статус" value={workspace?.status ?? "—"} inverted />
+              <InfoRow
+                label="Статус"
+                value={workspace?.status ?? "—"}
+                inverted
+              />
             </div>
           </div>
         </aside>
@@ -145,37 +157,48 @@ export default function ProfilePage() {
             <StateCard
               icon={<AlertCircle size={18} />}
               title="Не удалось загрузить профиль"
-              description={getApiErrorMessage(error, "Проверь авторизацию и backend.")}
+              description={getApiErrorMessage(
+                error,
+                "Проверь авторизацию и backend.",
+              )}
               tone="error"
             />
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {profileBlocks.map((block) => (
-              <article key={block.title} className="glass-card rounded-[1.75rem] p-6">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-orange-600 shadow-sm">
+              <article key={block.title} className="glass-card rounded-lg p-6">
+                <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb] shadow-sm">
                   <block.icon size={22} />
                 </span>
                 <h2 className="mt-5 text-xl font-black">{block.title}</h2>
-                <p className="mt-3 text-sm leading-6 text-neutral-600">{block.text}</p>
+                <p className="mt-3 text-sm leading-6 text-neutral-600">
+                  {block.text}
+                </p>
               </article>
             ))}
           </div>
 
-          <article className="glass-card rounded-[1.75rem] p-6">
+          <article className="glass-card rounded-lg p-6">
             <div className="flex items-center gap-3">
-              <Mail size={20} className="text-orange-500" />
+              <Mail size={20} className="text-[#2463eb]" />
               <h2 className="text-xl font-black">Контактные данные</h2>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <ReadOnlyField label="Имя" value={profile?.full_name || "Не указано"} />
-              <ReadOnlyField label="Email" value={profile?.email || "Не загружен"} />
+              <ReadOnlyField
+                label="Имя"
+                value={profile?.full_name || "Не указано"}
+              />
+              <ReadOnlyField
+                label="Email"
+                value={profile?.email || "Не загружен"}
+              />
               <ReadOnlyField label="Роль" value={profile?.role || "—"} />
               <ReadOnlyField label="Статус" value={profile?.status || "—"} />
             </div>
             <p className="mt-4 text-sm leading-6 text-neutral-500">
-              Редактирование профиля пока read-only: backend уже отдает профиль, но endpoint для
-              изменения имени/пароля еще не реализован.
+              Редактирование профиля пока read-only: backend уже отдает профиль,
+              но endpoint для изменения имени/пароля еще не реализован.
             </p>
           </article>
         </section>
@@ -189,7 +212,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
     <label className="block text-sm font-bold text-neutral-500">
       {label}
       <input
-        className="mt-2 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 font-semibold text-neutral-900"
+        className="mt-2 w-full rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 font-semibold text-neutral-900"
         value={value}
         readOnly
       />
@@ -198,10 +221,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
 }
 
 function initialsFromName(value: string) {
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = value.trim().split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) {
     return "U";

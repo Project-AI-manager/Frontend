@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AlertCircle,
@@ -19,17 +19,14 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { InfoRow } from "@/components/ui/info-row";
 import { StateCard } from "@/components/ui/state-card";
-import { analyticsApi, type AnalyticsOverviewResponse } from "@/lib/api/analytics";
+import {
+  analyticsApi,
+  type AnalyticsOverviewResponse,
+} from "@/lib/api/analytics";
 import { getApiErrorMessage } from "@/lib/api/errors";
 
 export default function AnalyticsPage() {
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["analytics", "overview"],
     queryFn: analyticsApi.getOverview,
     retry: 1,
@@ -68,7 +65,10 @@ export default function AnalyticsPage() {
   ] as const;
 
   const statusBars = normalizeStatusBreakdown(overview);
-  const dialogUsagePercent = percentOf(overview.dialogs_used, overview.dialogs_limit);
+  const dialogUsagePercent = percentOf(
+    overview.dialogs_used,
+    overview.dialogs_limit,
+  );
 
   return (
     <AppShell
@@ -76,24 +76,31 @@ export default function AnalyticsPage() {
       description="KPI качества, скорости ответа и роста базы знаний теперь приходят из backend API."
     >
       <div className="space-y-5">
-        <section className="glass-card rounded-[1.75rem] p-6">
+        <section className="glass-card rounded-lg p-6">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#2463eb]">
                 task_208
               </p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight">Живой обзор качества</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-tight">
+                Живой обзор качества
+              </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Экран читает `GET /api/v1/analytics/overview`: диалоги, автоответы, эскалации,
-                среднее время ответа, usage и базу знаний.
+                Экран читает `GET /api/v1/analytics/overview`: диалоги,
+                автоответы, эскалации, среднее время ответа, usage и базу
+                знаний.
               </p>
             </div>
             <button
               type="button"
               onClick={() => refetch()}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              {isFetching ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              {isFetching ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <RefreshCw size={16} />
+              )}
               Обновить
             </button>
           </div>
@@ -110,7 +117,10 @@ export default function AnalyticsPage() {
               className="mt-6"
               icon={<AlertCircle size={18} />}
               title="Не удалось загрузить аналитику"
-              description={getApiErrorMessage(error, "Проверь авторизацию и доступность backend.")}
+              description={getApiErrorMessage(
+                error,
+                "Проверь авторизацию и доступность backend.",
+              )}
               tone="error"
             />
           ) : overview.dialogs_total === 0 ? (
@@ -130,7 +140,7 @@ export default function AnalyticsPage() {
         </section>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="glass-card rounded-[1.75rem] p-6">
+          <section className="glass-card rounded-lg p-6">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h2 className="text-xl font-black">Статусы диалогов</h2>
@@ -138,7 +148,7 @@ export default function AnalyticsPage() {
                   Распределение текущих conversation status по tenant.
                 </p>
               </div>
-              <span className="rounded-full bg-black px-3 py-1 text-xs font-bold text-white">
+              <span className="rounded-full bg-[#2463eb] px-3 py-1 text-xs font-bold text-white">
                 {overview.dialogs_total} всего
               </span>
             </div>
@@ -170,9 +180,9 @@ export default function AnalyticsPage() {
           </section>
 
           <aside className="space-y-5">
-            <div className="rounded-[1.75rem] bg-black p-6 text-white">
+            <div className="blue-panel p-6">
               <div className="flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-black">
+                <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb]">
                   <TrendingUp size={22} />
                 </span>
                 <div>
@@ -185,36 +195,60 @@ export default function AnalyticsPage() {
                   <span>{overview.dialogs_used} использовано</span>
                   <span>{overview.dialogs_limit || "без лимита"}</span>
                 </div>
-                <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full bg-orange-400" style={{ width: `${dialogUsagePercent}%` }} />
+                <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full rounded-full bg-white"
+                    style={{ width: `${dialogUsagePercent}%` }}
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="glass-card rounded-[1.75rem] p-6">
+            <div className="glass-card rounded-lg p-6">
               <SectionHeader
                 icon={<BrainCircuit size={22} />}
                 title="Качество AI"
                 description="Считаем по сохраненным AI-сообщениям."
               />
               <div className="mt-5 space-y-3 text-sm">
-                <InfoRow label="Средняя confidence" value={formatPercent(overview.avg_ai_confidence)} />
-                <InfoRow label="AI-ответы" value={formatNumber(overview.ai_replies_count)} />
-                <InfoRow label="Ответы менеджера" value={formatNumber(overview.manager_replies_count)} />
-                <InfoRow label="Входящие" value={formatNumber(overview.inbound_messages_count)} />
+                <InfoRow
+                  label="Средняя confidence"
+                  value={formatPercent(overview.avg_ai_confidence)}
+                />
+                <InfoRow
+                  label="AI-ответы"
+                  value={formatNumber(overview.ai_replies_count)}
+                />
+                <InfoRow
+                  label="Ответы менеджера"
+                  value={formatNumber(overview.manager_replies_count)}
+                />
+                <InfoRow
+                  label="Входящие"
+                  value={formatNumber(overview.inbound_messages_count)}
+                />
               </div>
             </div>
 
-            <div className="glass-card rounded-[1.75rem] p-6">
+            <div className="glass-card rounded-lg p-6">
               <SectionHeader
                 icon={<BookOpen size={22} />}
                 title="База знаний"
                 description="Документы, chunks и кандидаты на автообучение."
               />
               <div className="mt-5 space-y-3 text-sm">
-                <InfoRow label="Готовые документы" value={formatNumber(overview.knowledge_documents_ready)} />
-                <InfoRow label="Chunks" value={formatNumber(overview.knowledge_chunks_count)} />
-                <InfoRow label="Кандидаты" value={formatNumber(overview.pending_candidates_count)} />
+                <InfoRow
+                  label="Готовые документы"
+                  value={formatNumber(overview.knowledge_documents_ready)}
+                />
+                <InfoRow
+                  label="Chunks"
+                  value={formatNumber(overview.knowledge_chunks_count)}
+                />
+                <InfoRow
+                  label="Кандидаты"
+                  value={formatNumber(overview.pending_candidates_count)}
+                />
               </div>
             </div>
           </aside>
@@ -238,12 +272,16 @@ function MetricCard({
   tone: "orange" | "emerald" | "indigo" | "red";
 }) {
   return (
-    <div className="glass-card rounded-[1.75rem] p-5">
+    <div className="glass-card rounded-lg p-5">
       <div className="flex items-center justify-between">
-        <span className={`flex size-11 items-center justify-center rounded-2xl bg-white shadow-sm ${toneText(tone)}`}>
+        <span
+          className={`flex size-11 items-center justify-center rounded-lg bg-white shadow-sm ${toneText(tone)}`}
+        >
           <Icon size={20} />
         </span>
-        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${toneBadge(tone)}`}>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${toneBadge(tone)}`}
+        >
           live
           <ArrowUpRight size={13} />
         </span>
@@ -266,7 +304,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-orange-600 shadow-sm">
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white text-[#2463eb] shadow-sm">
         {icon}
       </span>
       <div>
@@ -280,7 +318,10 @@ function SectionHeader({
 function normalizeStatusBreakdown(overview: AnalyticsOverviewResponse) {
   return overview.status_breakdown.map((item) => ({
     ...item,
-    percent: overview.dialogs_total > 0 ? Math.round((item.count / overview.dialogs_total) * 100) : 0,
+    percent:
+      overview.dialogs_total > 0
+        ? Math.round((item.count / overview.dialogs_total) * 100)
+        : 0,
   }));
 }
 
@@ -333,30 +374,30 @@ function statusColor(status: string) {
     case "auto":
       return "bg-emerald-500";
     case "escalated":
-      return "bg-indigo-500";
+      return "bg-[#e89120]";
     case "closed":
       return "bg-neutral-500";
     case "open":
-      return "bg-orange-500";
+      return "bg-[#2463eb]";
     default:
-      return "bg-black";
+      return "bg-[#2463eb]";
   }
 }
 
 function toneText(tone: "orange" | "emerald" | "indigo" | "red") {
   return {
-    orange: "text-orange-600",
+    orange: "text-[#2463eb]",
     emerald: "text-emerald-600",
-    indigo: "text-indigo-600",
+    indigo: "text-[#2463eb]",
     red: "text-red-600",
   }[tone];
 }
 
 function toneBadge(tone: "orange" | "emerald" | "indigo" | "red") {
   return {
-    orange: "bg-orange-100 text-orange-700",
+    orange: "bg-[#eaf1ff] text-[#1546ad]",
     emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-indigo-100 text-indigo-700",
+    indigo: "bg-[#eaf1ff] text-[#1546ad]",
     red: "bg-red-100 text-red-700",
   }[tone];
 }

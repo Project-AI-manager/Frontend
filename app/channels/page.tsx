@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AlertCircle,
@@ -50,20 +50,16 @@ export default function ChannelsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["channels"],
     queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
     retry: 1,
   });
 
   const channels = useMemo(() => normalizeChannels(data), [data]);
-  const telegramChannel = channels.find((channel) => channel.type === "telegram");
+  const telegramChannel = channels.find(
+    (channel) => channel.type === "telegram",
+  );
   const hasTelegram = Boolean(telegramChannel);
   const telegramWebhookPath = telegramChannel?.webhookPath ?? webhookPath;
 
@@ -75,12 +71,16 @@ export default function ChannelsPage() {
     },
     {
       label: "Telegram",
-      value: hasTelegram ? statusLabel(telegramChannel?.status) : "Не подключён",
+      value: hasTelegram
+        ? statusLabel(telegramChannel?.status)
+        : "Не подключён",
       tone: hasTelegram && telegramChannel?.status === "active" ? "ok" : "warn",
     },
     {
       label: "Последняя синхронизация",
-      value: telegramChannel?.updatedAt ? formatDate(telegramChannel.updatedAt) : "ещё не запускалась",
+      value: telegramChannel?.updatedAt
+        ? formatDate(telegramChannel.updatedAt)
+        : "ещё не запускалась",
       tone: telegramChannel?.updatedAt ? "ok" : "warn",
     },
   ] as const;
@@ -93,7 +93,9 @@ export default function ChannelsPage() {
     const trimmedUsername = botUsername.trim();
 
     if (!trimmedToken) {
-      setFormMessage("Вставь токен Telegram-бота, чтобы подготовить подключение.");
+      setFormMessage(
+        "Вставь токен Telegram-бота, чтобы подготовить подключение.",
+      );
       return;
     }
 
@@ -108,10 +110,15 @@ export default function ChannelsPage() {
       });
       setBotToken("");
       await refetch();
-      setFormMessage("Telegram подключён. Webhook URL обновлён в карточке справа.");
+      setFormMessage(
+        "Telegram подключён. Webhook URL обновлён в карточке справа.",
+      );
     } catch (submitError) {
       setFormMessage(
-        getApiErrorMessage(submitError, "Не удалось подключить Telegram. Проверь токен и доступность backend."),
+        getApiErrorMessage(
+          submitError,
+          "Не удалось подключить Telegram. Проверь токен и доступность backend.",
+        ),
       );
     } finally {
       setIsSubmitting(false);
@@ -131,25 +138,32 @@ export default function ChannelsPage() {
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
         <section className="space-y-5">
-          <div className="glass-card rounded-[1.75rem] p-6">
+          <div className="glass-card rounded-lg p-6">
             <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
               <div>
-                <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
+                <p className="text-sm font-black uppercase tracking-[0.22em] text-[#2463eb]">
                   Первый канал
                 </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">Telegram</h2>
+                <h2 className="mt-2 text-3xl font-black tracking-tight">
+                  Telegram
+                </h2>
                 <p className="mt-2 max-w-2xl text-neutral-600">
-                  Здесь менеджер подключает Telegram-бота, видит состояние интеграции и понимает,
-                  готов ли канал отправлять новые сообщения в общую ленту диалогов.
+                  Здесь менеджер подключает Telegram-бота, видит состояние
+                  интеграции и понимает, готов ли канал отправлять новые
+                  сообщения в общую ленту диалогов.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => refetch()}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                {isFetching ? <Loader2 size={16} className="animate-spin" /> : <RadioTower size={16} />}
+                {isFetching ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <RadioTower size={16} />
+                )}
                 Обновить статус
               </button>
             </div>
@@ -161,12 +175,19 @@ export default function ChannelsPage() {
             </div>
 
             {error ? (
-              <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 shrink-0" size={18} />
                   <div>
-                    <p className="font-black">Не удалось получить список каналов</p>
-                    <p className="mt-1">{getApiErrorMessage(error, "Проверь авторизацию и доступность backend.")}</p>
+                    <p className="font-black">
+                      Не удалось получить список каналов
+                    </p>
+                    <p className="mt-1">
+                      {getApiErrorMessage(
+                        error,
+                        "Проверь авторизацию и доступность backend.",
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -174,18 +195,23 @@ export default function ChannelsPage() {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[1fr_0.85fr]">
-            <form onSubmit={handleSubmit} className="rounded-[1.75rem] bg-[#17130f] p-6 text-white shadow-xl">
+            <form onSubmit={handleSubmit} className="blue-panel p-6">
               <div className="flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-black">
+                <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb]">
                   <Send size={20} />
                 </span>
                 <div>
                   <h3 className="font-black">Подключение Telegram-бота</h3>
-                  <p className="text-sm text-white/55">Токен уходит напрямую в защищённый backend-контракт.</p>
+                  <p className="text-sm text-white/55">
+                    Токен уходит напрямую в защищённый backend-контракт.
+                  </p>
                 </div>
               </div>
 
-              <label className="mt-6 block text-sm font-bold text-white/70" htmlFor="telegram-token">
+              <label
+                className="mt-6 block text-sm font-bold text-white/70"
+                htmlFor="telegram-token"
+              >
                 Токен бота
               </label>
               <div className="mt-2 grid gap-3 md:grid-cols-[1fr_auto]">
@@ -193,69 +219,84 @@ export default function ChannelsPage() {
                   id="telegram-token"
                   value={botToken}
                   onChange={(event) => setBotToken(event.target.value)}
-                  className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-orange-300"
+                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#c9d9ff]"
                   placeholder="123456:ABC-telegram-bot-token"
                   disabled={isSubmitting}
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-400 px-5 py-3 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-black text-[#1546ad] transition hover:-translate-y-0.5 hover:bg-[#eaf1ff] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : null}
                   {hasTelegram ? "Обновить" : "Подключить"}
                 </button>
               </div>
 
-              <label className="mt-4 block text-sm font-bold text-white/70" htmlFor="telegram-username">
-                Username бота <span className="text-white/35">(необязательно)</span>
+              <label
+                className="mt-4 block text-sm font-bold text-white/70"
+                htmlFor="telegram-username"
+              >
+                Username бота{" "}
+                <span className="text-white/35">(необязательно)</span>
               </label>
               <input
                 id="telegram-username"
                 value={botUsername}
                 onChange={(event) => setBotUsername(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-orange-300 disabled:opacity-70"
+                className="mt-2 w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#c9d9ff] disabled:opacity-70"
                 placeholder="ai_manager_bot"
                 disabled={isSubmitting}
               />
 
               {formMessage ? (
-                <p className="mt-4 rounded-2xl border border-white/10 bg-white/10 p-3 text-sm text-white/75">
+                <p className="mt-4 rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white/75">
                   {formMessage}
                 </p>
               ) : null}
 
               <p className="mt-4 text-xs leading-5 text-white/45">
-                Токен не сохраняется на фронте и не возвращается в API-ответе. Backend шифрует его
-                перед хранением на сервере.
+                Токен не сохраняется на фронте и не возвращается в API-ответе.
+                Backend шифрует его перед хранением на сервере.
               </p>
             </form>
 
-            <div className="glass-card rounded-[1.75rem] p-6">
+            <div className="glass-card rounded-lg p-6">
               <div className="flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                <span className="flex size-12 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
                   <ShieldCheck size={20} />
                 </span>
                 <div>
                   <h3 className="font-black">Безопасность</h3>
-                  <p className="text-sm text-neutral-500">Что важно для реального подключения</p>
+                  <p className="text-sm text-neutral-500">
+                    Что важно для реального подключения
+                  </p>
                 </div>
               </div>
 
               <ul className="mt-5 space-y-3 text-sm text-neutral-600">
-                <li className="rounded-2xl bg-white p-3 shadow-sm">Не показывать сохранённый токен повторно.</li>
-                <li className="rounded-2xl bg-white p-3 shadow-sm">Шифровать credentials на backend.</li>
-                <li className="rounded-2xl bg-white p-3 shadow-sm">Проверять webhook и дедуплицировать события.</li>
+                <li className="rounded-lg bg-white p-3 shadow-sm">
+                  Не показывать сохранённый токен повторно.
+                </li>
+                <li className="rounded-lg bg-white p-3 shadow-sm">
+                  Шифровать credentials на backend.
+                </li>
+                <li className="rounded-lg bg-white p-3 shadow-sm">
+                  Проверять webhook и дедуплицировать события.
+                </li>
               </ul>
             </div>
           </div>
 
-          <div className="glass-card rounded-[1.75rem] p-6">
+          <div className="glass-card rounded-lg p-6">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h3 className="text-xl font-black">Подключённые каналы</h3>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Таблица уже читает `GET /api/v1/channels`; сейчас backend может вернуть пустой список.
+                  Таблица уже читает `GET /api/v1/channels`; сейчас backend
+                  может вернуть пустой список.
                 </p>
               </div>
               <span className="rounded-full bg-white px-4 py-2 text-sm font-black shadow-sm">
@@ -263,33 +304,41 @@ export default function ChannelsPage() {
               </span>
             </div>
 
-            <div className="mt-5 overflow-hidden rounded-3xl border border-black/10 bg-white">
+            <div className="mt-5 overflow-hidden rounded-lg border border-[#d9e1ec] bg-white">
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3 p-8 text-sm font-bold text-neutral-500">
                   <Loader2 size={18} className="animate-spin" />
                   Загружаем каналы
                 </div>
               ) : channels.length > 0 ? (
-                <div className="divide-y divide-black/10">
+                <div className="divide-y divide-[#d9e1ec]">
                   {channels.map((channel) => (
-                    <div key={channel.id ?? channel.type} className="grid gap-3 p-4 md:grid-cols-[1fr_160px_180px] md:items-center">
+                    <div
+                      key={channel.id ?? channel.type}
+                      className="grid gap-3 p-4 md:grid-cols-[1fr_160px_180px] md:items-center"
+                    >
                       <div>
                         <p className="font-black">{channel.name}</p>
-                        <p className="text-sm text-neutral-500">{channel.type}</p>
+                        <p className="text-sm text-neutral-500">
+                          {channel.type}
+                        </p>
                       </div>
                       <StatusPill status={channel.status} />
                       <p className="text-sm text-neutral-500">
-                        {channel.updatedAt ? formatDate(channel.updatedAt) : "нет синхронизации"}
+                        {channel.updatedAt
+                          ? formatDate(channel.updatedAt)
+                          : "нет синхронизации"}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="p-8 text-center">
-                  <Smartphone className="mx-auto text-orange-500" size={32} />
+                  <Smartphone className="mx-auto text-[#2463eb]" size={32} />
                   <p className="mt-3 font-black">Каналы ещё не подключены</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
-                    Добавь токен Telegram-бота выше, и канал появится здесь после успешного ответа backend.
+                    Добавь токен Telegram-бота выше, и канал появится здесь
+                    после успешного ответа backend.
                   </p>
                 </div>
               )}
@@ -298,21 +347,26 @@ export default function ChannelsPage() {
         </section>
 
         <aside className="space-y-5">
-          <div className="glass-card rounded-[1.75rem] p-5">
+          <div className="glass-card rounded-lg p-5">
             <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+              <span className="flex size-11 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
                 <Smartphone size={20} />
               </span>
               <div>
                 <h2 className="font-black">Порядок подключения</h2>
-                <p className="text-sm text-neutral-500">Мини-чеклист Telegram</p>
+                <p className="text-sm text-neutral-500">
+                  Мини-чеклист Telegram
+                </p>
               </div>
             </div>
 
             <ol className="mt-5 space-y-3 text-sm">
               {onboardingSteps.map((item, index) => (
-                <li key={item} className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-black text-xs font-black text-white">
+                <li
+                  key={item}
+                  className="flex gap-3 rounded-lg bg-white p-3 shadow-sm"
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2463eb] text-xs font-black text-white">
                     {index + 1}
                   </span>
                   <span>{item}</span>
@@ -323,7 +377,11 @@ export default function ChannelsPage() {
 
           <CopyCard
             title="Webhook URL"
-            description={hasTelegram ? "Индивидуальный адрес подключённого Telegram-канала." : "Появится с секретом после подключения канала."}
+            description={
+              hasTelegram
+                ? "Индивидуальный адрес подключённого Telegram-канала."
+                : "Появится с секретом после подключения канала."
+            }
             icon={<Webhook size={20} />}
             value={telegramWebhookPath}
             copied={copied === "webhook"}
@@ -357,11 +415,14 @@ function StatusCard({
     tone === "ok" ? (
       <CheckCircle2 size={20} className="text-emerald-500" />
     ) : (
-      <AlertCircle size={20} className={tone === "error" ? "text-red-500" : "text-orange-500"} />
+      <AlertCircle
+        size={20}
+        className={tone === "error" ? "text-red-500" : "text-[#2463eb]"}
+      />
     );
 
   return (
-    <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-sm">
       {icon}
       <p className="mt-4 text-sm text-neutral-500">{label}</p>
       <p className="mt-1 font-black">{value}</p>
@@ -375,10 +436,12 @@ function StatusPill({ status }: { status: ChannelStatus }) {
       ? "bg-emerald-100 text-emerald-700"
       : status === "error"
         ? "bg-red-100 text-red-700"
-        : "bg-orange-100 text-orange-700";
+        : "bg-[#eaf1ff] text-[#1546ad]";
 
   return (
-    <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black ${className}`}>
+    <span
+      className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black ${className}`}
+    >
       {statusLabel(status)}
     </span>
   );
@@ -400,23 +463,29 @@ function CopyCard({
   onCopy: () => void;
 }) {
   return (
-    <div className="glass-card rounded-[1.75rem] p-5">
+    <div className="glass-card rounded-lg p-5">
       <div className="flex items-center gap-3">
-        <span className="flex size-11 items-center justify-center rounded-2xl bg-black text-white">{icon}</span>
+        <span className="flex size-11 items-center justify-center rounded-lg bg-[#2463eb] text-white">
+          {icon}
+        </span>
         <div>
           <h2 className="font-black">{title}</h2>
           <p className="text-sm text-neutral-500">{description}</p>
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white p-3 text-sm text-neutral-500 shadow-sm">
+      <div className="mt-4 flex items-center gap-2 rounded-lg bg-white p-3 text-sm text-neutral-500 shadow-sm">
         <code className="min-w-0 flex-1 truncate">{value}</code>
         <button
           type="button"
           onClick={onCopy}
-          className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-100 hover:text-black"
+          className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-100 hover:text-[#101828]"
           aria-label={`Скопировать ${title}`}
         >
-          {copied ? <ClipboardCheck size={16} className="text-emerald-600" /> : <Copy size={16} />}
+          {copied ? (
+            <ClipboardCheck size={16} className="text-emerald-600" />
+          ) : (
+            <Copy size={16} />
+          )}
         </button>
       </div>
     </div>
@@ -428,18 +497,21 @@ function normalizeChannels(value: ChannelResponse[] | undefined): ChannelRow[] {
     return [];
   }
 
-  return value
-    .map((item, index) => {
-      const type = item.type || "unknown";
-      const name = typeof item.name === "string" && item.name.trim() ? item.name : channelName(type);
-      const status = normalizeStatus(item.status);
-      const updatedAt = item.updated_at;
-      const id = item.id || `${type}-${index}`;
-      const webhookPathValue = item.settings.webhook_path;
-      const webhookPath = typeof webhookPathValue === "string" ? webhookPathValue : undefined;
+  return value.map((item, index) => {
+    const type = item.type || "unknown";
+    const name =
+      typeof item.name === "string" && item.name.trim()
+        ? item.name
+        : channelName(type);
+    const status = normalizeStatus(item.status);
+    const updatedAt = item.updated_at;
+    const id = item.id || `${type}-${index}`;
+    const webhookPathValue = item.settings.webhook_path;
+    const webhookPath =
+      typeof webhookPathValue === "string" ? webhookPathValue : undefined;
 
-      return { id, type, name, status, updatedAt, webhookPath };
-    });
+    return { id, type, name, status, updatedAt, webhookPath };
+  });
 }
 
 function normalizeStatus(value: unknown): ChannelStatus {

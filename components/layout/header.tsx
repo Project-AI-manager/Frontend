@@ -8,31 +8,38 @@ const marketingLinks = [
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-black/10 bg-[#fffaf2]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-2xl bg-black text-sm font-black text-white shadow-lg shadow-black/15">
-            Е
+    <header className="sticky top-4 z-40 h-0 px-5 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 overflow-hidden rounded-full border border-[rgba(36,99,235,0.2)] bg-white/90 px-3 py-2 shadow-[0_18px_44px_rgba(18,39,76,0.13)] backdrop-blur-xl">
+        <Link
+          href="/"
+          className="flex h-11 items-center gap-3 rounded-full px-2 pr-4 transition hover:bg-blue-50"
+        >
+          <span className="brand-mark size-8" />
+          <span className="text-sm font-black tracking-tight text-[#101828]">
+            Автопилот
           </span>
-          <span className="text-lg font-black tracking-tight">Едино</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium text-neutral-600 md:flex">
+        <nav className="hidden min-w-0 items-center gap-2 text-sm font-bold text-[#526071] md:flex">
           {marketingLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="transition hover:text-black">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-4 py-2 transition hover:bg-blue-50 hover:text-[#2463eb]"
+            >
               {link.label}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-3 text-sm font-semibold">
-          <Link href="/login" className="hidden rounded-full px-4 py-2 text-neutral-700 transition hover:bg-black/5 sm:block">
+          <Link
+            href="/login"
+            className="hidden rounded-full px-4 py-2 text-[#526071] transition hover:bg-blue-50 hover:text-[#2463eb] sm:block"
+          >
             Войти
           </Link>
-          <Link
-            href="/register"
-            className="rounded-full bg-black px-5 py-2.5 text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5 hover:shadow-xl"
-          >
+          <Link href="/register" className="primary-button h-11 px-5 text-sm">
             Попробовать
           </Link>
         </div>

@@ -6,7 +6,13 @@ import { StateCard } from "@/components/ui/state-card";
 
 describe("StateCard", () => {
   it("renders a neutral start-aligned state with optional description", () => {
-    render(<StateCard icon={<span data-testid="icon" />} title="Loading" description="Please wait" />);
+    render(
+      <StateCard
+        icon={<span data-testid="icon" />}
+        title="Loading"
+        description="Please wait"
+      />,
+    );
 
     expect(screen.getByText("Loading")).toBeInTheDocument();
     expect(screen.getByText("Please wait")).toBeInTheDocument();
@@ -14,9 +20,11 @@ describe("StateCard", () => {
   });
 
   it("renders centered error states", () => {
-    render(<StateCard icon={<span />} title="Error" tone="error" align="center" />);
+    render(
+      <StateCard icon={<span />} title="Error" tone="error" align="center" />,
+    );
 
-    const card = screen.getByText("Error").closest(".rounded-3xl");
+    const card = screen.getByText("Error").closest(".rounded-lg");
     expect(card).toHaveClass("text-center");
     expect(card).toHaveClass("text-red-700");
   });
@@ -31,7 +39,9 @@ describe("InfoRow", () => {
   });
 
   it("supports inverted and truncated variants", () => {
-    render(<InfoRow label="Tenant ID" value="very-long-id" inverted truncate />);
+    render(
+      <InfoRow label="Tenant ID" value="very-long-id" inverted truncate />,
+    );
 
     expect(screen.getByText("Tenant ID")).toHaveClass("text-white/45");
     expect(screen.getByText("very-long-id")).toHaveClass("truncate");
