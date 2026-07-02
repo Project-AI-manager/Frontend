@@ -13,10 +13,11 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
   KnowledgeCandidateResponse,
@@ -239,13 +240,14 @@ export default function KnowledgePage() {
 
             <div className="mt-5 overflow-hidden rounded-3xl border border-black/10 bg-white">
               {isDocumentsLoading ? (
-                <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем документы" />
+                <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем документы" align="center" />
               ) : documentsError ? (
                 <StateCard
                   icon={<AlertCircle size={18} />}
                   title="Не удалось загрузить документы"
                   description={getApiErrorMessage(documentsError, "Проверь авторизацию и backend.")}
                   tone="error"
+                  align="center"
                 />
               ) : documents.length > 0 ? (
                 documents.map((document) => (
@@ -276,6 +278,7 @@ export default function KnowledgePage() {
                   icon={<FileText size={18} />}
                   title="Документов пока нет"
                   description="Добавь первый manual-документ выше, чтобы playground начал отвечать по базе."
+                  align="center"
                 />
               )}
             </div>
@@ -307,13 +310,14 @@ export default function KnowledgePage() {
 
             <div className="mt-5 space-y-3">
               {isDetailLoading ? (
-                <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем chunks" />
+                <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем chunks" align="center" />
               ) : detailError ? (
                 <StateCard
                   icon={<AlertCircle size={18} />}
                   title="Не удалось открыть документ"
                   description={getApiErrorMessage(detailError, "Выбери другой документ или обнови список.")}
                   tone="error"
+                  align="center"
                 />
               ) : documentDetail ? (
                 documentDetail.chunks.map((chunk) => (
@@ -332,6 +336,7 @@ export default function KnowledgePage() {
                   icon={<FileText size={18} />}
                   title="Документ не выбран"
                   description="Выбери документ в списке выше, чтобы увидеть его chunks."
+                  align="center"
                 />
               )}
             </div>
@@ -408,13 +413,14 @@ export default function KnowledgePage() {
 
           <div className="mt-5 space-y-3">
             {isCandidatesLoading ? (
-              <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем кандидатов" />
+              <StateCard icon={<Loader2 className="animate-spin" size={18} />} title="Загружаем кандидатов" align="center" />
             ) : candidatesError ? (
               <StateCard
                 icon={<AlertCircle size={18} />}
                 title="Не удалось загрузить кандидатов"
                 description={getApiErrorMessage(candidatesError, "Проверь backend.")}
                 tone="error"
+                align="center"
               />
             ) : pendingCandidates.length > 0 ? (
               pendingCandidates.map((candidate) => (
@@ -451,36 +457,13 @@ export default function KnowledgePage() {
                 icon={<BrainCircuit size={18} />}
                 title="Кандидатов пока нет"
                 description="Они появятся после ответов менеджера в inbox."
+                align="center"
               />
             )}
           </div>
         </aside>
       </div>
     </AppShell>
-  );
-}
-
-function StateCard({
-  icon,
-  title,
-  description,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  tone?: "neutral" | "error";
-}) {
-  return (
-    <div
-      className={`rounded-3xl border p-5 text-center ${
-        tone === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-black/10 bg-white text-neutral-600"
-      }`}
-    >
-      <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-white shadow-sm">{icon}</div>
-      <p className="mt-3 font-black">{title}</p>
-      {description ? <p className="mt-2 text-sm leading-6 opacity-75">{description}</p> : null}
-    </div>
   );
 }
 

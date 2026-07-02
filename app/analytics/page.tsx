@@ -17,6 +17,8 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { InfoRow } from "@/components/ui/info-row";
+import { StateCard } from "@/components/ui/state-card";
 import { analyticsApi, type AnalyticsOverviewResponse } from "@/lib/api/analytics";
 import { getApiErrorMessage } from "@/lib/api/errors";
 
@@ -271,47 +273,6 @@ function SectionHeader({
         <h2 className="text-xl font-black">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-neutral-500">{description}</p>
       </div>
-    </div>
-  );
-}
-
-function StateCard({
-  icon,
-  title,
-  description,
-  tone = "neutral",
-  className = "",
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  tone?: "neutral" | "error";
-  className?: string;
-}) {
-  return (
-    <div
-      className={`rounded-3xl border p-5 ${
-        tone === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-black/10 bg-white text-neutral-600"
-      } ${className}`}
-    >
-      <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
-          {icon}
-        </span>
-        <div>
-          <p className="font-black">{title}</p>
-          {description ? <p className="mt-1 text-sm leading-6 opacity-75">{description}</p> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-black/5 pb-3 last:border-0">
-      <span className="text-neutral-500">{label}</span>
-      <span className="text-right font-bold">{value}</span>
     </div>
   );
 }
