@@ -7,8 +7,11 @@
 import type {
   KnowledgeCandidateApproveResponse,
   KnowledgeCandidateResponse,
+  KnowledgeCandidateStatusResponse,
   KnowledgeDocumentCreate,
+  KnowledgeDocumentDetailResponse,
   KnowledgeDocumentResponse,
+  KnowledgeDocumentStatusResponse,
   MLAnswerRequest,
   MLAnswerResponse
 } from '../ai.schemas';
@@ -41,6 +44,28 @@ const uploadDocumentApiV1KnowledgeDocumentsPost = (
       {url: `/api/v1/knowledge/documents`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: knowledgeDocumentCreate
+    },
+      options);
+    }
+  /**
+ * @summary Get Document
+ */
+const getDocumentApiV1KnowledgeDocumentsDocumentIdGet = (
+    documentId: string,
+ options?: SecondParameter<typeof apiClient<KnowledgeDocumentDetailResponse>>,) => {
+      return apiClient<KnowledgeDocumentDetailResponse>(
+      {url: `/api/v1/knowledge/documents/${documentId}`, method: 'GET'
+    },
+      options);
+    }
+  /**
+ * @summary Archive Document
+ */
+const archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost = (
+    documentId: string,
+ options?: SecondParameter<typeof apiClient<KnowledgeDocumentStatusResponse>>,) => {
+      return apiClient<KnowledgeDocumentStatusResponse>(
+      {url: `/api/v1/knowledge/documents/${documentId}/archive`, method: 'POST'
     },
       options);
     }
@@ -80,9 +105,23 @@ const approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost = (
     },
       options);
     }
-  return {listDocumentsApiV1KnowledgeDocumentsGet,uploadDocumentApiV1KnowledgeDocumentsPost,askApiV1KnowledgeAskPost,listCandidatesApiV1KnowledgeCandidatesGet,approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost}};
+  /**
+ * @summary Reject Candidate
+ */
+const rejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPost = (
+    candidateId: string,
+ options?: SecondParameter<typeof apiClient<KnowledgeCandidateStatusResponse>>,) => {
+      return apiClient<KnowledgeCandidateStatusResponse>(
+      {url: `/api/v1/knowledge/candidates/${candidateId}/reject`, method: 'POST'
+    },
+      options);
+    }
+  return {listDocumentsApiV1KnowledgeDocumentsGet,uploadDocumentApiV1KnowledgeDocumentsPost,getDocumentApiV1KnowledgeDocumentsDocumentIdGet,archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost,askApiV1KnowledgeAskPost,listCandidatesApiV1KnowledgeCandidatesGet,approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost,rejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPost}};
 export type ListDocumentsApiV1KnowledgeDocumentsGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['listDocumentsApiV1KnowledgeDocumentsGet']>>>
 export type UploadDocumentApiV1KnowledgeDocumentsPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['uploadDocumentApiV1KnowledgeDocumentsPost']>>>
+export type GetDocumentApiV1KnowledgeDocumentsDocumentIdGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['getDocumentApiV1KnowledgeDocumentsDocumentIdGet']>>>
+export type ArchiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost']>>>
 export type AskApiV1KnowledgeAskPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['askApiV1KnowledgeAskPost']>>>
 export type ListCandidatesApiV1KnowledgeCandidatesGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['listCandidatesApiV1KnowledgeCandidatesGet']>>>
 export type ApproveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost']>>>
+export type RejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getKnowledge>['rejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPost']>>>
