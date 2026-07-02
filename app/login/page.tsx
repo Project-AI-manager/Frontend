@@ -10,21 +10,25 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
+const DEMO_EMAIL = "owner.demo@example.com";
+const DEMO_PASSWORD = "demo-password";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("owner@example.com");
-  const [password, setPassword] = useState("demo-password");
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function signIn(nextEmail: string, nextPassword: string) {
     setError("");
     setIsSubmitting(true);
 
     try {
-      const tokens = await authApi.loginApiV1AuthLoginPost({ email, password });
+      const tokens = await authApi.loginApiV1AuthLoginPost({
+        email: nextEmail,
+        password: nextPassword,
+      });
       setAuthTokens({
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
@@ -35,6 +39,17 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await signIn(email, password);
+  }
+
+  async function handleDemoLogin() {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    await signIn(DEMO_EMAIL, DEMO_PASSWORD);
   }
 
   return (
@@ -87,6 +102,22 @@ export default function LoginPage() {
             <p className="mt-2 text-sm text-neutral-600">
               Используй тестового пользователя или свой аккаунт после регистрации.
             </p>
+
+            <button
+              disabled={isSubmitting}
+              onClick={handleDemoLogin}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 font-bold text-white shadow-xl shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+            >
+              {isSubmitting ? "Открываем демо..." : "Войти в демо без регистрации"}
+              <Sparkles size={18} />
+            </button>
+
+            <div className="mt-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-neutral-400">
+              <span className="h-px flex-1 bg-black/10" />
+              или
+              <span className="h-px flex-1 bg-black/10" />
+            </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <label className="block text-sm">
