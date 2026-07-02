@@ -5,12 +5,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  ConversationActionResponse,
+  ConversationReplyRequest,
   ConversationResponse,
   ConversationThreadResponse,
-  EscalateApiV1ConversationsConversationIdEscalatePost200,
-  ListConversationItemsApiV1ConversationsGetParams,
-  ReplyApiV1ConversationsConversationIdReplyPost200,
-  ReplyApiV1ConversationsConversationIdReplyPostParams
+  ListConversationItemsApiV1ConversationsGetParams
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -48,11 +47,12 @@ const getConversationApiV1ConversationsConversationIdGet = (
  */
 const replyApiV1ConversationsConversationIdReplyPost = (
     conversationId: string,
-    params: ReplyApiV1ConversationsConversationIdReplyPostParams,
- options?: SecondParameter<typeof apiClient<ReplyApiV1ConversationsConversationIdReplyPost200>>,) => {
-      return apiClient<ReplyApiV1ConversationsConversationIdReplyPost200>(
+    conversationReplyRequest: ConversationReplyRequest,
+ options?: SecondParameter<typeof apiClient<ConversationActionResponse>>,) => {
+      return apiClient<ConversationActionResponse>(
       {url: `/api/v1/conversations/${conversationId}/reply`, method: 'POST',
-        params
+      headers: {'Content-Type': 'application/json', },
+      data: conversationReplyRequest
     },
       options);
     }
@@ -61,8 +61,8 @@ const replyApiV1ConversationsConversationIdReplyPost = (
  */
 const escalateApiV1ConversationsConversationIdEscalatePost = (
     conversationId: string,
- options?: SecondParameter<typeof apiClient<EscalateApiV1ConversationsConversationIdEscalatePost200>>,) => {
-      return apiClient<EscalateApiV1ConversationsConversationIdEscalatePost200>(
+ options?: SecondParameter<typeof apiClient<ConversationActionResponse>>,) => {
+      return apiClient<ConversationActionResponse>(
       {url: `/api/v1/conversations/${conversationId}/escalate`, method: 'POST'
     },
       options);
