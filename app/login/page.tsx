@@ -35,7 +35,9 @@ export default function LoginPage() {
       });
       router.push("/inbox");
     } catch (err) {
-      setError(getApiErrorMessage(err, "Не удалось войти. Проверь email и пароль."));
+      setError(
+        getApiErrorMessage(err, "Не удалось войти. Проверь email и пароль."),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -54,32 +56,40 @@ export default function LoginPage() {
 
   return (
     <main className="soft-grid min-h-screen px-5 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-black/10 bg-white shadow-2xl shadow-black/10 lg:grid-cols-[1fr_0.9fr]">
-        <section className="relative hidden bg-[#17130f] p-10 text-white lg:block">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_24px_70px_rgba(18,39,76,0.12)] lg:grid-cols-[1fr_0.9fr]">
+        <section className="blue-panel relative hidden rounded-none border-0 p-10 text-white lg:block">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-sm font-black text-black">
-              Е
+            <span className="grid size-11 place-items-center rounded-full bg-white/95 text-[#2463eb] shadow-lg shadow-blue-950/10">
+              <span className="brand-mark size-7 shadow-none" />
             </span>
-            <span className="text-xl font-black">Едино</span>
+            <span className="text-xl font-black">Автопилот</span>
           </Link>
 
           <div className="mt-24 max-w-md">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
-              <Sparkles size={16} className="text-orange-300" />
+              <Sparkles size={16} className="text-[#c9d9ff]" />
               Кабинет уже ждёт
             </div>
-            <h1 className="mt-6 text-5xl font-black tracking-[-0.05em]">
+            <h1 className="mt-6 text-5xl font-black tracking-[-0.055em]">
               Вернись к диалогам без лишней рутины.
             </h1>
-            <p className="mt-5 text-white/60">
-              После входа ты попадёшь в inbox, где собраны обращения, база знаний и черновики AI.
+            <p className="mt-5 text-white/70">
+              После входа ты попадёшь в inbox, где собраны обращения, база
+              знаний и черновики AI.
             </p>
           </div>
 
-          <div className="absolute bottom-10 left-10 right-10 rounded-[1.5rem] border border-white/10 bg-white/8 p-5">
-            {["JWT-сессия", "Access token в запросах", "Refresh cookie для кабинета"].map((item) => (
-              <div key={item} className="mt-3 first:mt-0 flex items-center gap-3 text-sm text-white/75">
-                <CheckCircle2 size={16} className="text-emerald-300" />
+          <div className="absolute bottom-10 left-10 right-10 rounded-lg border border-white/15 bg-white/10 p-5">
+            {[
+              "JWT-сессия",
+              "Access token в запросах",
+              "Refresh cookie для кабинета",
+            ].map((item) => (
+              <div
+                key={item}
+                className="mt-3 first:mt-0 flex items-center gap-3 text-sm text-white/75"
+              >
+                <CheckCircle2 size={16} className="text-[#9ee7c3]" />
                 {item}
               </div>
             ))}
@@ -89,34 +99,35 @@ export default function LoginPage() {
         <section className="flex items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-md">
             <Link href="/" className="mb-10 flex items-center gap-3 lg:hidden">
-              <span className="flex size-10 items-center justify-center rounded-2xl bg-black text-sm font-black text-white">
-                Е
-              </span>
-              <span className="text-lg font-black">Едино</span>
+              <span className="brand-mark size-10" />
+              <span className="text-lg font-black">Автопилот</span>
             </Link>
 
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+            <div className="flex size-12 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
               <LockKeyhole size={22} />
             </div>
             <h2 className="mt-6 text-3xl font-black tracking-tight">Вход</h2>
-            <p className="mt-2 text-sm text-neutral-600">
-              Используй тестового пользователя или свой аккаунт после регистрации.
+            <p className="mt-2 text-sm text-[#526071]">
+              Используй тестового пользователя или свой аккаунт после
+              регистрации.
             </p>
 
             <button
               disabled={isSubmitting}
               onClick={handleDemoLogin}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 font-bold text-white shadow-xl shadow-orange-500/20 transition hover:-translate-y-0.5 hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="primary-button mt-6 w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
             >
-              {isSubmitting ? "Открываем демо..." : "Войти в демо без регистрации"}
+              {isSubmitting
+                ? "Открываем демо..."
+                : "Войти в демо без регистрации"}
               <Sparkles size={18} />
             </button>
 
             <div className="mt-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-neutral-400">
-              <span className="h-px flex-1 bg-black/10" />
+              <span className="h-px flex-1 bg-[#d9e1ec]" />
               или
-              <span className="h-px flex-1 bg-black/10" />
+              <span className="h-px flex-1 bg-[#d9e1ec]" />
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -125,7 +136,7 @@ export default function LoginPage() {
                 <input
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  className="form-field mt-2 px-4 py-3"
                   type="email"
                   autoComplete="email"
                   required
@@ -137,7 +148,7 @@ export default function LoginPage() {
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  className="form-field mt-2 px-4 py-3"
                   type="password"
                   autoComplete="current-password"
                   required
@@ -152,7 +163,7 @@ export default function LoginPage() {
 
               <button
                 disabled={isSubmitting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 font-bold text-white shadow-xl shadow-black/15 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="secondary-button w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
                 type="submit"
               >
                 {isSubmitting ? "Входим..." : "Войти"}
@@ -162,7 +173,10 @@ export default function LoginPage() {
 
             <p className="mt-6 text-center text-sm text-neutral-600">
               Нет аккаунта?{" "}
-              <Link href="/register" className="font-bold text-black underline decoration-orange-300 underline-offset-4">
+              <Link
+                href="/register"
+                className="font-bold text-[#2463eb] underline decoration-[#9db7f4] underline-offset-4"
+              >
                 Создать аккаунт
               </Link>
             </p>

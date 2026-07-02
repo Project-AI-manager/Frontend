@@ -16,205 +16,177 @@ import { Header } from "@/components/layout/header";
 const features = [
   {
     icon: MessageSquareText,
-    title: "Все обращения в одном окне",
-    text: "Telegram, виджет сайта и будущие каналы собираются в единую ленту диалогов.",
+    title: "Единое окно",
+    text: "Telegram и будущие каналы собираются в одну рабочую ленту без переключения между вкладками.",
   },
   {
     icon: BrainCircuit,
-    title: "Память компании",
-    text: "База знаний хранит документы, ответы менеджеров и кандидатов для автообучения.",
+    title: "База знаний",
+    text: "Документы, ответы менеджеров и кандидаты автообучения становятся источником для AI.",
   },
   {
     icon: Bot,
-    title: "AI-черновики ответов",
-    text: "Ассистент готовит ответ, показывает источники и не отправляет сомнительное без менеджера.",
+    title: "Ответ по базе",
+    text: "AI готовит черновик, показывает источники и не делает вид, что знает больше, чем знает база.",
   },
   {
     icon: ShieldCheck,
-    title: "Контроль уверенности",
-    text: "Порог автоответа, эскалации и ручная проверка помогают запускать AI безопасно.",
+    title: "Контроль человека",
+    text: "Порог уверенности и эскалация держат качество под контролем на раннем этапе внедрения.",
   },
 ];
 
 const steps = [
-  "Подключите Telegram и загрузите первые документы",
-  "AI найдёт похожие знания и соберёт черновик ответа",
-  "Менеджер подтверждает, исправляет или отправляет ответ вручную",
+  ["1. Каналы", "Подключаем Telegram и собираем первые реальные обращения."],
+  ["2. База знаний", "Загружаем FAQ, условия, инструкции и ответы менеджеров."],
+  [
+    "3. Ответ",
+    "AI собирает черновик по источникам и передаёт сложное менеджеру.",
+  ],
+  [
+    "4. Контроль",
+    "Менеджер подтверждает качество и постепенно усиливает базу.",
+  ],
+];
+
+const metrics = [
+  ["70-80%", "типовых обращений в проверяемой цели"],
+  ["1 канал", "Telegram-first MVP"],
+  ["100%", "контроль менеджера на старте"],
 ];
 
 export default function Home() {
   return (
     <>
       <Header />
-      <main>
-        <section className="soft-grid relative overflow-hidden">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 lg:grid-cols-[1fr_0.9fr] lg:px-8 lg:py-28">
+      <main className="overflow-hidden pt-20">
+        <section className="relative">
+          <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-24">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm backdrop-blur">
-                <Sparkles size={16} className="text-orange-500" />
-                AI-менеджер для продаж и поддержки
+              <div className="brand-kicker inline-flex items-center gap-2 rounded-full bg-[#eaf1ff] px-4 py-2">
+                <Sparkles size={15} />
+                AI-сотрудник для клиентских обращений
               </div>
 
-              <h1 className="mt-7 max-w-4xl text-balance text-5xl font-black tracking-[-0.05em] text-neutral-950 sm:text-6xl lg:text-7xl">
-                Один кабинет, где AI помогает отвечать клиентам быстрее.
+              <h1 className="mt-7 max-w-4xl text-balance text-5xl font-black leading-[0.98] tracking-[-0.055em] text-[#101828] sm:text-6xl lg:text-7xl">
+                Единое окно с ответами по базе знаний.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
-                Едино собирает диалоги, подключает базу знаний и готовит ответы для менеджеров.
-                Пока человек контролирует качество, AI берёт на себя рутину.
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#526071]">
+                Автопилот собирает обращения, находит ответы в базе компании и
+                помогает менеджеру отвечать быстрее. Сначала контроль человека,
+                затем постепенная автоматизация.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-black px-6 py-3 font-bold text-white shadow-xl shadow-black/15 transition hover:-translate-y-0.5"
-                >
-                  Начать бесплатно
+                <Link href="/register" className="primary-button h-12 px-6">
+                  Начать проверку
                   <ArrowRight size={18} />
                 </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white/70 px-6 py-3 font-bold backdrop-blur transition hover:bg-white"
-                >
+                <Link href="/login" className="secondary-button h-12 px-6">
                   Войти в демо
                 </Link>
               </div>
 
-              <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
-                {[
-                  ["3 мин", "до первого ответа"],
-                  ["1 канал", "Telegram в MVP"],
-                  ["100%", "контроль менеджера"],
-                ].map(([value, label]) => (
-                  <div key={label} className="glass-card rounded-3xl p-4">
-                    <p className="text-2xl font-black">{value}</p>
-                    <p className="mt-1 text-xs text-neutral-500">{label}</p>
+              <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+                {metrics.map(([value, label]) => (
+                  <div key={label} className="surface-card p-5">
+                    <p className="text-3xl font-black tracking-[-0.04em] text-[#2463eb]">
+                      {value}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-[#526071]">
+                      {label}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="glass-card rounded-[2rem] p-4">
-              <div className="rounded-[1.5rem] bg-[#17130f] p-5 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-white/50">Сегодня</p>
-                    <p className="text-2xl font-black">Диалоги</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-bold text-emerald-300">
-                    online
-                  </span>
-                </div>
-
-                <div className="mt-6 space-y-3">
-                  {[
-                    ["Алина", "Можно подключить Telegram?", "AI нашёл 2 источника"],
-                    ["Павел", "Сколько стоит демо?", "Готов автоответ"],
-                    ["Мария", "Нужна интеграция с CRM", "Эскалация"],
-                  ].map(([name, message, status]) => (
-                    <div key={name} className="rounded-3xl border border-white/10 bg-white/8 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-bold">{name}</p>
-                          <p className="mt-1 text-sm text-white/60">{message}</p>
-                        </div>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
-                          {status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 rounded-3xl bg-white p-4 text-black">
-                  <div className="flex items-center gap-2 text-sm font-bold text-orange-600">
-                    <Zap size={16} />
-                    Черновик AI
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-neutral-700">
-                    Telegram подключается через токен бота. В демо-режиме можно проверить ответы
-                    до запуска автоответов.
-                  </p>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-neutral-500">
-                    <CheckCircle2 size={14} />
-                    Источник: FAQ Telegram
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ProductMockup />
           </div>
         </section>
 
         <section id="features" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
           <div className="max-w-3xl">
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
-              Возможности
-            </p>
-            <h2 className="mt-4 text-4xl font-black tracking-tight">
-              Минимальный набор, чтобы сервис уже был полезным.
+            <p className="brand-kicker">Что внутри MVP</p>
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[#101828]">
+              Минимальный продукт, который уже можно проверять на реальных
+              диалогах.
             </h2>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {features.map((feature) => (
-              <div key={feature.title} className="glass-card rounded-[1.75rem] p-6">
-                <feature.icon size={28} className="text-orange-500" />
-                <h3 className="mt-5 text-lg font-black">{feature.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-neutral-600">{feature.text}</p>
+              <div
+                key={feature.title}
+                className="surface-card p-6 transition hover:-translate-y-1 hover:border-[rgba(36,99,235,0.35)]"
+              >
+                <span className="flex size-12 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
+                  <feature.icon size={24} />
+                </span>
+                <h3 className="mt-8 text-lg font-black">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-[#526071]">
+                  {feature.text}
+                </p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="how" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-          <div className="grid gap-6 rounded-[2rem] bg-black p-6 text-white lg:grid-cols-[0.8fr_1fr] lg:p-10">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-300">
-                Как работает
-              </p>
-              <h2 className="mt-4 text-4xl font-black tracking-tight">
-                Сначала ассистент, потом автономность.
-              </h2>
-              <p className="mt-4 text-white/60">
-                Мы не начинаем с магии. Сначала AI показывает черновики и источники, команда
-                корректирует ответы, а база знаний постепенно становится сильнее.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {steps.map((step, index) => (
-                <div key={step} className="rounded-3xl border border-white/10 bg-white/8 p-5">
-                  <div className="flex gap-4">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-orange-400 font-black text-black">
-                      {index + 1}
-                    </span>
-                    <p className="font-semibold">{step}</p>
-                  </div>
-                </div>
-              ))}
+        <section id="how" className="bg-[#f4f7fb] py-20">
+          <div className="mx-auto max-w-7xl px-5 lg:px-8">
+            <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+              <div>
+                <p className="brand-kicker">Как работает</p>
+                <h2 className="mt-4 text-4xl font-black tracking-[-0.04em]">
+                  Четыре шага от канала до управляемого ответа.
+                </h2>
+                <p className="mt-4 text-[#526071]">
+                  Логика такая же, как в one-page: канал, база знаний, ответ и
+                  контроль. Без лишней магии, зато с проверяемым результатом.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {steps.map(([title, text]) => (
+                  <article key={title} className="surface-card min-h-40 p-6">
+                    <p className="brand-kicker">{title}</p>
+                    <p className="mt-8 text-lg font-black">{text}</p>
+                  </article>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <section id="pricing" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
-          <div className="glass-card grid gap-8 rounded-[2rem] p-8 lg:grid-cols-[1fr_0.7fr] lg:p-10">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
-                MVP-тариф
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.45fr]">
+            <div className="blue-panel p-8 lg:p-10">
+              <p className="text-sm font-black uppercase tracking-[0.08em] text-[#c9d9ff]">
+                Тестовый запуск
               </p>
-              <h2 className="mt-4 text-4xl font-black tracking-tight">Демо-запуск без риска.</h2>
-              <p className="mt-4 max-w-2xl text-neutral-600">
-                Один Telegram-канал, ручная база знаний и кабинет менеджера. Этого достаточно,
-                чтобы проверить гипотезу на реальных диалогах.
+              <h2 className="mt-5 max-w-3xl text-4xl font-black tracking-[-0.04em]">
+                Проверяем продукт на реальных обращениях, а не на красивых
+                обещаниях.
+              </h2>
+              <p className="mt-5 max-w-2xl leading-7 text-white/75">
+                Демо-кабинет уже работает локально: регистрация, Telegram-first
+                канал, inbox, база знаний, аналитика, настройки и профиль.
               </p>
             </div>
-            <div className="rounded-[1.5rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-bold text-neutral-500">Старт</p>
-              <p className="mt-2 text-4xl font-black">0 ₽</p>
-              <p className="mt-2 text-sm text-neutral-500">на период проверки MVP</p>
+
+            <div className="surface-card p-6">
+              <p className="brand-kicker">Демо</p>
+              <p className="mt-5 text-5xl font-black tracking-[-0.055em]">
+                0 ₽
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#526071]">
+                для локальной проверки MVP
+              </p>
               <Link
-                href="/register"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-black px-5 py-3 font-bold text-white"
+                href="/login"
+                className="primary-button mt-8 h-12 w-full px-5"
               >
-                Создать аккаунт
+                Открыть демо
               </Link>
             </div>
           </div>
@@ -222,5 +194,105 @@ export default function Home() {
       </main>
       <Footer />
     </>
+  );
+}
+
+function ProductMockup() {
+  const conversations = [
+    ["Алина", "Можно подключить Telegram?", "AI нашёл 2 источника"],
+    ["Павел", "Сколько стоит демо?", "Готов черновик"],
+    ["Мария", "Нужна интеграция с CRM", "Передать менеджеру"],
+  ];
+
+  return (
+    <div className="surface-card p-4">
+      <div className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_24px_70px_rgba(18,39,76,0.12)]">
+        <div className="flex items-center justify-between border-b border-[#d9e1ec] bg-[#f8fbff] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="brand-mark size-8" />
+            <div>
+              <p className="text-sm font-black">Автопилот</p>
+              <p className="text-xs text-[#526071]">Кабинет менеджера</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-[#eaf1ff] px-3 py-1 text-xs font-black text-[#1546ad]">
+            Telegram online
+          </span>
+        </div>
+
+        <div className="grid min-h-[430px] lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="border-r border-[#d9e1ec] bg-[#f8fbff] p-4">
+            <p className="brand-kicker">Входящие</p>
+            <div className="mt-4 space-y-3">
+              {conversations.map(([name, message, status], index) => (
+                <div
+                  key={name}
+                  className={`rounded-lg border p-4 ${
+                    index === 0
+                      ? "border-[rgba(36,99,235,0.45)] bg-[#eaf1ff]"
+                      : "border-[#d9e1ec] bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black">{name}</p>
+                      <p className="mt-1 text-sm text-[#526071]">{message}</p>
+                    </div>
+                    <span className="size-2 rounded-full bg-[#13a66b]" />
+                  </div>
+                  <p className="mt-4 text-xs font-bold text-[#2463eb]">
+                    {status}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="brand-kicker">Ответ по базе</p>
+                <h3 className="mt-2 text-2xl font-black">
+                  Подключение Telegram
+                </h3>
+              </div>
+              <span className="rounded-full bg-[#fff5df] px-3 py-1 text-xs font-black text-[#94600b]">
+                контроль
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="max-w-[78%] rounded-lg border border-[#d9e1ec] bg-[#f8fbff] p-4 text-sm leading-6 text-[#526071]">
+                Можно подключить Telegram, чтобы заявки сразу попадали в
+                кабинет?
+              </div>
+              <div className="ml-auto max-w-[86%] rounded-lg bg-[#2463eb] p-4 text-sm leading-6 text-white">
+                Да. Telegram подключается через токен бота, после чего входящие
+                сообщения появляются в разделе “Диалоги”. Для запуска webhook
+                нужен публичный backend URL.
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-lg border border-[#d9e1ec] bg-[#f8fbff] p-4">
+              <div className="flex items-center gap-2 text-sm font-black text-[#2463eb]">
+                <Zap size={16} />
+                Источники ответа
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {["FAQ Telegram", "Настройки каналов"].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-lg border border-[#d9e1ec] bg-white p-3 text-sm font-bold"
+                  >
+                    <CheckCircle2 size={15} className="mb-2 text-[#13a66b]" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

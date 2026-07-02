@@ -5,11 +5,16 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Едино — AI-менеджер в одном окне",
-  description: "AI-менеджер для продаж и поддержки: диалоги, база знаний и черновики ответов.",
+  title: "Автопилот — AI-менеджер в одном окне",
+  description:
+    "AI-менеджер для продаж и поддержки: диалоги, база знаний и черновики ответов.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ru">
       <body>
