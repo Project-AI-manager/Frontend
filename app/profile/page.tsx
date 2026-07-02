@@ -14,6 +14,7 @@ import {
 import { type ReactNode, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
@@ -106,6 +107,7 @@ export default function ProfilePage() {
               {isProfileFetching ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
               Обновить профиль
             </button>
+            <LogoutButton />
           </div>
 
           <div className="rounded-[1.75rem] bg-black p-6 text-white">
