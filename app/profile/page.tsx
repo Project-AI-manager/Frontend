@@ -11,11 +11,13 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
+import { InfoRow } from "@/components/ui/info-row";
+import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
 import { settingsApi } from "@/lib/api/settings";
@@ -121,7 +123,12 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="mt-5 space-y-3 text-sm">
-              <InfoRow label="Tenant ID" value={profile?.tenant_id ?? workspace?.id ?? "—"} inverted />
+              <InfoRow
+                label="Tenant ID"
+                value={profile?.tenant_id ?? workspace?.id ?? "—"}
+                inverted
+                truncate
+              />
               <InfoRow label="Статус" value={workspace?.status ?? "—"} inverted />
             </div>
           </div>
@@ -187,53 +194,6 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
         readOnly
       />
     </label>
-  );
-}
-
-function StateCard({
-  icon,
-  title,
-  description,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  tone?: "neutral" | "error";
-}) {
-  return (
-    <div
-      className={`rounded-3xl border p-5 ${
-        tone === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-black/10 bg-white text-neutral-600"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
-          {icon}
-        </span>
-        <div>
-          <p className="font-black">{title}</p>
-          {description ? <p className="mt-1 text-sm leading-6 opacity-75">{description}</p> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({
-  label,
-  value,
-  inverted = false,
-}: {
-  label: string;
-  value: string;
-  inverted?: boolean;
-}) {
-  return (
-    <div className={`flex justify-between gap-4 border-b pb-3 last:border-0 ${inverted ? "border-white/10" : "border-black/5"}`}>
-      <span className={inverted ? "text-white/45" : "text-neutral-500"}>{label}</span>
-      <span className="min-w-0 truncate text-right font-bold">{value}</span>
-    </div>
   );
 }
 
