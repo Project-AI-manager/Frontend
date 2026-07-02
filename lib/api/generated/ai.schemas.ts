@@ -73,17 +73,6 @@ export interface ConversationMessageResponse {
   created_at: string;
 }
 
-export interface ConversationResponse {
-  id: string;
-  channel_id: string;
-  customer_id: string;
-  customer_name: string;
-  status: string;
-  last_message_at: string | null;
-  last_message_preview: string;
-  unread_count: number;
-}
-
 export interface ConversationThreadResponse {
   id: string;
   channel_id: string;
@@ -94,6 +83,31 @@ export interface ConversationThreadResponse {
   last_message_preview: string;
   unread_count: number;
   messages: ConversationMessageResponse[];
+}
+
+export interface ConversationActionResponse {
+  conversation: ConversationThreadResponse;
+  message?: ConversationMessageResponse | null;
+  delivered?: boolean | null;
+}
+
+export interface ConversationReplyRequest {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  text: string;
+}
+
+export interface ConversationResponse {
+  id: string;
+  channel_id: string;
+  customer_id: string;
+  customer_name: string;
+  status: string;
+  last_message_at: string | null;
+  last_message_preview: string;
+  unread_count: number;
 }
 
 export type ValidationErrorCtx = { [key: string]: unknown };
@@ -239,14 +253,6 @@ export interface UserMeResponse {
 export type ListConversationItemsApiV1ConversationsGetParams = {
 status?: string | null;
 };
-
-export type ReplyApiV1ConversationsConversationIdReplyPostParams = {
-text: string;
-};
-
-export type ReplyApiV1ConversationsConversationIdReplyPost200 = { [key: string]: unknown };
-
-export type EscalateApiV1ConversationsConversationIdEscalatePost200 = { [key: string]: unknown };
 
 export type OverviewApiV1AnalyticsOverviewGet200 = { [key: string]: unknown };
 
