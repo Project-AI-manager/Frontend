@@ -161,6 +161,30 @@ export interface KnowledgeCandidateResponse {
   updated_at: string;
 }
 
+export interface KnowledgeCandidateStatusResponse {
+  id: string;
+  conversation_id: string;
+  question: string;
+  answer: string;
+  suggested_by: string;
+  status: string;
+  resulting_document_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type KnowledgeChunkResponseTags = {[key: string]: string};
+
+export interface KnowledgeChunkResponse {
+  id: string;
+  document_id: string;
+  text: string;
+  position: number;
+  token_count: number;
+  tags: KnowledgeChunkResponseTags;
+  version: number;
+}
+
 export type KnowledgeDocumentCreateSourceType = typeof KnowledgeDocumentCreateSourceType[keyof typeof KnowledgeDocumentCreateSourceType];
 
 
@@ -183,6 +207,23 @@ export interface KnowledgeDocumentCreate {
   text: string;
   source_type?: KnowledgeDocumentCreateSourceType;
   tags?: KnowledgeDocumentCreateTags;
+}
+
+export interface KnowledgeDocumentDetailResponse {
+  id: string;
+  title: string;
+  source_type: string;
+  storage_url: string | null;
+  status: string;
+  version: number;
+  chunks_count: number;
+  created_at: string;
+  updated_at: string;
+  chunks: KnowledgeChunkResponse[];
+}
+
+export interface KnowledgeDocumentStatusResponse {
+  document: KnowledgeDocumentResponse;
 }
 
 export interface LoginRequest {
