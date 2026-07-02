@@ -1,6 +1,15 @@
 import axios from "axios";
 
-type ApiErrorDetail = string | { msg?: string }[] | { msg?: string } | undefined;
+type ApiErrorMessage = {
+  msg?: string;
+  message?: string;
+};
+
+type ApiErrorDetail =
+  | string
+  | ApiErrorMessage[]
+  | (ApiErrorMessage & { errors?: ApiErrorMessage[] })
+  | undefined;
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!axios.isAxiosError(error)) {
@@ -13,28 +22,45 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   }
 
   if (Array.isArray(detail)) {
-    const firstMessage = detail.find((item) => item?.msg)?.msg;
+    const firstMessage = detail.map(readMessage).find(Boolean);
     if (firstMessage) {
       return firstMessage;
     }
   }
 
   if (isMessageDetail(detail)) {
-    return detail.msg;
+    const message = readMessage(detail);
+    if (message) {
+      return message;
+    }
+
+    const validationMessage = detail.errors?.map(readMessage).find(Boolean);
+    if (validationMessage) {
+      return validationMessage;
+    }
   }
 
-  if (error.message) {
+  if (!error.response && error.message) {
     return error.message;
   }
 
   return fallback;
 }
 
-function isMessageDetail(detail: ApiErrorDetail): detail is { msg: string } {
+function isMessageDetail(
+  detail: ApiErrorDetail,
+): detail is ApiErrorMessage & { errors?: ApiErrorMessage[] } {
   return (
     typeof detail === "object" &&
     detail !== null &&
-    !Array.isArray(detail) &&
-    typeof detail.msg === "string"
+    !Array.isArray(detail)
   );
+}
+
+function readMessage(detail: ApiErrorMessage): string | undefined {
+  return typeof detail.msg === "string"
+    ? detail.msg
+    : typeof detail.message === "string"
+      ? detail.message
+      : undefined;
 }

@@ -32,14 +32,20 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as RetriableRequestConfig | undefined;
     const isRefreshRequest = originalRequest?.url?.includes("/api/v1/auth/refresh");
+    const isLoginRequest = originalRequest?.url?.includes("/api/v1/auth/login");
+    const isRegisterRequest = originalRequest?.url?.includes("/api/v1/auth/register");
     const refreshToken = getRefreshToken();
 
     if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
+    if (isLoginRequest || isRegisterRequest) {
+      return Promise.reject(error);
+    }
+
     if (!originalRequest || originalRequest._retry || isRefreshRequest || !refreshToken) {
-      clearAuthTokens();
+      clearSessionAndRedirect();
       return Promise.reject(error);
     }
 
@@ -53,11 +59,22 @@ axiosInstance.interceptors.response.use(
       };
       return axiosInstance.request(originalRequest);
     } catch (refreshError) {
-      clearAuthTokens();
+      clearSessionAndRedirect();
       return Promise.reject(refreshError);
     }
   },
 );
+
+function clearSessionAndRedirect() {
+  clearAuthTokens();
+
+  if (
+    typeof window !== "undefined" &&
+    !["/login", "/register"].includes(window.location.pathname)
+  ) {
+    window.location.assign("/login");
+  }
+}
 
 export async function apiClient<T>(config: AxiosRequestConfig, options?: AxiosRequestConfig): Promise<T> {
   const response = await axiosInstance.request<T>({
