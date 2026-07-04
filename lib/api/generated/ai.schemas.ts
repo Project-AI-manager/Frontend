@@ -4,6 +4,63 @@
  * AI-сотрудник в едином окне
  * OpenAPI spec version: 0.1.0
  */
+export interface AISettingsResponse {
+  auto_reply_enabled: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  confidence_threshold: number;
+  llm_provider: string;
+  embedding_model: string;
+  system_prompt: string;
+  available_providers: string[];
+}
+
+export interface AISettingsUpdate {
+  auto_reply_enabled?: boolean | null;
+  confidence_threshold?: number | null;
+  llm_provider?: string | null;
+  embedding_model?: string | null;
+  system_prompt?: string | null;
+}
+
+export interface AnalyticsStatusBreakdownItem {
+  status: string;
+  count: number;
+}
+
+export interface AnalyticsOverviewResponse {
+  dialogs_total: number;
+  dialogs_open: number;
+  dialogs_auto: number;
+  dialogs_escalated: number;
+  dialogs_closed: number;
+  auto_reply_rate: number;
+  escalation_rate: number;
+  avg_response_sec: number;
+  avg_ai_confidence: number;
+  ai_replies_count: number;
+  manager_replies_count: number;
+  inbound_messages_count: number;
+  dialogs_used: number;
+  dialogs_limit: number;
+  knowledge_documents_ready: number;
+  knowledge_chunks_count: number;
+  pending_candidates_count: number;
+  status_breakdown: AnalyticsStatusBreakdownItem[];
+}
+
+export interface BillingSettingsResponse {
+  plan: string;
+  plan_name: string;
+  subscription_status: string;
+  dialogs_used: number;
+  dialogs_limit: number;
+  ai_replies_used: number;
+  channel_limit: number;
+}
+
 export interface ChannelConnectRequest {
   type: 'telegram';
   /** @minLength 10 */
@@ -110,18 +167,71 @@ export interface ConversationResponse {
   unread_count: number;
 }
 
-export type ValidationErrorCtx = { [key: string]: unknown };
-
-export interface ValidationError {
-  loc: (string | number)[];
-  msg: string;
-  type: string;
-  input?: unknown;
-  ctx?: ValidationErrorCtx;
+export interface EmailActionResponse {
+  ok?: boolean;
+  sent?: boolean;
+  dev_token?: string | null;
 }
 
-export interface HTTPValidationError {
-  detail?: ValidationError[];
+export interface EmailOutboxResponse {
+  id: string;
+  to_email: string;
+  subject: string;
+  purpose: string;
+  status: string;
+  error: string;
+  created_at: string;
+}
+
+export interface EmailStatusResponse {
+  send_enabled: boolean;
+  dev_mode: boolean;
+  smtp_configured: boolean;
+  from_email: string;
+}
+
+export interface ValidationIssue {
+  location?: (string | number)[];
+  message: string;
+  type: string;
+}
+
+export interface ErrorDetail {
+  code: string;
+  message: string;
+  msg: string;
+  errors?: ValidationIssue[];
+  [key: string]: unknown;
+ }
+
+export interface ErrorResponse {
+  detail: ErrorDetail;
+}
+
+export type IntegrationProbeResponseStatus = typeof IntegrationProbeResponseStatus[keyof typeof IntegrationProbeResponseStatus];
+
+
+export const IntegrationProbeResponseStatus = {
+  ok: 'ok',
+  disabled: 'disabled',
+  not_configured: 'not_configured',
+  error: 'error',
+} as const;
+
+export type IntegrationProbeResponseDetails = { [key: string]: unknown };
+
+export interface IntegrationProbeResponse {
+  name: string;
+  status: IntegrationProbeResponseStatus;
+  message: string;
+  details?: IntegrationProbeResponseDetails;
+}
+
+export interface IntegrationsHealthResponse {
+  llm: IntegrationProbeResponse;
+  qdrant: IntegrationProbeResponse;
+  email: IntegrationProbeResponse;
+  telegram: IntegrationProbeResponse;
 }
 
 export interface KnowledgeDocumentResponse {
@@ -231,6 +341,14 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface LogoutRequest {
+  refresh_token: string;
+}
+
+export interface LogoutResponse {
+  revoked?: boolean;
+}
+
 export interface MLAnswerRequest {
   /** @minLength 1 */
   message: string;
@@ -276,6 +394,15 @@ export interface RegisterRequest {
   full_name?: string;
 }
 
+export interface RequestPasswordResetRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
@@ -289,19 +416,31 @@ export interface UserMeResponse {
   full_name: string;
   role: string;
   status: string;
+  email_verified?: boolean;
+}
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface WorkspaceSettingsResponse {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+}
+
+export interface WorkspaceSettingsUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
 }
 
 export type ListConversationItemsApiV1ConversationsGetParams = {
 status?: string | null;
 };
-
-export type OverviewApiV1AnalyticsOverviewGet200 = { [key: string]: unknown };
-
-export type GetAiSettingsApiV1SettingsAiGet200 = { [key: string]: unknown };
-
-export type UpdateAiSettingsApiV1SettingsAiPut200 = { [key: string]: unknown };
-
-export type GetBillingApiV1SettingsBillingGet200 = { [key: string]: unknown };
 
 export type HealthHealthGet200 = {[key: string]: string};
 

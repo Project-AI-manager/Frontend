@@ -5,9 +5,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  GetAiSettingsApiV1SettingsAiGet200,
-  GetBillingApiV1SettingsBillingGet200,
-  UpdateAiSettingsApiV1SettingsAiPut200
+  AISettingsResponse,
+  AISettingsUpdate,
+  BillingSettingsResponse,
+  WorkspaceSettingsResponse,
+  WorkspaceSettingsUpdate
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -22,8 +24,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 const getAiSettingsApiV1SettingsAiGet = (
 
- options?: SecondParameter<typeof apiClient<GetAiSettingsApiV1SettingsAiGet200>>,) => {
-      return apiClient<GetAiSettingsApiV1SettingsAiGet200>(
+ options?: SecondParameter<typeof apiClient<AISettingsResponse>>,) => {
+      return apiClient<AISettingsResponse>(
       {url: `/api/v1/settings/ai`, method: 'GET'
     },
       options);
@@ -32,10 +34,36 @@ const getAiSettingsApiV1SettingsAiGet = (
  * @summary Update Ai Settings
  */
 const updateAiSettingsApiV1SettingsAiPut = (
+    aISettingsUpdate: AISettingsUpdate,
+ options?: SecondParameter<typeof apiClient<AISettingsResponse>>,) => {
+      return apiClient<AISettingsResponse>(
+      {url: `/api/v1/settings/ai`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: aISettingsUpdate
+    },
+      options);
+    }
+  /**
+ * @summary Get Workspace Settings
+ */
+const getWorkspaceSettingsApiV1SettingsWorkspaceGet = (
 
- options?: SecondParameter<typeof apiClient<UpdateAiSettingsApiV1SettingsAiPut200>>,) => {
-      return apiClient<UpdateAiSettingsApiV1SettingsAiPut200>(
-      {url: `/api/v1/settings/ai`, method: 'PUT'
+ options?: SecondParameter<typeof apiClient<WorkspaceSettingsResponse>>,) => {
+      return apiClient<WorkspaceSettingsResponse>(
+      {url: `/api/v1/settings/workspace`, method: 'GET'
+    },
+      options);
+    }
+  /**
+ * @summary Update Workspace Settings
+ */
+const updateWorkspaceSettingsApiV1SettingsWorkspacePut = (
+    workspaceSettingsUpdate: WorkspaceSettingsUpdate,
+ options?: SecondParameter<typeof apiClient<WorkspaceSettingsResponse>>,) => {
+      return apiClient<WorkspaceSettingsResponse>(
+      {url: `/api/v1/settings/workspace`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: workspaceSettingsUpdate
     },
       options);
     }
@@ -44,13 +72,15 @@ const updateAiSettingsApiV1SettingsAiPut = (
  */
 const getBillingApiV1SettingsBillingGet = (
 
- options?: SecondParameter<typeof apiClient<GetBillingApiV1SettingsBillingGet200>>,) => {
-      return apiClient<GetBillingApiV1SettingsBillingGet200>(
+ options?: SecondParameter<typeof apiClient<BillingSettingsResponse>>,) => {
+      return apiClient<BillingSettingsResponse>(
       {url: `/api/v1/settings/billing`, method: 'GET'
     },
       options);
     }
-  return {getAiSettingsApiV1SettingsAiGet,updateAiSettingsApiV1SettingsAiPut,getBillingApiV1SettingsBillingGet}};
+  return {getAiSettingsApiV1SettingsAiGet,updateAiSettingsApiV1SettingsAiPut,getWorkspaceSettingsApiV1SettingsWorkspaceGet,updateWorkspaceSettingsApiV1SettingsWorkspacePut,getBillingApiV1SettingsBillingGet}};
 export type GetAiSettingsApiV1SettingsAiGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSettings>['getAiSettingsApiV1SettingsAiGet']>>>
 export type UpdateAiSettingsApiV1SettingsAiPutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSettings>['updateAiSettingsApiV1SettingsAiPut']>>>
+export type GetWorkspaceSettingsApiV1SettingsWorkspaceGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSettings>['getWorkspaceSettingsApiV1SettingsWorkspaceGet']>>>
+export type UpdateWorkspaceSettingsApiV1SettingsWorkspacePutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSettings>['updateWorkspaceSettingsApiV1SettingsWorkspacePut']>>>
 export type GetBillingApiV1SettingsBillingGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSettings>['getBillingApiV1SettingsBillingGet']>>>

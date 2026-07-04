@@ -1,13 +1,17 @@
 ﻿"use client";
 
 import {
+  Activity,
   AlertCircle,
   Bot,
   Building2,
   CreditCard,
+  Database,
   Loader2,
+  Mail,
   RefreshCw,
   Save,
+  Send,
   SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
@@ -18,6 +22,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { InfoRow } from "@/components/ui/info-row";
 import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import type { IntegrationProbeResponse } from "@/lib/api/generated/ai.schemas";
+import { integrationsApi } from "@/lib/api/integrations";
 import { settingsApi } from "@/lib/api/settings";
 
 export default function SettingsPage() {
@@ -56,6 +62,23 @@ export default function SettingsPage() {
     queryKey: ["settings", "billing"],
     queryFn: settingsApi.getBillingSettings,
     retry: 1,
+  });
+
+  const integrationsHealthQuery = useQuery({
+    queryKey: ["integrations", "health"],
+    queryFn: integrationsApi.getHealth,
+    retry: 1,
+  });
+
+  const probeLlmMutation = useMutation({
+    mutationFn: integrationsApi.probeLlm,
+    onSuccess: async () => {
+      setNotice("LLM probe выполнен. Обновляем статусы интеграций.");
+      await integrationsHealthQuery.refetch();
+    },
+    onError: (error) => {
+      setNotice(getApiErrorMessage(error, "Не удалось проверить LLM."));
+    },
   });
 
   const updateAiMutation = useMutation({
@@ -123,6 +146,7 @@ export default function SettingsPage() {
       aiQuery.refetch(),
       workspaceQuery.refetch(),
       billingQuery.refetch(),
+      integrationsHealthQuery.refetch(),
     ]);
   }
 
@@ -133,6 +157,7 @@ export default function SettingsPage() {
     updateAiMutation.isPending || updateWorkspaceMutation.isPending;
   const aiSettings = aiQuery.data;
   const billing = billingQuery.data;
+  const integrationsHealth = integrationsHealthQuery.data;
   const workspace = workspaceQuery.data;
   const workspaceName = workspaceNameDraft ?? workspace?.name ?? "";
   const autoReplyEnabled =
@@ -178,7 +203,8 @@ export default function SettingsPage() {
               >
                 {aiQuery.isFetching ||
                 workspaceQuery.isFetching ||
-                billingQuery.isFetching ? (
+                billingQuery.isFetching ||
+                integrationsHealthQuery.isFetching ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <RefreshCw size={16} />
@@ -391,6 +417,71 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className="glass-card rounded-lg p-6">
+            <SectionHeader
+              icon={<Activity size={22} />}
+              title="Диагностика интеграций"
+              description="Backend проверяет LLM, Qdrant, email и Telegram без ручного curl."
+            />
+
+            {integrationsHealthQuery.error ? (
+              <StateCard
+                className="mt-5"
+                icon={<AlertCircle size={18} />}
+                title="Health endpoint недоступен"
+                description={getApiErrorMessage(
+                  integrationsHealthQuery.error,
+                  "Проверь backend и авторизацию.",
+                )}
+                tone="error"
+              />
+            ) : null}
+
+            <div className="mt-5 grid gap-3">
+              <IntegrationStatusCard
+                icon={<Bot size={18} />}
+                probe={integrationsHealth?.llm}
+                fallbackName="LLM"
+              />
+              <IntegrationStatusCard
+                icon={<Database size={18} />}
+                probe={integrationsHealth?.qdrant}
+                fallbackName="Qdrant"
+              />
+              <IntegrationStatusCard
+                icon={<Mail size={18} />}
+                probe={integrationsHealth?.email}
+                fallbackName="Email"
+              />
+              <IntegrationStatusCard
+                icon={<Send size={18} />}
+                probe={integrationsHealth?.telegram}
+                fallbackName="Telegram"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setNotice(null);
+                probeLlmMutation.mutate();
+              }}
+              disabled={probeLlmMutation.isPending}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#101828] px-5 py-3 text-sm font-black text-white shadow-xl shadow-slate-950/10 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            >
+              {probeLlmMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Bot size={16} />
+              )}
+              Проверить LLM provider
+            </button>
+
+            {probeLlmMutation.data ? (
+              <ProbeDetails probe={probeLlmMutation.data} />
+            ) : null}
+          </div>
+
           <div className="rounded-lg bg-[#2463eb] p-6 text-white">
             <h2 className="text-xl font-black">UniRouter готов к включению</h2>
             <p className="mt-3 text-sm leading-6 text-white/60">
@@ -452,6 +543,100 @@ function InfoTile({ label, value }: { label: string; value: string }) {
       <p className="mt-2 truncate font-bold">{value}</p>
     </div>
   );
+}
+
+function IntegrationStatusCard({
+  icon,
+  probe,
+  fallbackName,
+}: {
+  icon: ReactNode;
+  probe?: IntegrationProbeResponse;
+  fallbackName: string;
+}) {
+  const status = probe?.status ?? "disabled";
+
+  return (
+    <div className="rounded-lg bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <p className="font-black">{probe?.name ?? fallbackName}</p>
+            <p className="mt-1 text-sm leading-5 text-neutral-500">
+              {probe?.message ?? "Статус еще не загружен."}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${statusBadgeClass(status)}`}
+        >
+          {statusLabel(status)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProbeDetails({ probe }: { probe: IntegrationProbeResponse }) {
+  const details = probe.details ?? {};
+  const detailRows = Object.entries(details).map(([key, value]) => [
+    key,
+    typeof value === "string" ? value : JSON.stringify(value),
+  ]);
+
+  return (
+    <div className="mt-4 rounded-lg bg-white p-4 text-sm shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-black">Результат probe</p>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-black ${statusBadgeClass(probe.status)}`}
+        >
+          {statusLabel(probe.status)}
+        </span>
+      </div>
+      <p className="mt-2 leading-6 text-neutral-600">{probe.message}</p>
+      {detailRows.length ? (
+        <div className="mt-3 space-y-2">
+          {detailRows.map(([key, value]) => (
+            <InfoRow key={key} label={key} value={value} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function statusLabel(status: string) {
+  switch (status) {
+    case "ok":
+      return "OK";
+    case "not_configured":
+      return "Не настроено";
+    case "error":
+      return "Ошибка";
+    case "disabled":
+      return "Отключено";
+    default:
+      return status;
+  }
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "ok":
+      return "bg-emerald-100 text-emerald-700";
+    case "not_configured":
+      return "bg-amber-100 text-amber-700";
+    case "error":
+      return "bg-red-100 text-red-700";
+    case "disabled":
+      return "bg-neutral-100 text-neutral-600";
+    default:
+      return "bg-blue-100 text-blue-700";
+  }
 }
 
 function providerLabel(provider: string) {

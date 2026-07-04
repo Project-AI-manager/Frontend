@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { getAuth } from "@/lib/api/generated/auth/auth";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { getAuth } from "@/lib/api/generated/auth/auth";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
@@ -66,7 +66,8 @@ export default function RegisterPage() {
               Создать аккаунт
             </h1>
             <p className="mt-2 text-sm text-[#526071]">
-              Регистрация создаёт компанию и пользователя-владельца.
+              Регистрация создает компанию и пользователя-владельца, а затем
+              переводит в onboarding.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -124,7 +125,7 @@ export default function RegisterPage() {
                 className="primary-button w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
                 type="submit"
               >
-                {isSubmitting ? "Создаём..." : "Создать аккаунт"}
+                {isSubmitting ? "Создаем..." : "Создать аккаунт"}
                 <ArrowRight size={18} />
               </button>
             </form>

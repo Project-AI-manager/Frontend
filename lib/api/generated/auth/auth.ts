@@ -5,9 +5,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  EmailActionResponse,
   LoginRequest,
+  LogoutRequest,
+  LogoutResponse,
   RefreshRequest,
   RegisterRequest,
+  RequestPasswordResetRequest,
+  ResetPasswordRequest,
   TokenPair
 } from '../ai.schemas';
 
@@ -57,7 +62,49 @@ const refreshApiV1AuthRefreshPost = (
     },
       options);
     }
-  return {registerApiV1AuthRegisterPost,loginApiV1AuthLoginPost,refreshApiV1AuthRefreshPost}};
+  /**
+ * @summary Logout
+ */
+const logoutApiV1AuthLogoutPost = (
+    logoutRequest: LogoutRequest,
+ options?: SecondParameter<typeof apiClient<LogoutResponse>>,) => {
+      return apiClient<LogoutResponse>(
+      {url: `/api/v1/auth/logout`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: logoutRequest
+    },
+      options);
+    }
+  /**
+ * @summary Request Password Reset Email
+ */
+const requestPasswordResetEmailApiV1AuthPasswordResetRequestPost = (
+    requestPasswordResetRequest: RequestPasswordResetRequest,
+ options?: SecondParameter<typeof apiClient<EmailActionResponse>>,) => {
+      return apiClient<EmailActionResponse>(
+      {url: `/api/v1/auth/password-reset/request`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: requestPasswordResetRequest
+    },
+      options);
+    }
+  /**
+ * @summary Confirm Password Reset
+ */
+const confirmPasswordResetApiV1AuthPasswordResetConfirmPost = (
+    resetPasswordRequest: ResetPasswordRequest,
+ options?: SecondParameter<typeof apiClient<EmailActionResponse>>,) => {
+      return apiClient<EmailActionResponse>(
+      {url: `/api/v1/auth/password-reset/confirm`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: resetPasswordRequest
+    },
+      options);
+    }
+  return {registerApiV1AuthRegisterPost,loginApiV1AuthLoginPost,refreshApiV1AuthRefreshPost,logoutApiV1AuthLogoutPost,requestPasswordResetEmailApiV1AuthPasswordResetRequestPost,confirmPasswordResetApiV1AuthPasswordResetConfirmPost}};
 export type RegisterApiV1AuthRegisterPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['registerApiV1AuthRegisterPost']>>>
 export type LoginApiV1AuthLoginPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['loginApiV1AuthLoginPost']>>>
 export type RefreshApiV1AuthRefreshPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['refreshApiV1AuthRefreshPost']>>>
+export type LogoutApiV1AuthLogoutPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['logoutApiV1AuthLogoutPost']>>>
+export type RequestPasswordResetEmailApiV1AuthPasswordResetRequestPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['requestPasswordResetEmailApiV1AuthPasswordResetRequestPost']>>>
+export type ConfirmPasswordResetApiV1AuthPasswordResetConfirmPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuth>['confirmPasswordResetApiV1AuthPasswordResetConfirmPost']>>>
