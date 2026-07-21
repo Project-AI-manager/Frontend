@@ -75,6 +75,10 @@ select {
   font: inherit;
 }
 
+:focus-visible {
+  scroll-margin: 6rem;
+}
+
 ::selection {
   background: rgba(36, 99, 235, 0.18);
 }
