@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { HomeClient } from "./home-client";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
@@ -58,11 +59,14 @@ const metrics = [
 export default function Home() {
   return (
     <>
+      <HomeClient />
       <Header />
       <main className="overflow-hidden pt-20">
         <section className="relative">
+          <div className="hero-orb hero-orb-one" aria-hidden="true" />
+          <div className="hero-orb hero-orb-two" aria-hidden="true" />
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-24">
-            <div>
+            <div data-reveal className="reveal-block is-visible">
               <div className="brand-kicker inline-flex items-center gap-2 rounded-full bg-[#eaf1ff] px-4 py-2">
                 <Sparkles size={15} />
                 AI-сотрудник для клиентских обращений
@@ -101,11 +105,13 @@ export default function Home() {
               </div>
             </div>
 
-            <ProductMockup />
+            <div data-reveal className="reveal-block is-visible product-float">
+              <ProductMockup />
+            </div>
           </div>
         </section>
 
-        <section id="features" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+        <section id="features" data-reveal className="reveal-block mx-auto max-w-7xl px-5 py-20 lg:px-8">
           <div className="max-w-3xl">
             <p className="brand-kicker">Что внутри MVP</p>
             <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[#101828]">
@@ -132,7 +138,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="how" className="bg-[#f4f7fb] py-20">
+        <section id="how" data-reveal className="reveal-block bg-[#f4f7fb] py-20">
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
               <div>
@@ -158,7 +164,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="pricing" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+        <section id="pricing" data-reveal className="reveal-block mx-auto max-w-7xl px-5 py-20 lg:px-8">
           <div className="grid gap-6 lg:grid-cols-[1fr_0.45fr]">
             <div className="blue-panel p-8 lg:p-10">
               <p className="text-sm font-black uppercase tracking-[0.08em] text-[#c9d9ff]">
