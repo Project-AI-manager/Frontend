@@ -90,9 +90,7 @@ export default function SettingsPage() {
       setLlmProviderDraft(null);
       setEmbeddingModelDraft(null);
       setSystemPromptDraft(null);
-      setNotice(
-        "AI-настройки сохранены. Новые ответы будут использовать этот tenant-конфиг.",
-      );
+      setNotice("AI-настройки сохранены. Они применятся к новым ответам.");
       await queryClient.invalidateQueries({ queryKey: ["settings", "ai"] });
     },
     onError: (error) => {
@@ -177,29 +175,26 @@ export default function SettingsPage() {
   return (
     <AppShell
       title="Настройки"
-      description="Компания, AI-поведение, автоответы и тарифы теперь читаются из backend API."
+      description="Управление компанией, поведением AI и состоянием интеграций."
     >
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mx-auto grid max-w-5xl gap-6">
         <section className="space-y-5">
-          <div className="glass-card rounded-lg p-6">
+          <div className="surface-card p-6 sm:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
               <div>
-                <p className="text-sm font-black uppercase tracking-[0.22em] text-[#2463eb]">
-                  task_207
-                </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">
-                  Живые настройки tenant
+                <p className="brand-kicker">Рабочее пространство</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight">
+                  Настройки ассистента
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                  Эта страница работает через `GET/PUT /api/v1/settings/*`:
-                  можно включить автоответы, выбрать UniRouter/OpenAI-compatible
-                  provider и обновить название компании.
+                  Настрой поведение AI, название компании и проверь готовность
+                  сервисов перед запуском автоответов.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={refreshAll}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="secondary-button px-4 py-2.5 text-sm"
               >
                 {aiQuery.isFetching ||
                 workspaceQuery.isFetching ||
@@ -218,7 +213,7 @@ export default function SettingsPage() {
                 className="mt-6"
                 icon={<Loader2 className="animate-spin" size={18} />}
                 title="Загружаем настройки"
-                description="Запрашиваем AI, компанию и тариф из backend."
+                description="Загружаем AI, компанию и тариф."
               />
             ) : pageError ? (
               <StateCard
@@ -227,7 +222,7 @@ export default function SettingsPage() {
                 title="Не удалось загрузить настройки"
                 description={getApiErrorMessage(
                   pageError,
-                  "Проверь авторизацию и доступность backend.",
+                  "Обнови страницу или повтори попытку позже.",
                 )}
                 tone="error"
               />
@@ -240,16 +235,16 @@ export default function SettingsPage() {
             ) : null}
           </div>
 
-          <form onSubmit={handleAiSubmit} className="glass-card rounded-lg p-6">
+          <form onSubmit={handleAiSubmit} className="surface-card p-6 sm:p-8">
             <SectionHeader
               icon={<Bot size={22} />}
               title="Поведение AI"
-              description="TenantAIConfig влияет на `/ml/answer`, Telegram webhook и knowledge playground."
+              description="Эти параметры определяют стиль ответа и условия автоматической отправки."
             />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               <label className="block text-sm font-bold">
-                LLM provider
+                Модель ответов
                 <select
                   value={llmProvider}
                   onChange={(event) => setLlmProviderDraft(event.target.value)}
@@ -265,7 +260,7 @@ export default function SettingsPage() {
               </label>
 
               <label className="block text-sm font-bold">
-                Embedding model
+                Модель поиска по знаниям
                 <input
                   value={embeddingModel}
                   onChange={(event) =>
@@ -319,7 +314,7 @@ export default function SettingsPage() {
             </div>
 
             <label className="mt-5 block text-sm font-bold">
-              System prompt
+              Инструкция для ассистента
               <textarea
                 value={systemPrompt}
                 onChange={(event) => setSystemPromptDraft(event.target.value)}
@@ -345,12 +340,12 @@ export default function SettingsPage() {
 
           <form
             onSubmit={handleWorkspaceSubmit}
-            className="glass-card rounded-lg p-6"
+            className="surface-card p-6 sm:p-8"
           >
             <SectionHeader
               icon={<Building2 size={22} />}
               title="Компания"
-              description="Название берется из Tenant и используется в профиле ассистента."
+              description="Название используется в кабинете и профиле ассистента."
             />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto]">
@@ -389,8 +384,8 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        <aside className="space-y-5">
-          <div className="glass-card rounded-lg p-6">
+        <aside className="grid gap-6 lg:grid-cols-2">
+          <div className="surface-card p-6">
             <SectionHeader
               icon={<CreditCard size={22} />}
               title="Тариф и лимиты"
@@ -417,21 +412,21 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="glass-card rounded-lg p-6">
+          <div className="surface-card p-6">
             <SectionHeader
               icon={<Activity size={22} />}
               title="Диагностика интеграций"
-              description="Backend проверяет LLM, Qdrant, email и Telegram без ручного curl."
+              description="Проверка модели, базы знаний, почты и Telegram."
             />
 
             {integrationsHealthQuery.error ? (
               <StateCard
                 className="mt-5"
                 icon={<AlertCircle size={18} />}
-                title="Health endpoint недоступен"
+                title="Не удалось проверить сервисы"
                 description={getApiErrorMessage(
                   integrationsHealthQuery.error,
-                  "Проверь backend и авторизацию.",
+                  "Обнови страницу или повтори попытку позже.",
                 )}
                 tone="error"
               />
@@ -474,7 +469,7 @@ export default function SettingsPage() {
               ) : (
                 <Bot size={16} />
               )}
-              Проверить LLM provider
+              Проверить модель ответов
             </button>
 
             {probeLlmMutation.data ? (
@@ -482,28 +477,27 @@ export default function SettingsPage() {
             ) : null}
           </div>
 
-          <div className="rounded-lg bg-[#2463eb] p-6 text-white">
-            <h2 className="text-xl font-black">UniRouter готов к включению</h2>
+          <div className="blue-panel p-6">
+            <h2 className="text-xl font-black">Модель для новых ответов</h2>
             <p className="mt-3 text-sm leading-6 text-white/60">
-              На backend теперь есть provider `unirouter`. Чтобы он реально
-              отвечал, нужны env: `OPENAI_COMPATIBLE_BASE_URL`,
-              `OPENAI_COMPATIBLE_API_KEY` и `OPENAI_COMPATIBLE_MODEL`.
+              После сохранения выбранная модель будет использоваться в новых
+              диалогах и при проверке базы знаний.
             </p>
             <div className="mt-5 rounded-lg bg-white/10 p-4 text-sm">
-              <p className="font-black">Текущий provider</p>
+              <p className="font-black">Текущая модель</p>
               <p className="mt-1 text-white/70">{providerLabel(llmProvider)}</p>
             </div>
           </div>
 
-          <div className="glass-card rounded-lg p-6">
+          <div className="surface-card p-6">
             <SectionHeader
               icon={<UsersRound size={22} />}
               title="Команда"
-              description="Список пользователей подключим на следующем проходе настроек."
+              description="Управление доступом появится в одном из следующих обновлений."
             />
             <p className="mt-4 text-sm leading-6 text-neutral-600">
-              Backend уже отдает `GET /api/v1/users`, поэтому этот блок готов к
-              расширению без изменения серверного контракта.
+              Сейчас здесь отображается только информация о владельце. Состав
+              команды пока нельзя менять в кабинете.
             </p>
           </div>
         </aside>
@@ -590,7 +584,7 @@ function ProbeDetails({ probe }: { probe: IntegrationProbeResponse }) {
   return (
     <div className="mt-4 rounded-lg bg-white p-4 text-sm shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-black">Результат probe</p>
+        <p className="font-black">Результат проверки</p>
         <span
           className={`rounded-full px-3 py-1 text-xs font-black ${statusBadgeClass(probe.status)}`}
         >
@@ -642,7 +636,7 @@ function statusBadgeClass(status: string) {
 function providerLabel(provider: string) {
   switch (provider) {
     case "mock":
-      return "mock";
+      return "Демонстрационная модель";
     case "openai-compatible":
       return "OpenAI-compatible";
     case "unirouter":

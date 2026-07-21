@@ -16,6 +16,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
@@ -34,11 +35,9 @@ type ChannelRow = {
 const channelsApi = getChannels();
 
 const webhookPath = "/api/v1/channels/webhook/telegram";
-const widgetSnippet = `<script src="https://app.ai-manager.local/widget.js" data-channel="telegram"></script>`;
-
 const onboardingSteps = [
   "Создать бота через @BotFather и получить токен.",
-  "Сохранить токен Telegram в AI Manager через защищённую backend-ручку.",
+  "Сохранить токен Telegram в рабочем кабинете.",
   "Скопировать webhook URL из подключённого канала в настройки Telegram.",
   "Проверить входящее тестовое сообщение и убедиться, что диалог появился в inbox.",
 ];
@@ -65,7 +64,7 @@ export default function ChannelsPage() {
 
   const syncCards = [
     {
-      label: "Статус API",
+      label: "Связь с сервисом",
       value: error ? "Ошибка запроса" : isLoading ? "Проверяем" : "Доступен",
       tone: error ? "error" : isLoading ? "warn" : "ok",
     },
@@ -117,7 +116,7 @@ export default function ChannelsPage() {
       setFormMessage(
         getApiErrorMessage(
           submitError,
-          "Не удалось подключить Telegram. Проверь токен и доступность backend.",
+          "Не удалось подключить Telegram. Проверь токен и повтори попытку.",
         ),
       );
     } finally {
@@ -134,177 +133,174 @@ export default function ChannelsPage() {
   return (
     <AppShell
       title="Каналы"
-      description="В MVP подключаем только Telegram: показываем статус API, готовим форму токена и webhook для синхронизации чатов."
+      description="Подключение Telegram и контроль состояния рабочего канала."
     >
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <section className="space-y-5">
-          <div className="glass-card rounded-lg p-6">
-            <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
-              <div>
-                <p className="text-sm font-black uppercase tracking-[0.22em] text-[#2463eb]">
-                  Первый канал
-                </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">
-                  Telegram
-                </h2>
-                <p className="mt-2 max-w-2xl text-neutral-600">
-                  Здесь менеджер подключает Telegram-бота, видит состояние
-                  интеграции и понимает, готов ли канал отправлять новые
-                  сообщения в общую ленту диалогов.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                {isFetching ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RadioTower size={16} />
-                )}
-                Обновить статус
-              </button>
-            </div>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {syncCards.map((item) => (
-                <StatusCard key={item.label} {...item} />
-              ))}
-            </div>
-
-            {error ? (
-              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 shrink-0" size={18} />
-                  <div>
-                    <p className="font-black">
-                      Не удалось получить список каналов
-                    </p>
-                    <p className="mt-1">
-                      {getApiErrorMessage(
-                        error,
-                        "Проверь авторизацию и доступность backend.",
-                      )}
-                    </p>
-                  </div>
+      <div className="mx-auto grid max-w-5xl gap-6">
+        <section className="space-y-6">
+          <div className="surface-card overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
+                <div>
+                  <p className="brand-kicker">Состояние подключения</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight">
+                    Telegram
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#526071]">
+                    Добавь бота, проверь адрес подключения и отправь тестовое
+                    сообщение — оно появится в общей ленте диалогов.
+                  </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="secondary-button px-4 py-2.5 text-sm"
+                >
+                  {isFetching ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <RadioTower size={16} />
+                  )}
+                  Обновить статус
+                </button>
               </div>
-            ) : null}
+
+              <div className="mt-8 grid overflow-hidden rounded-lg border border-[#d9e1ec] md:grid-cols-3">
+                {syncCards.map((item) => (
+                  <StatusCard key={item.label} {...item} />
+                ))}
+              </div>
+
+              {error ? (
+                <StateCard
+                  className="mt-6"
+                  icon={<AlertCircle size={18} />}
+                  title="Не удалось получить список каналов"
+                  description={getApiErrorMessage(
+                    error,
+                    "Обнови страницу или повтори попытку позже.",
+                  )}
+                  tone="error"
+                />
+              ) : null}
+            </div>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1fr_0.85fr]">
-            <form onSubmit={handleSubmit} className="blue-panel p-6">
+          <div className="surface-card grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px]">
+            <form onSubmit={handleSubmit} className="p-6 sm:p-8">
               <div className="flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb]">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
                   <Send size={20} />
                 </span>
                 <div>
                   <h3 className="font-black">Подключение Telegram-бота</h3>
-                  <p className="text-sm text-white/55">
-                    Токен уходит напрямую в защищённый backend-контракт.
+                  <p className="text-sm text-[#526071]">
+                    Данные передаются и хранятся в защищённом виде.
                   </p>
                 </div>
               </div>
 
               <label
-                className="mt-6 block text-sm font-bold text-white/70"
+                className="mt-6 block text-sm font-bold"
                 htmlFor="telegram-token"
               >
                 Токен бота
               </label>
-              <div className="mt-2 grid gap-3 md:grid-cols-[1fr_auto]">
+              <div className="mt-2">
                 <input
                   id="telegram-token"
                   value={botToken}
                   onChange={(event) => setBotToken(event.target.value)}
-                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#c9d9ff]"
+                  className="form-field w-full px-4 py-3 text-sm"
                   placeholder="123456:ABC-telegram-bot-token"
                   disabled={isSubmitting}
                 />
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-black text-[#1546ad] transition hover:-translate-y-0.5 hover:bg-[#eaf1ff] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
-                >
-                  {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : null}
-                  {hasTelegram ? "Обновить" : "Подключить"}
-                </button>
               </div>
 
               <label
-                className="mt-4 block text-sm font-bold text-white/70"
+                className="mt-4 block text-sm font-bold"
                 htmlFor="telegram-username"
               >
-                Username бота{" "}
-                <span className="text-white/35">(необязательно)</span>
+                Имя бота{" "}
+                <span className="font-normal text-[#526071]">
+                  (необязательно)
+                </span>
               </label>
               <input
                 id="telegram-username"
                 value={botUsername}
                 onChange={(event) => setBotUsername(event.target.value)}
-                className="mt-2 w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#c9d9ff] disabled:opacity-70"
+                className="form-field mt-2 px-4 py-3 text-sm"
                 placeholder="ai_manager_bot"
                 disabled={isSubmitting}
               />
 
               {formMessage ? (
-                <p className="mt-4 rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white/75">
+                <p
+                  className="mt-4 rounded-lg border border-[rgba(36,99,235,0.18)] bg-[#eaf1ff] p-3 text-sm font-semibold text-[#1546ad]"
+                  role="status"
+                >
                   {formMessage}
                 </p>
               ) : null}
 
-              <p className="mt-4 text-xs leading-5 text-white/45">
-                Токен не сохраняется на фронте и не возвращается в API-ответе.
-                Backend шифрует его перед хранением на сервере.
+              <p className="mt-4 text-xs leading-5 text-[#526071]">
+                Сохранённый токен нельзя посмотреть повторно. Для замены введи
+                новый токен и обнови подключение.
               </p>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="primary-button mt-5 px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Send size={16} />
+                )}
+                {hasTelegram ? "Обновить подключение" : "Подключить Telegram"}
+              </button>
             </form>
 
-            <div className="glass-card rounded-lg p-6">
+            <aside className="border-t border-[#d9e1ec] bg-[#f8fbff] p-6 sm:p-8 lg:border-l lg:border-t-0">
               <div className="flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
                   <ShieldCheck size={20} />
                 </span>
                 <div>
-                  <h3 className="font-black">Безопасность</h3>
-                  <p className="text-sm text-neutral-500">
-                    Что важно для реального подключения
-                  </p>
+                  <h3 className="font-black">После подключения</h3>
+                  <p className="text-sm text-[#526071]">Короткая проверка</p>
                 </div>
               </div>
 
-              <ul className="mt-5 space-y-3 text-sm text-neutral-600">
-                <li className="rounded-lg bg-white p-3 shadow-sm">
-                  Не показывать сохранённый токен повторно.
-                </li>
-                <li className="rounded-lg bg-white p-3 shadow-sm">
-                  Шифровать credentials на backend.
-                </li>
-                <li className="rounded-lg bg-white p-3 shadow-sm">
-                  Проверять webhook и дедуплицировать события.
-                </li>
-              </ul>
-            </div>
+              <ol className="mt-5 space-y-4 text-sm text-[#526071]">
+                {onboardingSteps.slice(1).map((item, index) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#1546ad] shadow-sm">
+                      {index + 1}
+                    </span>
+                    <span className="leading-6">{item}</span>
+                  </li>
+                ))}
+              </ol>
+            </aside>
           </div>
 
-          <div className="glass-card rounded-lg p-6">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
-                <h3 className="text-xl font-black">Подключённые каналы</h3>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Таблица уже читает `GET /api/v1/channels`; сейчас backend
-                  может вернуть пустой список.
-                </p>
+          <div className="surface-card overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                  <h3 className="text-xl font-black">Подключённые каналы</h3>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Список синхронизируется с рабочим пространством.
+                  </p>
+                </div>
+                <span className="rounded-full bg-[#eaf1ff] px-4 py-2 text-sm font-black text-[#1546ad]">
+                  {channels.length} всего
+                </span>
               </div>
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-black shadow-sm">
-                {channels.length} всего
-              </span>
             </div>
-
-            <div className="mt-5 overflow-hidden rounded-lg border border-[#d9e1ec] bg-white">
+            <div className="border-t border-[#d9e1ec] bg-white">
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3 p-8 text-sm font-bold text-neutral-500">
                   <Loader2 size={18} className="animate-spin" />
@@ -338,7 +334,7 @@ export default function ChannelsPage() {
                   <p className="mt-3 font-black">Каналы ещё не подключены</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
                     Добавь токен Telegram-бота выше, и канал появится здесь
-                    после успешного ответа backend.
+                    после успешного подключения.
                   </p>
                 </div>
               )}
@@ -346,8 +342,8 @@ export default function ChannelsPage() {
           </div>
         </section>
 
-        <aside className="space-y-5">
-          <div className="glass-card rounded-lg p-5">
+        <aside className="grid gap-6 md:grid-cols-2">
+          <div className="surface-card p-5">
             <div className="flex items-center gap-3">
               <span className="flex size-11 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
                 <Smartphone size={20} />
@@ -355,7 +351,7 @@ export default function ChannelsPage() {
               <div>
                 <h2 className="font-black">Порядок подключения</h2>
                 <p className="text-sm text-neutral-500">
-                  Мини-чеклист Telegram
+                  Короткий чек-лист Telegram
                 </p>
               </div>
             </div>
@@ -364,7 +360,7 @@ export default function ChannelsPage() {
               {onboardingSteps.map((item, index) => (
                 <li
                   key={item}
-                  className="flex gap-3 rounded-lg bg-white p-3 shadow-sm"
+                  className="flex gap-3 border-t border-[#d9e1ec] pt-3 first:border-0 first:pt-0"
                 >
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2463eb] text-xs font-black text-white">
                     {index + 1}
@@ -386,15 +382,6 @@ export default function ChannelsPage() {
             value={telegramWebhookPath}
             copied={copied === "webhook"}
             onCopy={() => copyToClipboard(telegramWebhookPath, "webhook")}
-          />
-
-          <CopyCard
-            title="Виджет сайта"
-            description="Справочный snippet для будущего web-chat этапа."
-            icon={<RadioTower size={20} />}
-            value={widgetSnippet}
-            copied={copied === "widget"}
-            onCopy={() => copyToClipboard(widgetSnippet, "widget")}
           />
         </aside>
       </div>
@@ -422,7 +409,7 @@ function StatusCard({
     );
 
   return (
-    <div className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-sm">
+    <div className="border-b border-[#d9e1ec] bg-white p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0">
       {icon}
       <p className="mt-4 text-sm text-neutral-500">{label}</p>
       <p className="mt-1 font-black">{value}</p>
