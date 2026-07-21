@@ -167,7 +167,7 @@ export default function RegisterPage() {
           <div className="absolute bottom-10 left-10 right-10 grid gap-3">
             {[
               "Компания + владелец",
-              "JWT-токены сразу после регистрации",
+              "Безопасный вход сразу после регистрации",
               "Переход в onboarding",
             ].map((item) => (
               <div

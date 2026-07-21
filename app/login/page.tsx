@@ -165,7 +165,7 @@ export default function LoginPage() {
 
           <div className="absolute bottom-10 left-10 right-10 rounded-lg border border-white/15 bg-white/10 p-5">
             {[
-              "JWT-сессия и refresh token",
+              "Безопасная сессия между входами",
               "Email-регистрация и восстановление пароля",
               "Интеграции проверяются из настроек",
             ].map((item) => (
@@ -261,7 +261,7 @@ export default function LoginPage() {
                 <h3 className="font-black">Восстановление пароля</h3>
               </div>
               <p className="mt-2 text-sm leading-6 text-neutral-600">
-                В dev-режиме backend вернет token сразу, без реального SMTP.
+                Для локальной проверки код восстановления появится сразу после запроса.
               </p>
 
               <form onSubmit={handleResetRequest} className="mt-4 space-y-3">
