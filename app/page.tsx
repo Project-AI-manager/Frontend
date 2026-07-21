@@ -275,7 +275,7 @@ function ProductMockup() {
               <div className="ml-auto max-w-[86%] rounded-lg bg-[#2463eb] p-4 text-sm leading-6 text-white">
                 Да. Telegram подключается через токен бота, после чего входящие
                 сообщения появляются в разделе “Диалоги”. Для запуска webhook
-                нужен публичный backend URL.
+                нужен постоянный защищённый адрес сервиса.
               </div>
             </div>
 
