@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { axiosInstance } from "@/lib/api/client";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
 
@@ -29,22 +30,23 @@ type ChannelRow = {
   name: string;
   status: ChannelStatus;
   updatedAt?: string;
-  webhookPath?: string;
 };
 
 const channelsApi = getChannels();
 
-const webhookPath = "/api/v1/channels/webhook/telegram";
 const onboardingSteps = [
-  "Создать бота через @BotFather и получить токен.",
-  "Сохранить токен Telegram в рабочем кабинете.",
-  "Скопировать webhook URL из подключённого канала в настройки Telegram.",
+  "Ввести номер личного Telegram-аккаунта.",
+  "Подтвердить одноразовый код из Telegram.",
+  "При необходимости ввести пароль облачной 2FA.",
   "Проверить входящее тестовое сообщение и убедиться, что диалог появился в inbox.",
 ];
 
 export default function ChannelsPage() {
-  const [botToken, setBotToken] = useState("");
-  const [botUsername, setBotUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [authChannelId, setAuthChannelId] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState<"phone" | "code" | "password" | "active">("phone");
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -60,7 +62,6 @@ export default function ChannelsPage() {
     (channel) => channel.type === "telegram",
   );
   const hasTelegram = Boolean(telegramChannel);
-  const telegramWebhookPath = telegramChannel?.webhookPath ?? webhookPath;
 
   const syncCards = [
     {
@@ -88,35 +89,45 @@ export default function ChannelsPage() {
     event.preventDefault();
     setFormMessage(null);
 
-    const trimmedToken = botToken.trim();
-    const trimmedUsername = botUsername.trim();
-
-    if (!trimmedToken) {
-      setFormMessage(
-        "Вставь токен Telegram-бота, чтобы подготовить подключение.",
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      await channelsApi.connectChannelApiV1ChannelsPost({
-        type: "telegram",
-        bot_token: trimmedToken,
-        bot_username: trimmedUsername,
-        name: "Telegram",
-      });
-      setBotToken("");
-      await refetch();
-      setFormMessage(
-        "Telegram подключён. Webhook URL обновлён в карточке справа.",
-      );
+      if (authStep === "phone") {
+        const { data } = await axiosInstance.post<{ channel_id: string }>(
+          "/api/v1/channels/telegram/account/start",
+          { phone: phone.trim() },
+        );
+        setAuthChannelId(data.channel_id);
+        setAuthStep("code");
+        setFormMessage("Код отправлен в Telegram. Введи его ниже.");
+      } else if (authStep === "code" && authChannelId) {
+        const { data } = await axiosInstance.post<{ status: string; display_name?: string }>(
+          "/api/v1/channels/telegram/account/confirm",
+          { channel_id: authChannelId, code: code.trim() },
+        );
+        if (data.status === "password_required") {
+          setAuthStep("password");
+          setFormMessage("Аккаунт защищён 2FA. Введи облачный пароль.");
+        } else {
+          setAuthStep("active");
+          setFormMessage(`Telegram подключён${data.display_name ? `: ${data.display_name}` : "."}`);
+          await refetch();
+        }
+      } else if (authStep === "password" && authChannelId) {
+        const { data } = await axiosInstance.post<{ display_name?: string }>(
+          "/api/v1/channels/telegram/account/password",
+          { channel_id: authChannelId, password },
+        );
+        setPassword("");
+        setAuthStep("active");
+        setFormMessage(`Telegram подключён${data.display_name ? `: ${data.display_name}` : "."}`);
+        await refetch();
+      }
     } catch (submitError) {
       setFormMessage(
         getApiErrorMessage(
           submitError,
-          "Не удалось подключить Telegram. Проверь токен и повтори попытку.",
+          "Не удалось подключить Telegram. Проверь данные и повтори попытку.",
         ),
       );
     } finally {
@@ -146,8 +157,8 @@ export default function ChannelsPage() {
                     Telegram
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[#526071]">
-                    Добавь бота, проверь адрес подключения и отправь тестовое
-                    сообщение — оно появится в общей ленте диалогов.
+                    Авторизуй личный аккаунт и отправь ему тестовое сообщение —
+                    оно появится в общей ленте диалогов.
                   </p>
                 </div>
 
@@ -193,7 +204,7 @@ export default function ChannelsPage() {
                   <Send size={20} />
                 </span>
                 <div>
-                  <h3 className="font-black">Подключение Telegram-бота</h3>
+                  <h3 className="font-black">Подключение личного Telegram</h3>
                   <p className="text-sm text-[#526071]">
                     Данные передаются и хранятся в защищённом виде.
                   </p>
@@ -204,36 +215,23 @@ export default function ChannelsPage() {
                 className="mt-6 block text-sm font-bold"
                 htmlFor="telegram-token"
               >
-                Токен бота
+                {authStep === "phone" ? "Номер телефона" : authStep === "code" ? "Код из Telegram" : "Пароль 2FA"}
               </label>
               <div className="mt-2">
                 <input
                   id="telegram-token"
-                  value={botToken}
-                  onChange={(event) => setBotToken(event.target.value)}
+                  type={authStep === "password" ? "password" : "text"}
+                  value={authStep === "phone" ? phone : authStep === "code" ? code : password}
+                  onChange={(event) => {
+                    if (authStep === "phone") setPhone(event.target.value);
+                    else if (authStep === "code") setCode(event.target.value);
+                    else setPassword(event.target.value);
+                  }}
                   className="form-field w-full px-4 py-3 text-sm"
-                  placeholder="123456:ABC-telegram-bot-token"
-                  disabled={isSubmitting}
+                  placeholder={authStep === "phone" ? "+7 999 000-00-00" : authStep === "code" ? "12345" : "Облачный пароль"}
+                  disabled={isSubmitting || authStep === "active"}
                 />
               </div>
-
-              <label
-                className="mt-4 block text-sm font-bold"
-                htmlFor="telegram-username"
-              >
-                Имя бота{" "}
-                <span className="font-normal text-[#526071]">
-                  (необязательно)
-                </span>
-              </label>
-              <input
-                id="telegram-username"
-                value={botUsername}
-                onChange={(event) => setBotUsername(event.target.value)}
-                className="form-field mt-2 px-4 py-3 text-sm"
-                placeholder="ai_manager_bot"
-                disabled={isSubmitting}
-              />
 
               {formMessage ? (
                 <p
@@ -245,8 +243,7 @@ export default function ChannelsPage() {
               ) : null}
 
               <p className="mt-4 text-xs leading-5 text-[#526071]">
-                Сохранённый токен нельзя посмотреть повторно. Для замены введи
-                новый токен и обнови подключение.
+                Сессия аккаунта шифруется на backend. Код и пароль 2FA не сохраняются.
               </p>
               <button
                 type="submit"
@@ -258,7 +255,7 @@ export default function ChannelsPage() {
                 ) : (
                   <Send size={16} />
                 )}
-                {hasTelegram ? "Обновить подключение" : "Подключить Telegram"}
+                {authStep === "phone" ? "Отправить код" : authStep === "code" ? "Подтвердить код" : authStep === "password" ? "Подтвердить 2FA" : "Аккаунт подключён"}
               </button>
             </form>
 
@@ -333,8 +330,8 @@ export default function ChannelsPage() {
                   <Smartphone className="mx-auto text-[#2463eb]" size={32} />
                   <p className="mt-3 font-black">Каналы ещё не подключены</p>
                   <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
-                    Добавь токен Telegram-бота выше, и канал появится здесь
-                    после успешного подключения.
+                    Авторизуй личный Telegram-аккаунт выше, и канал появится
+                    здесь после подтверждения кода.
                   </p>
                 </div>
               )}
@@ -372,16 +369,16 @@ export default function ChannelsPage() {
           </div>
 
           <CopyCard
-            title="Webhook URL"
+            title="Режим подключения"
             description={
               hasTelegram
-                ? "Индивидуальный адрес подключённого Telegram-канала."
-                : "Появится с секретом после подключения канала."
+                ? "Личный аккаунт подключён через постоянную MTProto-сессию."
+                : "Webhook и Telegram-бот для этого режима не требуются."
             }
             icon={<Webhook size={20} />}
-            value={telegramWebhookPath}
+            value="MTProto · локальный listener"
             copied={copied === "webhook"}
-            onCopy={() => copyToClipboard(telegramWebhookPath, "webhook")}
+            onCopy={() => copyToClipboard("MTProto · локальный listener", "webhook")}
           />
         </aside>
       </div>
@@ -493,11 +490,7 @@ function normalizeChannels(value: ChannelResponse[] | undefined): ChannelRow[] {
     const status = normalizeStatus(item.status);
     const updatedAt = item.updated_at;
     const id = item.id || `${type}-${index}`;
-    const webhookPathValue = item.settings.webhook_path;
-    const webhookPath =
-      typeof webhookPathValue === "string" ? webhookPathValue : undefined;
-
-    return { id, type, name, status, updatedAt, webhookPath };
+    return { id, type, name, status, updatedAt };
   });
 }
 
