@@ -45,7 +45,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ title, description, children }: AppShellProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 

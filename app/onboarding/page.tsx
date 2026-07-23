@@ -72,7 +72,10 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <ol className="divide-y divide-[#d9e1ec] bg-white px-6 sm:px-8">
+          <ol
+            aria-label="Шаги настройки"
+            className="divide-y divide-[#d9e1ec] bg-white px-6 sm:px-8"
+          >
             {steps.map((step, index) => {
               const isReady = step.state === "ready";
               const isCurrent = step.state === "current";
