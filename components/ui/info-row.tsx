@@ -13,15 +13,18 @@ export function InfoRow({
 }: InfoRowProps) {
   return (
     <div
-      className={`flex justify-between gap-4 border-b pb-3 last:border-0 ${
+      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-baseline gap-4 border-b py-3 first:pt-0 last:border-0 last:pb-0 ${
         inverted ? "border-white/10" : "border-[#d9e1ec]"
       }`}
     >
-      <span className={inverted ? "text-white/45" : "text-neutral-500"}>
+      <span
+        className={`text-sm ${inverted ? "text-white/60" : "text-[#667085]"}`}
+      >
         {label}
       </span>
       <span
-        className={`${truncate ? "min-w-0 truncate" : ""} text-right font-bold`}
+        title={truncate ? value : undefined}
+        className={`${truncate ? "min-w-0 truncate" : ""} text-right text-sm font-bold`}
       >
         {value}
       </span>

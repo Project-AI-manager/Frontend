@@ -73,28 +73,25 @@ export default function AnalyticsPage() {
   return (
     <AppShell
       title="Аналитика"
-      description="KPI качества, скорости ответа и роста базы знаний теперь приходят из backend API."
+      description="Главные показатели диалогов, качества AI и использования тарифа."
     >
-      <div className="space-y-5">
-        <section className="glass-card rounded-lg p-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <section className="surface-card p-6 sm:p-8">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#2463eb]">
-                task_208
-              </p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight">
-                Живой обзор качества
+              <p className="brand-kicker">Обзор</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight">
+                Результаты работы ассистента
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Экран читает `GET /api/v1/analytics/overview`: диалоги,
-                автоответы, эскалации, среднее время ответа, usage и базу
-                знаний.
+                Данные обновляются из рабочего пространства и учитывают только
+                ваши диалоги, ответы и документы.
               </p>
             </div>
             <button
               type="button"
               onClick={() => refetch()}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="secondary-button px-4 py-2.5 text-sm"
             >
               {isFetching ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -110,7 +107,7 @@ export default function AnalyticsPage() {
               className="mt-6"
               icon={<Loader2 className="animate-spin" size={18} />}
               title="Загружаем аналитику"
-              description="Собираем tenant-aware метрики на backend."
+              description="Собираем показатели рабочего пространства."
             />
           ) : error ? (
             <StateCard
@@ -119,7 +116,7 @@ export default function AnalyticsPage() {
               title="Не удалось загрузить аналитику"
               description={getApiErrorMessage(
                 error,
-                "Проверь авторизацию и доступность backend.",
+                "Обнови страницу или повтори попытку позже.",
               )}
               tone="error"
             />
@@ -133,19 +130,19 @@ export default function AnalyticsPage() {
           ) : null}
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="surface-card grid overflow-hidden sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (
             <MetricCard key={metric.label} {...metric} />
           ))}
         </section>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="glass-card rounded-lg p-6">
+        <div className="space-y-6">
+          <section className="surface-card p-6 sm:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h2 className="text-xl font-black">Статусы диалогов</h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Распределение текущих conversation status по tenant.
+                  Текущее состояние обращений в рабочем пространстве.
                 </p>
               </div>
               <span className="rounded-full bg-[#2463eb] px-3 py-1 text-xs font-bold text-white">
@@ -179,7 +176,7 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          <aside className="space-y-5">
+          <aside className="grid gap-6 md:grid-cols-2">
             <div className="blue-panel p-6">
               <div className="flex items-center gap-3">
                 <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb]">
@@ -193,7 +190,7 @@ export default function AnalyticsPage() {
               <div className="mt-6">
                 <div className="flex justify-between text-sm font-bold">
                   <span>{overview.dialogs_used} использовано</span>
-                  <span>{overview.dialogs_limit || "без лимита"}</span>
+                  <span>{overview.dialogs_limit || "Без лимита"}</span>
                 </div>
                 <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/20">
                   <div
@@ -204,11 +201,11 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="glass-card rounded-lg p-6">
+            <div className="surface-card p-6">
               <SectionHeader
                 icon={<BrainCircuit size={22} />}
                 title="Качество AI"
-                description="Считаем по сохраненным AI-сообщениям."
+                description="Показатели по ответам ассистента."
               />
               <div className="mt-5 space-y-3 text-sm">
                 <InfoRow
@@ -230,11 +227,11 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="glass-card rounded-lg p-6">
+            <div className="surface-card p-6">
               <SectionHeader
                 icon={<BookOpen size={22} />}
                 title="База знаний"
-                description="Документы, chunks и кандидаты на автообучение."
+                description="Документы, фрагменты и кандидаты на обучение."
               />
               <div className="mt-5 space-y-3 text-sm">
                 <InfoRow
@@ -242,7 +239,7 @@ export default function AnalyticsPage() {
                   value={formatNumber(overview.knowledge_documents_ready)}
                 />
                 <InfoRow
-                  label="Chunks"
+                  label="Фрагменты"
                   value={formatNumber(overview.knowledge_chunks_count)}
                 />
                 <InfoRow
@@ -272,18 +269,15 @@ function MetricCard({
   tone: "orange" | "emerald" | "indigo" | "red";
 }) {
   return (
-    <div className="glass-card rounded-lg p-5">
+    <div className="border-b border-[#d9e1ec] bg-white p-5 last:border-b-0 sm:border-r sm:[&:nth-child(even)]:border-r-0 xl:border-b-0 xl:border-r xl:last:border-r-0">
       <div className="flex items-center justify-between">
         <span
           className={`flex size-11 items-center justify-center rounded-lg bg-white shadow-sm ${toneText(tone)}`}
         >
           <Icon size={20} />
         </span>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${toneBadge(tone)}`}
-        >
-          live
-          <ArrowUpRight size={13} />
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#526071]">
+          live <ArrowUpRight size={13} />
         </span>
       </div>
       <p className="mt-5 text-sm text-neutral-500">{label}</p>
@@ -390,15 +384,6 @@ function toneText(tone: "orange" | "emerald" | "indigo" | "red") {
     emerald: "text-emerald-600",
     indigo: "text-[#2463eb]",
     red: "text-red-600",
-  }[tone];
-}
-
-function toneBadge(tone: "orange" | "emerald" | "indigo" | "red") {
-  return {
-    orange: "bg-[#eaf1ff] text-[#1546ad]",
-    emerald: "bg-emerald-100 text-emerald-700",
-    indigo: "bg-[#eaf1ff] text-[#1546ad]",
-    red: "bg-red-100 text-red-700",
   }[tone];
 }
 

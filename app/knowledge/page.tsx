@@ -100,7 +100,7 @@ export default function KnowledgePage() {
       setTitle("");
       setText("");
       setSelectedDocumentId(created.id);
-      setNotice("Документ добавлен и разрезан на chunks.");
+      setNotice("Документ добавлен и разбит на фрагменты.");
       await queryClient.invalidateQueries({
         queryKey: ["knowledge", "documents"],
       });
@@ -135,7 +135,7 @@ export default function KnowledgePage() {
     },
     onError: (error) => {
       setNotice(
-        getApiErrorMessage(error, "Не удалось получить ответ playground."),
+        getApiErrorMessage(error, "Не удалось получить проверочный ответ."),
       );
     },
   });
@@ -200,7 +200,7 @@ export default function KnowledgePage() {
     const trimmedQuestion = question.trim();
 
     if (!trimmedQuestion) {
-      setNotice("Напиши вопрос для playground.");
+      setNotice("Напиши вопрос для проверки ответа.");
       return;
     }
 
@@ -213,146 +213,184 @@ export default function KnowledgePage() {
   return (
     <AppShell
       title="База знаний"
-      description="Документы, playground-ответы и очередь кандидатов автообучения уже работают через backend API."
+      description="Управляйте знаниями по одному процессу: добавьте материал, проверьте извлечение и подтвердите улучшения."
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="space-y-5">
-          <div className="glass-card rounded-lg p-5">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
-                <h2 className="text-xl font-black">Документы</h2>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Ручные материалы сохраняются в БД, режутся на chunks и
-                  доступны RAG-поиску.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => refetchDocuments()}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d9e1ec] bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                {isDocumentsFetching ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-                Обновить
-              </button>
-            </div>
+      <section className="glass-card overflow-hidden rounded-lg">
+        <div className="grid divide-y divide-[#d9e1ec] md:grid-cols-3 md:divide-x md:divide-y-0">
+          <ProcessMetric
+            number="01"
+            label="Материалы"
+            value={`${documents.length} документов`}
+          />
+          <ProcessMetric
+            number="02"
+            label="Проверка ответа"
+            value={answer ? "Ответ получен" : "Готов к тесту"}
+          />
+          <ProcessMetric
+            number="03"
+            label="Улучшения"
+            value={`${pendingCandidates.length} на проверке`}
+          />
+        </div>
 
+        {notice ? (
+          <p
+            role="status"
+            className="border-t border-[#d9e1ec] bg-[#eaf1ff] px-5 py-3 text-sm font-semibold text-[#1546ad] md:px-6"
+          >
+            {notice}
+          </p>
+        ) : null}
+
+        <KnowledgeSection
+          number="01"
+          title="Материалы"
+          description="Добавьте проверенную информацию — сервис сохранит её, разобьёт на фрагменты и включит в поиск."
+          action={
+            <button
+              type="button"
+              onClick={() => refetchDocuments()}
+              className="secondary-button px-3 py-2 text-xs"
+            >
+              {isDocumentsFetching ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+              Обновить
+            </button>
+          }
+        >
+          <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
             <form
               onSubmit={handleCreateDocument}
-              className="mt-5 rounded-lg border border-[rgba(36,99,235,0.22)] bg-[#eaf1ff] p-4"
+              className="border-r-0 border-[#d9e1ec] xl:border-r xl:pr-6"
             >
-              <div className="flex items-center gap-2 text-sm font-black text-[#1546ad]">
-                <Plus size={16} />
-                Добавить manual-документ
-              </div>
+              <h3 className="flex items-center gap-2 text-sm font-black">
+                <Plus size={16} className="text-[#2463eb]" />
+                Новый документ
+              </h3>
+              <label
+                htmlFor="knowledge-title"
+                className="mt-4 block text-xs font-bold text-neutral-500"
+              >
+                Название
+              </label>
               <input
+                id="knowledge-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="mt-3 w-full rounded-lg border border-[rgba(36,99,235,0.22)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2463eb]"
-                placeholder="Название: FAQ по доставке"
+                className="form-field mt-2 px-4 py-3 text-sm"
+                placeholder="Например, FAQ по доставке"
                 disabled={createDocumentMutation.isPending}
               />
+              <label
+                htmlFor="knowledge-text"
+                className="mt-4 block text-xs font-bold text-neutral-500"
+              >
+                Содержание
+              </label>
               <textarea
+                id="knowledge-text"
                 value={text}
                 onChange={(event) => setText(event.target.value)}
-                className="mt-3 min-h-32 w-full resize-none rounded-lg border border-[rgba(36,99,235,0.22)] bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-[#2463eb]"
-                placeholder="Текст документа: условия, ответы, инструкции..."
+                className="form-field mt-2 min-h-36 resize-y px-4 py-3 text-sm leading-6"
+                placeholder="Условия, ответы и инструкции для ассистента..."
                 disabled={createDocumentMutation.isPending}
               />
               <button
                 type="submit"
                 disabled={createDocumentMutation.isPending}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2463eb] px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                className="primary-button mt-4 px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {createDocumentMutation.isPending ? (
                   <Loader2 size={15} className="animate-spin" />
                 ) : (
                   <Plus size={15} />
                 )}
-                Сохранить
+                Добавить в базу
               </button>
             </form>
 
-            {notice ? (
-              <p className="mt-4 rounded-lg bg-white p-3 text-sm font-semibold text-neutral-700 shadow-sm">
-                {notice}
-              </p>
-            ) : null}
-
-            <div className="mt-5 overflow-hidden rounded-lg border border-[#d9e1ec] bg-white">
-              {isDocumentsLoading ? (
-                <StateCard
-                  icon={<Loader2 className="animate-spin" size={18} />}
-                  title="Загружаем документы"
-                  align="center"
-                />
-              ) : documentsError ? (
-                <StateCard
-                  icon={<AlertCircle size={18} />}
-                  title="Не удалось загрузить документы"
-                  description={getApiErrorMessage(
-                    documentsError,
-                    "Проверь авторизацию и backend.",
-                  )}
-                  tone="error"
-                  align="center"
-                />
-              ) : documents.length > 0 ? (
-                documents.map((document) => (
-                  <button
-                    key={document.id}
-                    type="button"
-                    onClick={() => setSelectedDocumentId(document.id)}
-                    className={`grid w-full gap-3 border-b border-[#d9e1ec] p-4 text-left transition last:border-0 hover:bg-[#eaf1ff] md:grid-cols-[1fr_110px_120px_110px] md:items-center ${
-                      document.id === activeDocumentId ? "bg-[#eaf1ff]" : ""
-                    }`}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
-                        <FileText size={18} />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-black">{document.title}</p>
-                        <p className="text-sm text-neutral-500">
-                          {formatDate(document.updated_at)}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-semibold text-neutral-500">
-                      {document.source_type}
-                    </span>
-                    <StatusPill status={document.status} />
-                    <span className="text-sm font-semibold text-neutral-500">
-                      {document.chunks_count} chunks
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <StateCard
-                  icon={<FileText size={18} />}
-                  title="Документов пока нет"
-                  description="Добавь первый manual-документ выше, чтобы playground начал отвечать по базе."
-                  align="center"
-                />
-              )}
+            <div className="min-w-0">
+              <div className="mb-3 grid grid-cols-[1fr_auto] gap-3 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-neutral-400 sm:grid-cols-[1fr_100px_90px_auto]">
+                <span>Документ</span>
+                <span className="hidden sm:block">Источник</span>
+                <span className="hidden sm:block">Статус</span>
+                <span>Фрагменты</span>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white">
+                {isDocumentsLoading ? (
+                  <StateCard
+                    icon={<Loader2 className="animate-spin" size={18} />}
+                    title="Загружаем документы"
+                  />
+                ) : documentsError ? (
+                  <StateCard
+                    icon={<AlertCircle size={18} />}
+                    title="Не удалось загрузить документы"
+                    description={getApiErrorMessage(
+                      documentsError,
+                      "Проверь авторизацию и подключение к сервису.",
+                    )}
+                    tone="error"
+                  />
+                ) : documents.length > 0 ? (
+                  documents.map((document) => {
+                    const isActive = document.id === activeDocumentId;
+                    return (
+                      <button
+                        key={document.id}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setSelectedDocumentId(document.id)}
+                        className={`grid w-full grid-cols-[1fr_auto] gap-3 border-b border-[#d9e1ec] px-4 py-3 text-left transition-colors last:border-0 hover:bg-[#f8fbff] sm:grid-cols-[1fr_100px_90px_auto] sm:items-center ${isActive ? "bg-[#eaf1ff]" : ""}`}
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <FileText
+                            size={17}
+                            className="shrink-0 text-[#2463eb]"
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-black">
+                              {document.title}
+                            </span>
+                            <span className="block font-mono text-[11px] text-neutral-400">
+                              {formatDate(document.updated_at)}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="hidden text-xs font-semibold text-neutral-500 sm:block">
+                          {document.source_type}
+                        </span>
+                        <span className="hidden sm:block">
+                          <StatusPill status={document.status} />
+                        </span>
+                        <span className="font-mono text-xs font-bold text-neutral-500">
+                          {document.chunks_count}
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <StateCard
+                    icon={<FileText size={18} />}
+                    title="Документов пока нет"
+                    description="Добавьте первый материал, чтобы ассистент начал отвечать по вашей базе."
+                  />
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="glass-card rounded-lg p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-[#2463eb] text-white">
-                  <FileText size={18} />
-                </span>
-                <div>
-                  <h2 className="text-xl font-black">Просмотр chunks</h2>
-                  <p className="text-sm text-neutral-500">
-                    Проверяем, что именно попало в память ассистента.
-                  </p>
-                </div>
+          <div className="mt-6 border-t border-[#d9e1ec] pt-5">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="text-sm font-black">Что запомнил ассистент</h3>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Фрагменты выбранного документа, доступные поиску.
+                </p>
               </div>
               {activeDocumentId ? (
                 <button
@@ -361,24 +399,22 @@ export default function KnowledgePage() {
                     archiveDocumentMutation.mutate(activeDocumentId)
                   }
                   disabled={archiveDocumentMutation.isPending}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#d9e1ec] bg-white px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="secondary-button self-start px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {archiveDocumentMutation.isPending ? (
-                    <Loader2 size={15} className="animate-spin" />
+                    <Loader2 size={14} className="animate-spin" />
                   ) : (
-                    <Archive size={15} />
+                    <Archive size={14} />
                   )}
-                  Архивировать
+                  Архивировать документ
                 </button>
               ) : null}
             </div>
-
-            <div className="mt-5 space-y-3">
+            <div className="mt-4">
               {isDetailLoading ? (
                 <StateCard
                   icon={<Loader2 className="animate-spin" size={18} />}
-                  title="Загружаем chunks"
-                  align="center"
+                  title="Загружаем фрагменты"
                 />
               ) : detailError ? (
                 <StateCard
@@ -389,170 +425,171 @@ export default function KnowledgePage() {
                     "Выбери другой документ или обнови список.",
                   )}
                   tone="error"
-                  align="center"
                 />
               ) : documentDetail ? (
-                documentDetail.chunks.map((chunk) => (
-                  <article
-                    key={chunk.id}
-                    className="rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2463eb]">
-                        Chunk #{chunk.position + 1}
-                      </p>
-                      <span className="text-xs font-semibold text-neutral-500">
-                        {chunk.token_count} tokens
-                      </span>
-                    </div>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-                      {chunk.text}
-                    </p>
-                  </article>
-                ))
+                documentDetail.chunks.length > 0 ? (
+                  <div className="divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-[#f8fbff]">
+                    {documentDetail.chunks.map((chunk) => (
+                      <article
+                        key={chunk.id}
+                        className="grid gap-2 px-4 py-4 md:grid-cols-[90px_minmax(0,1fr)_90px]"
+                      >
+                        <p className="font-mono text-xs font-black text-[#2463eb]">
+                          #{chunk.position + 1}
+                        </p>
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-700">
+                          {chunk.text}
+                        </p>
+                        <span className="font-mono text-xs text-neutral-400 md:text-right">
+                          {chunk.token_count} токенов
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <StateCard
+                    icon={<FileText size={18} />}
+                    title="Фрагментов нет"
+                    description="Документ ещё обрабатывается или не содержит подходящего текста."
+                  />
+                )
               ) : (
                 <StateCard
                   icon={<FileText size={18} />}
                   title="Документ не выбран"
-                  description="Выбери документ в списке выше, чтобы увидеть его chunks."
-                  align="center"
+                  description="Выберите материал в таблице, чтобы проверить его фрагменты."
                 />
               )}
             </div>
           </div>
+        </KnowledgeSection>
 
-          <div className="glass-card rounded-lg p-5">
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-lg bg-[#2463eb] text-white">
-                <Search size={18} />
-              </span>
-              <div>
-                <h2 className="text-xl font-black">Проверить ответ</h2>
-                <p className="text-sm text-neutral-500">
-                  Playground использует тот же ML/RAG endpoint, но в mock-mode.
-                </p>
-              </div>
-            </div>
-
-            <form
-              onSubmit={handleAsk}
-              className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]"
+        <KnowledgeSection
+          number="02"
+          title="Проверка ответа"
+          description="Задайте реальный вопрос клиента. Режим проверки использует тот же поиск по знаниям, что и рабочие диалоги."
+        >
+          <form
+            onSubmit={handleAsk}
+            className="flex flex-col gap-3 sm:flex-row"
+          >
+            <label htmlFor="knowledge-question" className="sr-only">
+              Вопрос клиента
+            </label>
+            <input
+              id="knowledge-question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              className="form-field flex-1 px-4 py-3 text-sm"
+              placeholder="Вопрос клиента"
+              disabled={askMutation.isPending}
+            />
+            <button
+              type="submit"
+              disabled={askMutation.isPending}
+              className="primary-button px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <input
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                className="rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2463eb]"
-                placeholder="Вопрос клиента"
-                disabled={askMutation.isPending}
-              />
-              <button
-                type="submit"
-                disabled={askMutation.isPending}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2463eb] px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {askMutation.isPending ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Sparkles size={15} />
-                )}
-                Спросить
-              </button>
-            </form>
+              {askMutation.isPending ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Search size={15} />
+              )}
+              Проверить ответ
+            </button>
+          </form>
 
-            {answer ? (
-              <div className="mt-5 rounded-lg border border-[rgba(36,99,235,0.22)] bg-[#eaf1ff] p-4">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-black text-[#1546ad]">
-                  <Sparkles size={16} />
-                  Ответ AI · confidence {Math.round(answer.confidence * 100)}% ·{" "}
-                  {answer.decision}
-                </div>
-                <p className="mt-3 text-sm leading-6 text-neutral-700">
-                  {answer.answer}
-                </p>
-                <div className="mt-4 space-y-2">
-                  {answer.sources.length > 0 ? (
-                    answer.sources.map((source) => (
-                      <div
-                        key={source.id}
-                        className="rounded-lg bg-white p-3 text-xs text-neutral-600 shadow-sm"
-                      >
-                        <p className="font-black text-neutral-800">
-                          {source.title}
-                        </p>
-                        <p className="mt-1 line-clamp-3">{source.text}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-lg bg-white p-3 text-xs font-semibold text-neutral-500 shadow-sm">
-                      Источников не найдено. Добавь документ или уточни вопрос.
-                    </p>
-                  )}
-                </div>
+          {answer ? (
+            <div className="mt-5 border-l-2 border-[#2463eb] pl-4 md:pl-5">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-black text-[#1546ad]">
+                <Sparkles size={16} />
+                <span>Ответ AI</span>
+                <span className="font-mono text-xs">
+                  Уверенность {Math.round(answer.confidence * 100)}%
+                </span>
+                <span className="text-xs">{answer.decision}</span>
               </div>
-            ) : null}
-          </div>
-        </section>
-
-        <aside className="glass-card h-fit rounded-lg p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#1546ad]">
-                <BrainCircuit size={20} />
-              </span>
-              <div>
-                <h2 className="font-black">Кандидаты</h2>
-                <p className="text-sm text-neutral-500">Очередь автообучения</p>
+              <p className="mt-3 text-sm leading-7 text-neutral-700">
+                {answer.answer}
+              </p>
+              <div className="mt-4 divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-white">
+                {answer.sources.length > 0 ? (
+                  answer.sources.map((source) => (
+                    <article
+                      key={source.id}
+                      className="px-4 py-3 text-xs text-neutral-600"
+                    >
+                      <p className="font-black text-neutral-800">
+                        {source.title}
+                      </p>
+                      <p className="mt-1 line-clamp-3 leading-5">
+                        {source.text}
+                      </p>
+                    </article>
+                  ))
+                ) : (
+                  <p className="px-4 py-3 text-xs font-semibold text-neutral-500">
+                    Источников не найдено. Добавьте документ или уточните
+                    вопрос.
+                  </p>
+                )}
               </div>
             </div>
-            {isCandidatesFetching ? (
-              <Loader2 size={18} className="animate-spin text-neutral-400" />
-            ) : null}
-          </div>
+          ) : null}
+        </KnowledgeSection>
 
-          <div className="mt-5 space-y-3">
-            {isCandidatesLoading ? (
-              <StateCard
-                icon={<Loader2 className="animate-spin" size={18} />}
-                title="Загружаем кандидатов"
-                align="center"
-              />
-            ) : candidatesError ? (
-              <StateCard
-                icon={<AlertCircle size={18} />}
-                title="Не удалось загрузить кандидатов"
-                description={getApiErrorMessage(
-                  candidatesError,
-                  "Проверь backend.",
-                )}
-                tone="error"
-                align="center"
-              />
-            ) : pendingCandidates.length > 0 ? (
-              pendingCandidates.map((candidate) => (
+        <KnowledgeSection
+          number="03"
+          title="Предложения для базы"
+          description="Ответы менеджеров становятся кандидатами. Подтверждайте только точные и повторно используемые знания."
+          action={
+            isCandidatesFetching ? (
+              <Loader2 size={17} className="animate-spin text-neutral-400" />
+            ) : undefined
+          }
+        >
+          {isCandidatesLoading ? (
+            <StateCard
+              icon={<Loader2 className="animate-spin" size={18} />}
+              title="Загружаем кандидатов"
+            />
+          ) : candidatesError ? (
+            <StateCard
+              icon={<AlertCircle size={18} />}
+              title="Не удалось загрузить кандидатов"
+              description={getApiErrorMessage(
+                candidatesError,
+                "Проверь подключение к сервису.",
+              )}
+              tone="error"
+            />
+          ) : pendingCandidates.length > 0 ? (
+            <div className="divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-white">
+              {pendingCandidates.map((candidate) => (
                 <article
                   key={candidate.id}
-                  className="rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-sm"
+                  className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-center"
                 >
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2463eb]">
-                    {candidate.suggested_by}
-                  </p>
-                  <p className="mt-2 text-sm font-black leading-6">
-                    {candidate.question}
-                  </p>
-                  <p className="mt-2 line-clamp-4 text-sm leading-6 text-neutral-600">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#2463eb]">
+                      {candidate.suggested_by}
+                    </p>
+                    <p className="mt-1 text-sm font-black leading-6">
+                      {candidate.question}
+                    </p>
+                  </div>
+                  <p className="text-sm leading-6 text-neutral-600">
                     {candidate.answer}
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() =>
                         approveCandidateMutation.mutate(candidate.id)
                       }
                       disabled={isCandidateActionPending}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#2463eb] px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      className="primary-button px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <CheckCircle2 size={13} />
-                      Принять
+                      <CheckCircle2 size={13} /> Принять
                     </button>
                     <button
                       type="button"
@@ -560,26 +597,82 @@ export default function KnowledgePage() {
                         rejectCandidateMutation.mutate(candidate.id)
                       }
                       disabled={isCandidateActionPending}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[#d9e1ec] px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-60"
+                      className="secondary-button px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <XCircle size={13} />
-                      Отклонить
+                      <XCircle size={13} /> Отклонить
                     </button>
                   </div>
                 </article>
-              ))
-            ) : (
-              <StateCard
-                icon={<BrainCircuit size={18} />}
-                title="Кандидатов пока нет"
-                description="Они появятся после ответов менеджера в inbox."
-                align="center"
-              />
-            )}
-          </div>
-        </aside>
-      </div>
+              ))}
+            </div>
+          ) : (
+            <StateCard
+              icon={<BrainCircuit size={18} />}
+              title="Очередь обработана"
+              description="Новые кандидаты появятся после ответов менеджера в диалогах."
+            />
+          )}
+        </KnowledgeSection>
+      </section>
     </AppShell>
+  );
+}
+
+function ProcessMetric({
+  number,
+  label,
+  value,
+}: {
+  number: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4 md:px-6">
+      <span className="font-mono text-xs font-black text-[#2463eb]">
+        {number}
+      </span>
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.12em] text-neutral-400">
+          {label}
+        </p>
+        <p className="mt-1 text-sm font-bold">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeSection({
+  number,
+  title,
+  description,
+  action,
+  children,
+}: {
+  number: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-t border-[#d9e1ec] bg-white/75 px-5 py-7 md:px-6 md:py-8">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+        <div className="flex gap-4">
+          <span className="pt-1 font-mono text-xs font-black text-[#2463eb]">
+            {number}
+          </span>
+          <div>
+            <h2 className="text-xl font-black">{title}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral-500">
+              {description}
+            </p>
+          </div>
+        </div>
+        {action}
+      </div>
+      <div className="mt-6">{children}</div>
+    </section>
   );
 }
 

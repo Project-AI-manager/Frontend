@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Bot,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Loader2,
   MessageCircle,
@@ -119,7 +120,7 @@ export default function InboxPage() {
       setActionMessage(
         getApiErrorMessage(
           error,
-          "Не удалось отправить ответ. Проверь доступность backend.",
+          "Не удалось отправить ответ. Проверь подключение к сервису.",
         ),
       );
     },
@@ -176,245 +177,295 @@ export default function InboxPage() {
   return (
     <AppShell
       title="Диалоги"
-      description="Единая лента обращений: живые сообщения из API, быстрый ответ и эскалация в одном рабочем окне."
+      description="Разбирайте обращения последовательно: выберите диалог, изучите контекст и ответьте клиенту."
     >
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr_320px]">
-        <section className="glass-card rounded-lg p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black">Входящие</h2>
-              <p className="mt-1 text-xs font-semibold text-neutral-500">
-                {conversations.length} всего
-              </p>
+      <section className="glass-card overflow-hidden rounded-lg">
+        <div className="border-b border-[#d9e1ec] bg-white/75 px-5 py-4 md:px-6">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-bold text-[#526071]">
+              <WorkflowStep number="1" label="Выберите обращение" active />
+              <ChevronRight
+                size={15}
+                className="hidden text-neutral-300 sm:block"
+              />
+              <WorkflowStep
+                number="2"
+                label="Проверьте контекст"
+                active={Boolean(thread)}
+              />
+              <ChevronRight
+                size={15}
+                className="hidden text-neutral-300 sm:block"
+              />
+              <WorkflowStep
+                number="3"
+                label="Ответьте клиенту"
+                active={Boolean(thread)}
+              />
             </div>
             <button
               type="button"
               onClick={handleRefresh}
-              className="secondary-button px-3 py-2 text-xs"
+              className="secondary-button self-start px-3 py-2 text-xs md:self-auto"
             >
               {isConversationsFetching || isThreadFetching ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <RefreshCw size={14} />
               )}
-              Обновить
+              Обновить данные
             </button>
           </div>
+        </div>
 
-          <div className="mt-5 space-y-3">
-            {isConversationsLoading ? (
-              <StateCard
-                icon={<Loader2 className="animate-spin" size={18} />}
-                title="Загружаем диалоги"
-              />
-            ) : conversationsError ? (
-              <StateCard
-                icon={<AlertCircle size={18} />}
-                title="Не удалось загрузить диалоги"
-                description={getApiErrorMessage(
-                  conversationsError,
-                  "Проверь авторизацию и доступность backend.",
-                )}
-                tone="error"
-              />
-            ) : conversations.length > 0 ? (
-              conversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedConversationId(conversation.id);
-                    setActionMessage(null);
-                  }}
-                  className={`w-full rounded-lg border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                    conversation.id === activeConversationId
-                      ? "border-[rgba(36,99,235,0.45)] bg-[#eaf1ff]"
-                      : "border-[#d9e1ec] bg-white"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate font-black">
-                        {conversation.customerName}
-                      </h3>
-                      <p className="mt-1 line-clamp-2 text-sm leading-6 text-neutral-600">
+        <div className="grid min-h-[680px] lg:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="border-b border-[#d9e1ec] bg-[#f8fbff]/80 lg:border-b-0 lg:border-r">
+            <div className="flex items-end justify-between border-b border-[#d9e1ec] px-5 py-4">
+              <div>
+                <p className="brand-kicker">Очередь</p>
+                <h2 className="mt-1 text-lg font-black">Входящие</h2>
+              </div>
+              <span className="font-mono text-sm font-bold text-[#526071]">
+                {conversations.length}
+              </span>
+            </div>
+
+            <div className="divide-y divide-[#d9e1ec]">
+              {isConversationsLoading ? (
+                <div className="p-4">
+                  <StateCard
+                    icon={<Loader2 className="animate-spin" size={18} />}
+                    title="Загружаем диалоги"
+                  />
+                </div>
+              ) : conversationsError ? (
+                <div className="p-4">
+                  <StateCard
+                    icon={<AlertCircle size={18} />}
+                    title="Не удалось загрузить диалоги"
+                    description={getApiErrorMessage(
+                      conversationsError,
+                      "Проверь авторизацию и подключение к сервису.",
+                    )}
+                    tone="error"
+                  />
+                </div>
+              ) : conversations.length > 0 ? (
+                conversations.map((conversation) => {
+                  const isActive = conversation.id === activeConversationId;
+
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => {
+                        setSelectedConversationId(conversation.id);
+                        setActionMessage(null);
+                      }}
+                      className={`relative w-full px-5 py-4 text-left transition-colors hover:bg-white ${
+                        isActive ? "bg-white" : "bg-transparent"
+                      }`}
+                    >
+                      {isActive ? (
+                        <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#2463eb]" />
+                      ) : null}
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="min-w-0 truncate text-sm font-black">
+                          {conversation.customerName}
+                        </h3>
+                        <span className="shrink-0 font-mono text-[11px] text-neutral-400">
+                          {formatCompactDate(conversation.lastMessageAt)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-neutral-500">
                         {conversation.lastMessagePreview ||
                           "Сообщений пока нет"}
                       </p>
-                    </div>
-                    <span className="shrink-0 text-xs text-neutral-400">
-                      {formatNullableDate(
-                        conversation.lastMessageAt,
-                        "нет даты",
-                      )}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <StatusPill status={conversation.status} />
-                    {conversation.unreadCount > 0 ? (
-                      <span className="rounded-full bg-[#2463eb] px-3 py-1 text-xs font-black text-white">
-                        {conversation.unreadCount} новых
-                      </span>
-                    ) : null}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <StateCard
-                icon={<MessageCircle size={20} />}
-                title="Диалогов пока нет"
-                description="Когда backend получит входящее сообщение, оно появится в этой ленте."
-              />
-            )}
-          </div>
-        </section>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <StatusPill status={conversation.status} />
+                        {conversation.unreadCount > 0 ? (
+                          <span className="flex size-6 items-center justify-center rounded-full bg-[#2463eb] text-[11px] font-black text-white">
+                            {conversation.unreadCount}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-4">
+                  <StateCard
+                    icon={<MessageCircle size={20} />}
+                    title="Диалогов пока нет"
+                    description="Новое обращение появится здесь сразу после поступления из подключённого канала."
+                  />
+                </div>
+              )}
+            </div>
+          </aside>
 
-        <section className="glass-card overflow-hidden rounded-lg">
-          <div className="border-b border-[#d9e1ec] bg-white/80 p-5">
-            {thread ? (
-              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="flex min-w-0 flex-col bg-white/70">
+            <header className="border-b border-[#d9e1ec] px-5 py-5 md:px-6">
+              {thread ? (
+                <>
+                  <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="truncate text-xl font-black">
+                          {thread.customerName}
+                        </h2>
+                        <StatusPill status={thread.status} />
+                      </div>
+                      <p className="mt-2 text-sm text-neutral-500">
+                        Канал {thread.channelId} · клиент {thread.customerId}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-neutral-500">
+                      <span>{thread.unreadCount} непрочитано</span>
+                      <span>{aiSignal(messages)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d9e1ec] pt-3 text-xs text-neutral-500">
+                    <Signal
+                      icon={<CheckCircle2 size={14} />}
+                      title="История синхронизирована"
+                    />
+                    <Signal
+                      icon={<Clock size={14} />}
+                      title={`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
+                    />
+                  </div>
+                </>
+              ) : (
                 <div>
-                  <h2 className="text-xl font-black">{thread.customerName}</h2>
+                  <h2 className="text-xl font-black">Выберите диалог</h2>
                   <p className="mt-1 text-sm text-neutral-500">
-                    ID клиента: {thread.customerId} · канал: {thread.channelId}
+                    История обращения и действия появятся в этой рабочей
+                    области.
                   </p>
                 </div>
-                <StatusPill status={thread.status} />
-              </div>
-            ) : (
-              <div>
-                <h2 className="text-xl font-black">Диалог не выбран</h2>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Выбери обращение слева, чтобы открыть историю.
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </header>
 
-          <div className="min-h-[360px] space-y-4 p-5">
-            {isThreadLoading ? (
-              <StateCard
-                icon={<Loader2 className="animate-spin" size={18} />}
-                title="Загружаем историю"
-              />
-            ) : threadError ? (
-              <StateCard
-                icon={<AlertCircle size={18} />}
-                title="Не удалось загрузить диалог"
-                description={getApiErrorMessage(
-                  threadError,
-                  "Попробуй обновить страницу или выбрать другой диалог.",
-                )}
-                tone="error"
-              />
-            ) : !activeConversationId ? (
-              <StateCard
-                icon={<MessageCircle size={20} />}
-                title="Нет выбранного диалога"
-                description="Список обращений пуст или ещё загружается."
-              />
-            ) : messages.length > 0 ? (
-              messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))
-            ) : (
-              <StateCard
-                icon={<MessageCircle size={20} />}
-                title="История пуста"
-                description="В этом диалоге пока нет сообщений."
-              />
-            )}
-          </div>
-
-          <div className="border-t border-[#d9e1ec] bg-white/80 p-5">
-            <form
-              onSubmit={handleReplySubmit}
-              className="rounded-lg border border-[rgba(36,99,235,0.22)] bg-[#eaf1ff] p-4"
+            <div
+              className="min-h-[380px] flex-1 space-y-4 overflow-y-auto bg-[#f8fbff]/60 p-5 md:p-6"
+              aria-live="polite"
             >
-              <div className="flex items-center gap-2 text-sm font-black text-[#1546ad]">
-                <Sparkles size={16} />
-                Быстрый ответ
-              </div>
-              <textarea
-                value={replyText}
-                onChange={(event) => setReplyText(event.target.value)}
-                placeholder="Напиши ответ клиенту..."
-                disabled={!activeConversationId || isActionPending}
-                className="form-field mt-3 min-h-28 resize-none px-4 py-3 text-sm leading-6 placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
-              />
-              {actionMessage ? (
-                <p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-semibold text-neutral-700">
-                  {actionMessage}
-                </p>
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="submit"
-                  disabled={!activeConversationId || isActionPending}
-                  className="primary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  {replyMutation.isPending ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <Send size={15} />
+              {isThreadLoading ? (
+                <StateCard
+                  icon={<Loader2 className="animate-spin" size={18} />}
+                  title="Загружаем историю"
+                />
+              ) : threadError ? (
+                <StateCard
+                  icon={<AlertCircle size={18} />}
+                  title="Не удалось загрузить диалог"
+                  description={getApiErrorMessage(
+                    threadError,
+                    "Попробуй обновить данные или выбрать другой диалог.",
                   )}
-                  Отправить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => escalateMutation.mutate()}
-                  disabled={!activeConversationId || isActionPending}
-                  className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  tone="error"
+                />
+              ) : !activeConversationId ? (
+                <StateCard
+                  icon={<MessageCircle size={20} />}
+                  title="Нет выбранного диалога"
+                  description="Список обращений пуст или ещё загружается."
+                />
+              ) : messages.length > 0 ? (
+                messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))
+              ) : (
+                <StateCard
+                  icon={<MessageCircle size={20} />}
+                  title="История пуста"
+                  description="В этом диалоге пока нет сообщений."
+                />
+              )}
+            </div>
+
+            <div className="border-t border-[#d9e1ec] bg-white p-5 md:p-6">
+              <form onSubmit={handleReplySubmit}>
+                <label
+                  htmlFor="conversation-reply"
+                  className="flex items-center gap-2 text-sm font-black"
                 >
-                  {escalateMutation.isPending ? "Передаём..." : "Эскалировать"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-        <aside className="space-y-5">
-          <div className="glass-card rounded-lg p-5">
-            <h2 className="font-black">Контекст клиента</h2>
-            <div className="mt-4 space-y-3 text-sm">
-              <InfoRow
-                label="Клиент"
-                value={thread?.customerName ?? "не выбран"}
-              />
-              <InfoRow
-                label="Статус"
-                value={statusLabel(thread?.status ?? "unknown")}
-              />
-              <InfoRow
-                label="Непрочитано"
-                value={String(thread?.unreadCount ?? 0)}
-              />
-              <InfoRow
-                label="Последнее сообщение"
-                value={formatNullableDate(thread?.lastMessageAt, "нет даты")}
-              />
+                  <Sparkles size={16} className="text-[#2463eb]" />
+                  Ответ клиенту
+                </label>
+                <textarea
+                  id="conversation-reply"
+                  value={replyText}
+                  onChange={(event) => setReplyText(event.target.value)}
+                  placeholder="Напишите короткий и точный ответ..."
+                  disabled={!activeConversationId || isActionPending}
+                  className="form-field mt-3 min-h-24 resize-y px-4 py-3 text-sm leading-6 placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
+                />
+                {actionMessage ? (
+                  <p
+                    role="status"
+                    className="mt-3 border-l-2 border-[#2463eb] pl-3 text-sm font-semibold text-neutral-600"
+                  >
+                    {actionMessage}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-col-reverse justify-between gap-3 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => escalateMutation.mutate()}
+                    disabled={!activeConversationId || isActionPending}
+                    className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {escalateMutation.isPending
+                      ? "Передаём менеджеру..."
+                      : "Передать менеджеру"}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!activeConversationId || isActionPending}
+                    className="primary-button px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {replyMutation.isPending ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
+                    Отправить ответ
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-
-          <div className="glass-card rounded-lg p-5">
-            <h2 className="font-black">Сигналы AI</h2>
-            <div className="mt-4 space-y-3">
-              <Signal
-                icon={<CheckCircle2 size={16} />}
-                title={
-                  thread ? "История синхронизирована" : "Ожидаем выбор диалога"
-                }
-              />
-              <Signal icon={<Bot size={16} />} title={aiSignal(messages)} />
-              <Signal
-                icon={<Clock size={16} />}
-                title={`Обновлено: ${formatNullableDate(thread?.lastMessageAt, "нет даты")}`}
-              />
-            </div>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </section>
     </AppShell>
+  );
+}
+
+function WorkflowStep({
+  number,
+  label,
+  active,
+}: {
+  number: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <span
+      className={`flex items-center gap-2 ${active ? "text-[#1546ad]" : ""}`}
+    >
+      <span
+        className={`flex size-6 items-center justify-center rounded-full font-mono text-[11px] font-black ${
+          active ? "bg-[#2463eb] text-white" : "bg-neutral-100 text-neutral-400"
+        }`}
+      >
+        {number}
+      </span>
+      {label}
+    </span>
   );
 }
 
@@ -451,10 +502,10 @@ function MessageBubble({ message }: { message: ConversationMessageResponse }) {
 
 function Signal({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-white p-3 text-sm font-semibold shadow-sm">
+    <span className="flex items-center gap-2 font-semibold">
       <span className="text-[#2463eb]">{icon}</span>
       {title}
-    </div>
+    </span>
   );
 }
 
@@ -506,15 +557,6 @@ function StatusPill({ status }: { status: ConversationStatus }) {
     >
       {statusLabel(status)}
     </span>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-[#d9e1ec] pb-3 last:border-0">
-      <span className="text-neutral-500">{label}</span>
-      <span className="text-right font-bold">{value}</span>
-    </div>
   );
 }
 
@@ -676,6 +718,27 @@ function formatNullableDate(
   }).format(date);
 }
 
+function formatCompactDate(value: string | null | undefined) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    ...(isToday
+      ? { hour: "2-digit", minute: "2-digit" }
+      : { day: "2-digit", month: "2-digit" }),
+  }).format(date);
+}
+
 function safeText(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
@@ -691,7 +754,7 @@ function aiSignal(messages: ConversationMessageResponse[]) {
 
   if (confidenceValues.length === 0) {
     return aiMessages.length > 0
-      ? "AI отвечал без confidence"
+      ? "AI уже участвовал в диалоге"
       : "AI ещё не отвечал";
   }
 

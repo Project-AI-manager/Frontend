@@ -2,14 +2,11 @@
 
 import {
   AlertCircle,
-  Bell,
   Building2,
-  KeyRound,
   Loader2,
   Mail,
   RefreshCw,
   ShieldCheck,
-  UserRound,
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,29 +21,6 @@ import { getUsers } from "@/lib/api/generated/users/users";
 import { settingsApi } from "@/lib/api/settings";
 
 const usersApi = getUsers();
-
-const profileBlocks = [
-  {
-    icon: UserRound,
-    title: "Личные данные",
-    text: "Имя, email и роль теперь читаются из `GET /api/v1/users/me`.",
-  },
-  {
-    icon: KeyRound,
-    title: "Пароль",
-    text: "Смена пароля появится после отдельного backend endpoint.",
-  },
-  {
-    icon: Bell,
-    title: "Уведомления",
-    text: "Email и Telegram-уведомления оставлены на следующий этап интеграций.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Безопасность",
-    text: "Access token автоматически добавляется Axios interceptor, refresh token обновляет сессию.",
-  },
-];
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
@@ -93,7 +67,7 @@ export default function ProfilePage() {
     onSuccess: (data) => {
       setEmailNotice(
         data.dev_token
-          ? `Письмо записано в outbox. Dev token: ${data.dev_token}`
+          ? `Письмо подготовлено. Код подтверждения: ${data.dev_token}`
           : data.sent
             ? "Письмо подтверждения отправлено."
             : "Почта уже подтверждена или отправка отключена.",
@@ -145,7 +119,7 @@ export default function ProfilePage() {
     event.preventDefault();
     const token = verificationToken.trim();
     if (!token) {
-      setEmailNotice("Вставь token подтверждения.");
+      setEmailNotice("Вставь код подтверждения.");
       return;
     }
     confirmVerificationMutation.mutate(token);
@@ -154,68 +128,65 @@ export default function ProfilePage() {
   return (
     <AppShell
       title="Профиль"
-      description="Личные данные пользователя и компания подключены к реальному backend API."
+      description="Личные данные, рабочее пространство и подтверждение почты."
     >
-      <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
-        <aside className="space-y-5">
-          <div className="glass-card rounded-lg p-6 text-center">
-            <div className="mx-auto flex size-24 items-center justify-center rounded-lg bg-[#2463eb] text-3xl font-black text-white">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <section className="surface-card overflow-hidden">
+          <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
+            <div className="flex size-20 shrink-0 items-center justify-center rounded-lg bg-[#2463eb] text-2xl font-black text-white">
               {initials}
             </div>
-            <h2 className="mt-5 text-2xl font-black">
-              {profile?.full_name || "Пользователь"}
-            </h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              {profile?.email ?? "email не загружен"}
-            </p>
-            <span className="mt-4 inline-flex rounded-full bg-[#eaf1ff] px-4 py-2 text-sm font-bold text-[#1546ad]">
-              {profile?.role ?? "role"}
-            </span>
-
-            <button
-              type="button"
-              onClick={refreshAll}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              {isProfileFetching ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <RefreshCw size={16} />
-              )}
-              Обновить профиль
-            </button>
-            <LogoutButton />
-          </div>
-
-          <div className="rounded-lg bg-[#2463eb] p-6 text-white">
-            <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#101828]">
-                <Building2 size={22} />
-              </span>
-              <div>
-                <h2 className="font-black">{workspace?.name ?? "Компания"}</h2>
-                <p className="text-sm text-white/55">
-                  {workspace?.slug ?? "workspace"}
-                </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="truncate text-2xl font-black">
+                  {profile?.full_name || "Пользователь"}
+                </h2>
+                <span className="rounded-full bg-[#eaf1ff] px-3 py-1 text-xs font-bold text-[#1546ad]">
+                  {profile?.role ?? "роль"}
+                </span>
               </div>
+              <p className="mt-1 truncate text-sm text-[#526071]">
+                {profile?.email ?? "email не загружен"}
+              </p>
+              <p className="mt-3 flex items-center gap-2 text-sm font-semibold">
+                <Building2 size={16} className="text-[#2463eb]" />
+                {workspace?.name ?? "Компания"}
+                <span className="font-normal text-[#526071]">
+                  · {workspace?.slug ?? "workspace"}
+                </span>
+              </p>
             </div>
-            <div className="mt-5 space-y-3 text-sm">
+            <div className="flex shrink-0 flex-col items-stretch gap-2">
+              <button
+                type="button"
+                onClick={refreshAll}
+                className="secondary-button px-4 py-2.5 text-sm"
+              >
+                {isProfileFetching ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+                Обновить
+              </button>
+              <LogoutButton />
+            </div>
+          </div>
+          <div className="grid border-t border-[#d9e1ec] bg-[#f8fbff] md:grid-cols-2">
+            <div className="border-b border-[#d9e1ec] px-6 py-4 md:border-b-0 md:border-r sm:px-8">
               <InfoRow
-                label="Tenant ID"
+                label="ID пространства"
                 value={profile?.tenant_id ?? workspace?.id ?? "—"}
-                inverted
                 truncate
               />
-              <InfoRow
-                label="Статус"
-                value={workspace?.status ?? "—"}
-                inverted
-              />
+            </div>
+            <div className="px-6 py-4 sm:px-8">
+              <InfoRow label="Статус" value={workspace?.status ?? "—"} />
             </div>
           </div>
-        </aside>
+        </section>
 
-        <section className="space-y-5">
+        <section className="space-y-6">
           {isLoading ? (
             <StateCard
               icon={<Loader2 className="animate-spin" size={18} />}
@@ -228,79 +199,65 @@ export default function ProfilePage() {
               title="Не удалось загрузить профиль"
               description={getApiErrorMessage(
                 error,
-                "Проверь авторизацию и backend.",
+                "Обнови страницу или войди в аккаунт повторно.",
               )}
               tone="error"
             />
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {profileBlocks.map((block) => (
-              <article key={block.title} className="glass-card rounded-lg p-6">
-                <span className="flex size-12 items-center justify-center rounded-lg bg-white text-[#2463eb] shadow-sm">
-                  <block.icon size={22} />
-                </span>
-                <h2 className="mt-5 text-xl font-black">{block.title}</h2>
-                <p className="mt-3 text-sm leading-6 text-neutral-600">
-                  {block.text}
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <article className="glass-card rounded-lg p-6">
+          <article className="surface-card p-6 sm:p-8">
             <div className="flex items-center gap-3">
               <Mail size={20} className="text-[#2463eb]" />
               <h2 className="text-xl font-black">Контактные данные</h2>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <ReadOnlyField
+            <div className="mt-5 divide-y divide-[#d9e1ec] border-y border-[#d9e1ec]">
+              <ProfileDetail
                 label="Имя"
                 value={profile?.full_name || "Не указано"}
               />
-              <ReadOnlyField
+              <ProfileDetail
                 label="Email"
                 value={profile?.email || "Не загружен"}
               />
-              <ReadOnlyField label="Роль" value={profile?.role || "—"} />
-              <ReadOnlyField label="Статус" value={profile?.status || "—"} />
-              <ReadOnlyField
+              <ProfileDetail label="Роль" value={profile?.role || "—"} />
+              <ProfileDetail label="Статус" value={profile?.status || "—"} />
+              <ProfileDetail
                 label="Почта"
-                value={profile?.email_verified ? "Подтверждена" : "Не подтверждена"}
+                value={
+                  profile?.email_verified ? "Подтверждена" : "Не подтверждена"
+                }
               />
             </div>
             <p className="mt-4 text-sm leading-6 text-neutral-500">
-              Редактирование профиля пока read-only: backend уже отдает профиль,
-              но endpoint для изменения имени/пароля еще не реализован.
+              Сейчас данные доступны только для просмотра. Редактирование имени
+              и пароля появится в одном из следующих обновлений.
             </p>
           </article>
 
-          <article className="glass-card rounded-lg p-6">
+          <article className="surface-card p-6 sm:p-8">
             <div className="flex items-center gap-3">
               <ShieldCheck size={20} className="text-[#2463eb]" />
               <h2 className="text-xl font-black">Подтверждение почты</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-neutral-600">
-              Backend теперь умеет создавать одноразовые email-token и писать
-              письма в outbox. В dev-режиме token показывается здесь, чтобы
-              можно было проверить поток без SMTP.
+              Запроси письмо с одноразовым кодом и введи его ниже. В тестовом
+              окружении код появится прямо в уведомлении.
             </p>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <InfoRow
-                label="Email"
-                value={profile?.email ?? "—"}
-              />
+              <InfoRow label="Email" value={profile?.email ?? "—"} />
               <InfoRow
                 label="Статус"
-                value={profile?.email_verified ? "Подтверждена" : "Не подтверждена"}
+                value={
+                  profile?.email_verified ? "Подтверждена" : "Не подтверждена"
+                }
               />
               <InfoRow
-                label="SMTP"
+                label="Доставка"
                 value={
                   emailStatusQuery.data?.smtp_configured
                     ? "Настроен"
-                    : "Dev outbox"
+                    : "Тестовый режим"
                 }
               />
             </div>
@@ -337,7 +294,7 @@ export default function ProfilePage() {
                   value={verificationToken}
                   onChange={(event) => setVerificationToken(event.target.value)}
                   className="form-field min-w-0 flex-1 px-4 py-3 text-sm"
-                  placeholder="Email token"
+                  placeholder="Код из письма"
                   disabled={
                     Boolean(profile?.email_verified) ||
                     confirmVerificationMutation.isPending
@@ -368,7 +325,7 @@ export default function ProfilePage() {
                 <p className="mt-3 text-sm font-semibold text-red-700">
                   {getApiErrorMessage(
                     emailOutboxQuery.error,
-                    "Не удалось загрузить outbox.",
+                    "Не удалось загрузить историю писем.",
                   )}
                 </p>
               ) : emailOutboxQuery.data?.length ? (
@@ -403,8 +360,8 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-neutral-500">
-                  Пока писем нет. Запроси подтверждение почты или восстановление
-                  пароля, и запись появится здесь.
+                  Пока писем нет. Запроси подтверждение почты, и запись появится
+                  здесь.
                 </p>
               )}
             </div>
@@ -415,16 +372,12 @@ export default function ProfilePage() {
   );
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ProfileDetail({ label, value }: { label: string; value: string }) {
   return (
-    <label className="block text-sm font-bold text-neutral-500">
-      {label}
-      <input
-        className="mt-2 w-full rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 font-semibold text-neutral-900"
-        value={value}
-        readOnly
-      />
-    </label>
+    <div className="grid gap-1 py-3 text-sm sm:grid-cols-[180px_1fr] sm:gap-4">
+      <span className="font-semibold text-[#526071]">{label}</span>
+      <span className="font-bold">{value}</span>
+    </div>
   );
 }
 
