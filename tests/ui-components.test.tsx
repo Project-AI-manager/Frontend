@@ -96,7 +96,7 @@ describe("StateCard", () => {
 
     const card = screen.getByRole("alert");
     expect(card).toHaveClass("text-center");
-    expect(card).toHaveClass("text-red-700");
+    expect(card).toHaveClass("text-danger-ink");
     expect(card).toHaveAttribute("aria-live", "assertive");
   });
 });
@@ -105,7 +105,7 @@ describe("InfoRow", () => {
   it("renders labels and values", () => {
     render(<InfoRow label="Tenant" value="alpha" />);
 
-    expect(screen.getByText("Tenant")).toHaveClass("text-[#667085]");
+    expect(screen.getByText("Tenant")).toHaveClass("text-muted");
     expect(screen.getByText("alpha")).toBeInTheDocument();
   });
 

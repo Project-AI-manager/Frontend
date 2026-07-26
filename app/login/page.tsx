@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  AlertCircle,
   ArrowRight,
-  CheckCircle2,
+  Cable,
   KeyRound,
   LockKeyhole,
   Mail,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,12 +23,20 @@ const authApi = getAuth();
 const DEMO_EMAIL = "owner.demo@example.com";
 const DEMO_PASSWORD = "demo-password";
 
+/** Витрина слева: держит доверие, пока пользователь вводит данные. */
+const showcasePoints = [
+  { icon: ShieldCheck, text: "Безопасная сессия между входами" },
+  { icon: KeyRound, text: "Email-регистрация и восстановление пароля" },
+  { icon: Cable, text: "Интеграции проверяются из настроек" },
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState(DEMO_EMAIL);
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState(DEMO_EMAIL);
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -139,191 +149,250 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="soft-grid min-h-screen px-5 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_24px_70px_rgba(18,39,76,0.12)] lg:grid-cols-[1fr_0.9fr]">
-        <section className="blue-panel relative hidden rounded-none border-0 p-10 text-white lg:block">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-full bg-white/95 text-[#2463eb] shadow-lg shadow-blue-950/10">
-              <span className="brand-mark size-7 shadow-none" />
+    <main className="grid-backdrop min-h-screen px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+        <aside className="blue-panel hidden flex-col p-10 lg:flex xl:p-12">
+          <Link
+            href="/"
+            className="inline-flex w-fit shrink-0 items-center gap-3"
+          >
+            <span
+              className="brand-mark size-10"
+              style={{
+                background: "#fff",
+                color: "var(--color-brand)",
+                boxShadow: "none",
+              }}
+            />
+            <span className="font-display text-xl font-extrabold tracking-[-0.04em]">
+              Автопилот
             </span>
-            <span className="text-xl font-black">Автопилот</span>
           </Link>
 
-          <div className="mt-24 max-w-md">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
-              <Sparkles size={16} className="text-[#c9d9ff]" />
-              Кабинет уже ждет
+          <div className="flex flex-1 flex-col justify-center py-12">
+            <div className="max-w-lg">
+              <span className="pill-tag bg-white/10 text-on-brand-strong">
+                <Sparkles size={16} />
+                Кабинет уже ждет
+              </span>
+              <h2 className="mt-6 text-balance font-display text-[2.6rem] font-extrabold leading-[1.06] xl:text-5xl">
+                Вернись к диалогам без лишней рутины.
+              </h2>
+              <p className="mt-5 max-w-md leading-7 text-on-brand">
+                После входа откроется inbox: обращения клиентов, база знаний,
+                черновики AI и настройки интеграций в одном рабочем контуре.
+              </p>
+
+              <ul className="mt-8 space-y-3">
+                {showcasePoints.map((point) => (
+                  <li
+                    key={point.text}
+                    className="flex items-center gap-3 rounded-md border border-white/15 bg-white/10 px-4 py-3"
+                  >
+                    <point.icon size={18} className="shrink-0 text-[#c9d9ff]" />
+                    <span className="text-sm text-on-brand">{point.text}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <h1 className="mt-6 text-5xl font-black tracking-[-0.055em]">
-              Вернись к диалогам без лишней рутины.
-            </h1>
-            <p className="mt-5 text-white/70">
-              После входа откроется inbox: обращения клиентов, база знаний,
-              черновики AI и настройки интеграций в одном рабочем контуре.
-            </p>
           </div>
 
-          <div className="absolute bottom-10 left-10 right-10 rounded-lg border border-white/15 bg-white/10 p-5">
-            {[
-              "Безопасная сессия между входами",
-              "Email-регистрация и восстановление пароля",
-              "Интеграции проверяются из настроек",
-            ].map((item) => (
-              <div
-                key={item}
-                className="mt-3 flex items-center gap-3 text-sm text-white/75 first:mt-0"
-              >
-                <CheckCircle2 size={16} className="text-[#9ee7c3]" />
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
+          <p className="flex shrink-0 items-start gap-2.5 text-xs leading-5 text-on-brand">
+            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#c9d9ff]" />
+            Автопилот — AI-сотрудник в едином окне для продаж и поддержки.
+          </p>
+        </aside>
 
-        <section className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <Link href="/" className="mb-10 flex items-center gap-3 lg:hidden">
-              <span className="brand-mark size-10" />
-              <span className="text-lg font-black">Автопилот</span>
+        <section className="flex items-center justify-center">
+          <div className="w-full max-w-[440px] py-2">
+            <Link
+              href="/"
+              className="mb-7 inline-flex items-center gap-3 lg:hidden"
+            >
+              <span className="brand-mark size-9" />
+              <span className="font-display text-lg font-extrabold tracking-[-0.04em]">
+                Автопилот
+              </span>
             </Link>
 
-            <div className="flex size-12 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
-              <LockKeyhole size={22} />
-            </div>
-            <h2 className="mt-6 text-3xl font-black tracking-tight">Вход</h2>
-            <p className="mt-2 text-sm text-[#526071]">
-              Используй тестового пользователя или свой аккаунт после
-              регистрации.
-            </p>
+            <div className="panel p-5 sm:p-7">
+              <span className="icon-badge">
+                <LockKeyhole size={22} />
+              </span>
+              <h1 className="mt-5 font-display text-3xl font-extrabold tracking-[-0.04em]">
+                Вход
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Используй тестового пользователя или свой аккаунт после
+                регистрации.
+              </p>
 
-            <button
-              disabled={isSubmitting}
-              onClick={handleDemoLogin}
-              className="primary-button mt-6 w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
-              type="button"
-            >
-              {isSubmitting
-                ? "Открываем демо..."
-                : "Войти в демо без регистрации"}
-              <Sparkles size={18} />
-            </button>
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="field-label">Email</span>
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className="field"
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                </label>
 
-            <div className="mt-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-neutral-400">
-              <span className="h-px flex-1 bg-[#d9e1ec]" />
-              или
-              <span className="h-px flex-1 bg-[#d9e1ec]" />
-            </div>
+                <div>
+                  <label className="block">
+                    <span className="field-label">Пароль</span>
+                    <input
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="field"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </label>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsResetOpen((open) => !open)}
+                      aria-expanded={isResetOpen}
+                      className="cursor-pointer text-sm font-semibold text-brand underline decoration-[#9db7f4] underline-offset-4 transition-colors hover:text-brand-dark"
+                    >
+                      Забыли пароль?
+                    </button>
+                  </div>
+                </div>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <label className="block text-sm">
-                <span className="font-bold">Email</span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
-              </label>
+                {error ? (
+                  <div className="flex items-start gap-3 rounded-md border border-danger/25 bg-danger-soft p-4">
+                    <AlertCircle size={18} className="shrink-0 text-danger" />
+                    <p className="text-sm font-semibold leading-5 text-danger-ink">
+                      {error}
+                    </p>
+                  </div>
+                ) : null}
 
-              <label className="block text-sm">
-                <span className="font-bold">Пароль</span>
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                />
-              </label>
+                <button
+                  disabled={isSubmitting}
+                  className="btn btn-primary w-full"
+                  type="submit"
+                >
+                  {isSubmitting ? "Входим..." : "Войти"}
+                  <ArrowRight size={18} />
+                </button>
+              </form>
 
-              {error ? (
-                <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-                  {error}
-                </p>
+              {isResetOpen ? (
+                <div className="soft-panel mt-4 p-4 sm:p-5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="icon-badge icon-badge-sm shrink-0">
+                      <KeyRound size={17} />
+                    </span>
+                    <h3 className="font-display text-base font-extrabold">
+                      Восстановление пароля
+                    </h3>
+                  </div>
+                  <p className="field-hint">
+                    Для локальной проверки код восстановления появится сразу
+                    после запроса.
+                  </p>
+
+                  <form
+                    onSubmit={handleResetRequest}
+                    className="mt-4 space-y-2.5"
+                  >
+                    <label className="block">
+                      <span className="field-label">
+                        Email для восстановления
+                      </span>
+                      <input
+                        value={resetEmail}
+                        onChange={(event) => setResetEmail(event.target.value)}
+                        className="field"
+                        type="email"
+                        autoComplete="email"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={isResetRequesting}
+                      className="btn btn-secondary btn-sm w-full"
+                    >
+                      {isResetRequesting ? "Запрашиваем..." : "Получить token"}
+                      <Mail size={16} />
+                    </button>
+                  </form>
+
+                  <div className="divider my-4" />
+
+                  <form
+                    onSubmit={handleResetConfirm}
+                    className="grid gap-2.5 sm:grid-cols-2"
+                  >
+                    <label htmlFor="reset-token" className="block">
+                      <span className="sr-only">Token</span>
+                      <input
+                        id="reset-token"
+                        value={resetToken}
+                        onChange={(event) => setResetToken(event.target.value)}
+                        className="field text-sm"
+                        placeholder="Token"
+                      />
+                    </label>
+                    <label htmlFor="reset-new-password" className="block">
+                      <span className="sr-only">Новый пароль</span>
+                      <input
+                        id="reset-new-password"
+                        value={newPassword}
+                        onChange={(event) => setNewPassword(event.target.value)}
+                        className="field text-sm"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Новый пароль"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={isResetConfirming}
+                      className="btn btn-primary btn-sm w-full sm:col-span-2"
+                    >
+                      {isResetConfirming ? "..." : "Сменить"}
+                    </button>
+                  </form>
+
+                  {resetNotice ? (
+                    <p className="mt-3 break-words rounded-md border border-line bg-white p-3 text-sm font-semibold leading-6 text-ink-soft">
+                      {resetNotice}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
+
+              <div className="mt-6 flex items-center gap-3">
+                <span className="divider flex-1" />
+                <span className="micro-label">или</span>
+                <span className="divider flex-1" />
+              </div>
 
               <button
                 disabled={isSubmitting}
-                className="secondary-button w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
+                onClick={handleDemoLogin}
+                className="btn btn-secondary mt-6 w-full text-sm sm:text-base"
+                type="button"
               >
-                {isSubmitting ? "Входим..." : "Войти"}
-                <ArrowRight size={18} />
+                {isSubmitting
+                  ? "Открываем демо..."
+                  : "Войти в демо без регистрации"}
+                <Sparkles size={18} />
               </button>
-            </form>
-
-            <div className="mt-6 rounded-lg border border-[#d9e1ec] bg-[#f7faff] p-4">
-              <div className="flex items-center gap-2">
-                <KeyRound size={18} className="text-[#2463eb]" />
-                <h3 className="font-black">Восстановление пароля</h3>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-neutral-600">
-                Для локальной проверки код восстановления появится сразу после запроса.
-              </p>
-
-              <form onSubmit={handleResetRequest} className="mt-4 space-y-3">
-                <label className="block text-sm">
-                  <span className="font-bold">Email для восстановления</span>
-                  <input
-                    value={resetEmail}
-                    onChange={(event) => setResetEmail(event.target.value)}
-                    className="form-field mt-2 px-4 py-3"
-                    type="email"
-                    autoComplete="email"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={isResetRequesting}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  {isResetRequesting ? "Запрашиваем..." : "Получить token"}
-                  <Mail size={16} />
-                </button>
-              </form>
-
-              <form
-                onSubmit={handleResetConfirm}
-                className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-              >
-                <input
-                  value={resetToken}
-                  onChange={(event) => setResetToken(event.target.value)}
-                  className="form-field px-4 py-3 text-sm"
-                  placeholder="Token"
-                />
-                <input
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  className="form-field px-4 py-3 text-sm"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Новый пароль"
-                />
-                <button
-                  type="submit"
-                  disabled={isResetConfirming}
-                  className="rounded-lg bg-[#2463eb] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  {isResetConfirming ? "..." : "Сменить"}
-                </button>
-              </form>
-
-              {resetNotice ? (
-                <p className="mt-3 rounded-lg bg-white p-3 text-sm font-semibold text-neutral-700">
-                  {resetNotice}
-                </p>
-              ) : null}
             </div>
 
-            <p className="mt-6 text-center text-sm text-neutral-600">
+            <p className="mt-6 text-center text-sm text-muted">
               Нет аккаунта?{" "}
               <Link
                 href="/register"
-                className="font-bold text-[#2463eb] underline decoration-[#9db7f4] underline-offset-4"
+                className="font-bold text-brand underline decoration-[#9db7f4] underline-offset-4"
               >
                 Создать аккаунт
               </Link>

@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowRight, Building2, CheckCircle2, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Building2,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -10,6 +17,13 @@ import { getAuth } from "@/lib/api/generated/auth/auth";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
+
+/** Витрина слева: что именно создаётся при регистрации. */
+const showcasePoints = [
+  { icon: Building2, text: "Компания + владелец" },
+  { icon: ShieldCheck, text: "Безопасный вход сразу после регистрации" },
+  { icon: Rocket, text: "Переход в onboarding" },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -50,136 +64,157 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="soft-grid min-h-screen px-5 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_24px_70px_rgba(18,39,76,0.12)] lg:grid-cols-[0.9fr_1fr]">
-        <section className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <Link href="/" className="mb-10 flex items-center gap-3 lg:hidden">
-              <span className="brand-mark size-10" />
-              <span className="text-lg font-black">Автопилот</span>
+    <main className="grid-backdrop min-h-screen px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+        <aside className="blue-panel hidden flex-col p-10 lg:flex xl:p-12">
+          <Link
+            href="/"
+            className="inline-flex w-fit shrink-0 items-center gap-3"
+          >
+            <span
+              className="brand-mark size-10"
+              style={{
+                background: "#fff",
+                color: "var(--color-brand)",
+                boxShadow: "none",
+              }}
+            />
+            <span className="font-display text-xl font-extrabold tracking-[-0.04em]">
+              Автопилот
+            </span>
+          </Link>
+
+          <div className="flex flex-1 flex-col justify-center py-12">
+            <div className="max-w-lg">
+              <span className="pill-tag bg-white/10 text-on-brand-strong">
+                <Sparkles size={16} />
+                Быстрый старт MVP
+              </span>
+              <h2 className="mt-6 text-balance font-display text-[2.6rem] font-extrabold leading-[1.06] xl:text-5xl">
+                Создай рабочее пространство и подключай первый канал.
+              </h2>
+              <p className="mt-5 max-w-md leading-7 text-on-brand">
+                После регистрации откроется onboarding: профиль, Telegram-канал
+                и первая база знаний.
+              </p>
+
+              <ul className="mt-8 space-y-3">
+                {showcasePoints.map((point) => (
+                  <li
+                    key={point.text}
+                    className="flex items-center gap-3 rounded-md border border-white/15 bg-white/10 px-4 py-3"
+                  >
+                    <point.icon size={18} className="shrink-0 text-[#c9d9ff]" />
+                    <span className="text-sm text-on-brand">{point.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <p className="flex shrink-0 items-start gap-2.5 text-xs leading-5 text-on-brand">
+            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#c9d9ff]" />
+            Автопилот — AI-сотрудник в едином окне для продаж и поддержки.
+          </p>
+        </aside>
+
+        <section className="flex items-center justify-center">
+          <div className="w-full max-w-[440px] py-2">
+            <Link
+              href="/"
+              className="mb-7 inline-flex items-center gap-3 lg:hidden"
+            >
+              <span className="brand-mark size-9" />
+              <span className="font-display text-lg font-extrabold tracking-[-0.04em]">
+                Автопилот
+              </span>
             </Link>
 
-            <div className="flex size-12 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
-              <Building2 size={22} />
+            <div className="panel p-5 sm:p-7">
+              <span className="icon-badge">
+                <Building2 size={22} />
+              </span>
+              <h1 className="mt-5 font-display text-3xl font-extrabold tracking-[-0.04em]">
+                Создать аккаунт
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Регистрация создает компанию и пользователя-владельца, а затем
+                переводит в onboarding.
+              </p>
+
+              <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+                <label className="block">
+                  <span className="field-label">Компания</span>
+                  <input
+                    value={companyName}
+                    onChange={(event) => setCompanyName(event.target.value)}
+                    className="field"
+                    required
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="field-label">Имя</span>
+                  <input
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    className="field"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="field-label">Email</span>
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className="field"
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="field-label">Пароль</span>
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="field"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+
+                {error ? (
+                  <div className="flex items-start gap-3 rounded-md border border-danger/25 bg-danger-soft p-4">
+                    <AlertCircle size={18} className="shrink-0 text-danger" />
+                    <p className="text-sm font-semibold leading-5 text-danger-ink">
+                      {error}
+                    </p>
+                  </div>
+                ) : null}
+
+                <button
+                  disabled={isSubmitting}
+                  className="btn btn-primary w-full"
+                  type="submit"
+                >
+                  {isSubmitting ? "Создаем..." : "Создать аккаунт"}
+                  <ArrowRight size={18} />
+                </button>
+              </form>
             </div>
-            <h1 className="mt-6 text-3xl font-black tracking-tight">
-              Создать аккаунт
-            </h1>
-            <p className="mt-2 text-sm text-[#526071]">
-              Регистрация создает компанию и пользователя-владельца, а затем
-              переводит в onboarding.
-            </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <label className="block text-sm">
-                <span className="font-bold">Компания</span>
-                <input
-                  value={companyName}
-                  onChange={(event) => setCompanyName(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                  required
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="font-bold">Имя</span>
-                <input
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="font-bold">Email</span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="font-bold">Пароль</span>
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                />
-              </label>
-
-              {error ? (
-                <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-                  {error}
-                </p>
-              ) : null}
-
-              <button
-                disabled={isSubmitting}
-                className="primary-button w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-              >
-                {isSubmitting ? "Создаем..." : "Создать аккаунт"}
-                <ArrowRight size={18} />
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-neutral-600">
+            <p className="mt-6 text-center text-sm text-muted">
               Уже есть аккаунт?{" "}
               <Link
                 href="/login"
-                className="font-bold text-[#2463eb] underline decoration-[#9db7f4] underline-offset-4"
+                className="font-bold text-brand underline decoration-[#9db7f4] underline-offset-4"
               >
                 Войти
               </Link>
             </p>
-          </div>
-        </section>
-
-        <section className="blue-panel relative hidden rounded-none border-0 p-10 text-white lg:block">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-full bg-white/95 text-[#2463eb] shadow-lg shadow-blue-950/10">
-              <span className="brand-mark size-7 shadow-none" />
-            </span>
-            <span className="text-xl font-black">Автопилот</span>
-          </Link>
-
-          <div className="mt-20 max-w-md">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
-              <Sparkles size={16} className="text-[#c9d9ff]" />
-              Быстрый старт MVP
-            </div>
-            <h2 className="mt-6 text-5xl font-black tracking-[-0.055em]">
-              Создай рабочее пространство и подключай первый канал.
-            </h2>
-            <p className="mt-5 text-white/70">
-              После регистрации откроется onboarding: профиль, Telegram-канал и
-              первая база знаний.
-            </p>
-          </div>
-
-          <div className="absolute bottom-10 left-10 right-10 grid gap-3">
-            {[
-              "Компания + владелец",
-              "Безопасный вход сразу после регистрации",
-              "Переход в onboarding",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-lg border border-white/15 bg-white/10 p-4"
-              >
-                <div className="flex items-center gap-3 text-sm text-white/75">
-                  <CheckCircle2 size={16} className="text-[#9ee7c3]" />
-                  {item}
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       </div>

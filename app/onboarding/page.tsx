@@ -16,7 +16,7 @@ const steps = [
     text: "Убедись, что название компании и данные владельца указаны верно.",
     href: "/profile",
     action: "Открыть профиль",
-    state: "ready" as const,
+    state: "done" as const,
   },
   {
     icon: Send,
@@ -42,101 +42,100 @@ export default function OnboardingPage() {
       title="Начало работы"
       description="Короткий маршрут от пустого кабинета до первого диалога с AI."
     >
-      <div className="mx-auto max-w-4xl space-y-6">
-        <section className="surface-card overflow-hidden">
-          <div className="border-b border-[#d9e1ec] bg-white px-6 py-6 sm:px-8">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-              <div>
-                <p className="brand-kicker">Настройка кабинета</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight">
-                  Осталось два шага
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#526071]">
-                  Двигайся сверху вниз. Каждый пункт ведёт на существующий
-                  рабочий экран и не создаёт дополнительных настроек.
-                </p>
-              </div>
-              <span className="shrink-0 text-sm font-black text-[#1546ad]">
-                1 из 3
-              </span>
+      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+        <section className="panel p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="min-w-0">
+              <p className="brand-kicker">Настройка кабинета</p>
+              <h2 className="mt-3 font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
+                Осталось два шага
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                Двигайся сверху вниз. Каждый пункт ведёт на существующий
+                рабочий экран и не создаёт дополнительных настроек.
+              </p>
             </div>
-            <div
-              className="mt-5 h-2 overflow-hidden rounded-full bg-[#eaf1ff]"
-              role="progressbar"
-              aria-label="Прогресс настройки"
-              aria-valuemin={0}
-              aria-valuemax={3}
-              aria-valuenow={1}
-            >
-              <div className="h-full w-1/3 rounded-full bg-[#2463eb]" />
-            </div>
+            <span className="chip chip-blue shrink-0">1 из 3</span>
           </div>
 
-          <ol
-            aria-label="Шаги настройки"
-            className="divide-y divide-[#d9e1ec] bg-white px-6 sm:px-8"
+          <div
+            className="mt-6 h-2 overflow-hidden rounded-full bg-brand-soft"
+            role="progressbar"
+            aria-label="Прогресс настройки"
+            aria-valuemin={0}
+            aria-valuemax={3}
+            aria-valuenow={1}
           >
-            {steps.map((step, index) => {
-              const isReady = step.state === "ready";
-              const isCurrent = step.state === "current";
-
-              return (
-                <li key={step.title} className="relative py-7 pl-14 sm:pl-16">
-                  <span
-                    className={`absolute left-0 top-7 flex size-10 items-center justify-center rounded-lg border text-sm font-black ${
-                      isReady
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : isCurrent
-                          ? "border-[#2463eb] bg-[#2463eb] text-white"
-                          : "border-[#d9e1ec] bg-[#f8fbff] text-[#526071]"
-                    }`}
-                  >
-                    {isReady ? <Check size={18} /> : index + 1}
-                  </span>
-
-                  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                    <div className="flex min-w-0 gap-3">
-                      <step.icon
-                        size={20}
-                        className="mt-0.5 shrink-0 text-[#2463eb]"
-                      />
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-black">{step.title}</h3>
-                          {isCurrent ? (
-                            <span className="rounded-full bg-[#eaf1ff] px-2.5 py-1 text-xs font-bold text-[#1546ad]">
-                              Следующий шаг
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 max-w-xl text-sm leading-6 text-[#526071]">
-                          {step.text}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      href={step.href}
-                      className={
-                        isCurrent
-                          ? "primary-button shrink-0 px-4 py-2.5 text-sm"
-                          : "secondary-button shrink-0 px-4 py-2.5 text-sm"
-                      }
-                    >
-                      {step.action}
-                      <ArrowRight size={15} />
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+            <div className="h-full w-1/3 rounded-full bg-brand" />
+          </div>
         </section>
 
-        <p className="text-center text-sm leading-6 text-[#526071]">
-          После настройки Telegram отправь тестовое сообщение боту — новый
-          диалог появится во входящих.
-        </p>
+        <ol aria-label="Шаги настройки" className="space-y-4">
+          {steps.map((step, index) => {
+            const isDone = step.state === "done";
+            const isCurrent = step.state === "current";
+
+            return (
+              <li
+                key={step.title}
+                className="card card-hover flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6"
+                style={
+                  isCurrent
+                    ? { borderColor: "rgba(36, 99, 235, 0.34)" }
+                    : undefined
+                }
+              >
+                <span
+                  className="num-badge num-badge-sm shrink-0"
+                  data-state={step.state}
+                >
+                  {isDone ? (
+                    <Check size={18} />
+                  ) : (
+                    String(index + 1).padStart(2, "0")
+                  )}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <step.icon size={18} className="shrink-0 text-brand" />
+                    <h3 className="font-display text-base font-extrabold tracking-[-0.02em]">
+                      {step.title}
+                    </h3>
+                    {isCurrent ? (
+                      <span className="chip chip-blue">Следующий шаг</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+                    {step.text}
+                  </p>
+                </div>
+
+                <Link
+                  href={step.href}
+                  className={
+                    isCurrent
+                      ? "btn btn-primary btn-sm shrink-0"
+                      : "btn btn-secondary btn-sm shrink-0"
+                  }
+                >
+                  {step.action}
+                  <ArrowRight size={15} />
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+
+        <section className="soft-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6">
+          <span className="icon-badge shrink-0">
+            <Send size={20} />
+          </span>
+          <p className="text-sm leading-6 text-muted">
+            После настройки Telegram отправь тестовое сообщение боту — новый
+            диалог появится во входящих.
+          </p>
+        </section>
       </div>
     </AppShell>
   );

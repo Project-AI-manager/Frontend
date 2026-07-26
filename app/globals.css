@@ -1,11 +1,63 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------
+   Дизайн-система «Автопилот»
+   Источник истины по стилю — Автопилот_one-page.html:
+   светлый корпоративный фон, синий #2463eb, скругление 8px,
+   мягкие сине-серые тени, круглые номерные эмблемы, pill-навигация.
+   ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink: #101828;
+  --color-ink-soft: #344054;
+  --color-muted: #526071;
+  /* #7d8998 не проходил WCAG AA (3.6:1 на белом), а этим цветом набран
+     содержательный текст: шапки таблиц, даты синхронизации. Затемнено до 4.8:1. */
+  --color-faint: #64717f;
+  --color-line: #d9e1ec;
+  --color-line-soft: #e5eaf1;
+  --color-surface: #f4f7fb;
+  --color-mist: #f8fbff;
+  --color-brand: #2463eb;
+  --color-brand-dark: #1546ad;
+  --color-brand-soft: #eaf1ff;
+  --color-ok: #13a66b;
+  --color-ok-soft: #e6f7f0;
+  --color-warn: #e89120;
+  --color-warn-soft: #fff5df;
+  --color-warn-ink: #94600b;
+  --color-danger: #d84545;
+  --color-danger-soft: #fdeded;
+  /* Текст ошибок на danger-soft: #d84545 давал 3.8:1, этот тон — 5.9:1. */
+  --color-danger-ink: #a72f2f;
+  --color-ok-ink: #0c7a4e;
+  /* Текст поверх синих панелей: белый с альфой не проходит по контрасту. */
+  --color-on-brand: #dbe6ff;
+  --color-on-brand-strong: #eef3ff;
+
+  --font-display: var(--font-manrope), "Segoe UI", sans-serif;
+  --font-sans: var(--font-onest), "Segoe UI", sans-serif;
+
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --shadow-card: 0 18px 42px rgba(18, 39, 76, 0.09);
+  --shadow-soft: 0 10px 22px rgba(18, 39, 76, 0.07);
+  --shadow-deep: 0 24px 70px rgba(18, 39, 76, 0.12);
+  --shadow-brand: 0 11px 25px rgba(36, 99, 235, 0.2);
+  --shadow-brand-lg: 0 15px 30px rgba(36, 99, 235, 0.28);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 :root {
-  --background: #f8fbff;
-  --foreground: #101828;
+  --ink: #101828;
   --muted: #526071;
-  --card: rgba(255, 255, 255, 0.88);
-  --border: rgba(36, 99, 235, 0.16);
+  --faint: #64717f;
+  --danger-ink: #a72f2f;
   --line: #d9e1ec;
   --surface: #f4f7fb;
   --blue: #2463eb;
@@ -15,6 +67,7 @@
   --amber: #e89120;
   --red: #d84545;
   --shadow: 0 24px 70px rgba(18, 39, 76, 0.12);
+  --max: 1180px;
 }
 
 * {
@@ -26,41 +79,23 @@ html {
 }
 
 body {
+  margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(
-      circle at 18% 4%,
-      rgba(36, 99, 235, 0.11),
-      transparent 32rem
-    ),
-    radial-gradient(
-      circle at 86% 12%,
-      rgba(157, 183, 244, 0.22),
-      transparent 34rem
-    ),
-    linear-gradient(180deg, #ffffff 0%, var(--background) 48%, #f4f7fb 100%);
-  color: var(--foreground);
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  overflow-x: hidden;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-onest), "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background:
-    linear-gradient(rgba(36, 99, 235, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(36, 99, 235, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(to bottom, #000 0, transparent 780px);
+h1,
+h2,
+h3,
+h4,
+.font-display {
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+  letter-spacing: -0.035em;
 }
 
 a {
@@ -75,80 +110,41 @@ select {
   font: inherit;
 }
 
-:focus-visible {
-  scroll-margin: 6rem;
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
   background: rgba(36, 99, 235, 0.18);
 }
 
-.reveal-block {
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 700ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+/* Видимость фокуса делаем через outline, а не box-shadow: тень перебивается
+   декоративными тенями кнопок (.btn-primary и т.п.) и не проходит по контрасту.
+   outline повторяет форму элемента и рисуется поверх всего. */
+:focus-visible {
+  outline: 2px solid var(--blue-dark);
+  outline-offset: 2px;
+  scroll-margin: 6rem;
 }
 
-.reveal-block.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* ---------- Фоновая сетка (лендинг, вход, регистрация) ----------
+   ВАЖНО: элементу с .grid-backdrop нельзя задавать непрозрачный фон
+   (bg-white и т.п.) — псевдоэлемент с отрицательным z-index уйдёт под него
+   и сетка станет невидимой. Белый фон уже задан у body. */
 
-.hero-orb {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(8px);
+.grid-backdrop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
   pointer-events: none;
-}
-
-.hero-orb-one {
-  width: 360px;
-  height: 360px;
-  right: 4%;
-  top: 8%;
-  background: rgba(36, 99, 235, 0.16);
-  animation: orb-drift 8s ease-in-out infinite;
-}
-
-.hero-orb-two {
-  width: 240px;
-  height: 240px;
-  left: -80px;
-  bottom: -80px;
-  background: rgba(14, 165, 233, 0.12);
-  animation: orb-drift 10s ease-in-out infinite reverse;
-}
-
-.product-float {
-  animation: product-float 6s ease-in-out infinite;
-}
-
-@keyframes orb-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(20px, -18px, 0) scale(1.08); }
-}
-
-@keyframes product-float {
-  0%, 100% { transform: translateY(0) rotate(-0.2deg); }
-  50% { transform: translateY(-12px) rotate(0.2deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-block,
-  .hero-orb,
-  .product-float {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
-.glass-card {
-  border: 1px solid var(--border);
-  background: var(--card);
-  box-shadow: 0 18px 45px rgba(18, 39, 76, 0.07);
-  backdrop-filter: blur(18px) saturate(135%);
+  background:
+    linear-gradient(rgba(36, 99, 235, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(36, 99, 235, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, transparent 780px);
+  mask-image: linear-gradient(to bottom, #000 0, transparent 780px);
 }
 
 .soft-grid {
@@ -158,61 +154,764 @@ select {
   background-size: 56px 56px;
 }
 
-.text-balance {
-  text-wrap: balance;
+/* ---------- Pill-навигация лендинга ---------- */
+
+.pill-nav {
+  position: sticky;
+  top: 14px;
+  z-index: 30;
+  height: 0;
+  pointer-events: none;
 }
+
+.pill-nav-inner {
+  position: relative;
+  width: min(980px, calc(100% - 40px));
+  height: 68px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  overflow: hidden;
+  padding: 7px 10px;
+  border: 1px solid rgba(36, 99, 235, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      220px circle at var(--nav-x, 50%) var(--nav-y, 50%),
+      rgba(36, 99, 235, 0.13),
+      transparent 72%
+    ),
+    linear-gradient(135deg, rgba(247, 250, 255, 0.96), rgba(255, 255, 255, 0.88));
+  box-shadow:
+    0 16px 42px rgba(18, 39, 76, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(145%);
+  pointer-events: auto;
+  transition:
+    width 0.35s ease,
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.pill-nav[data-scrolled="true"] .pill-nav-inner {
+  width: min(930px, calc(100% - 40px));
+  background:
+    radial-gradient(
+      220px circle at var(--nav-x, 50%) var(--nav-y, 50%),
+      rgba(36, 99, 235, 0.14),
+      transparent 72%
+    ),
+    rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 18px 44px rgba(18, 39, 76, 0.17),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.pill-link {
+  position: relative;
+  padding: 13px 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pill-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(36, 99, 235, 0.08);
+  opacity: 0;
+  transform: scale(0.82);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pill-link > span {
+  position: relative;
+}
+
+.pill-link:hover {
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+
+.pill-link:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pill-link[data-active="true"] {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 9px 22px rgba(36, 99, 235, 0.25);
+}
+
+.pill-link[data-active="true"]::before {
+  opacity: 0;
+}
+
+/* ---------- Логотип ---------- */
 
 .brand-mark {
   display: grid;
   place-items: center;
   border-radius: 999px;
   background: var(--blue);
-  color: white;
-  box-shadow: 0 9px 22px rgba(36, 99, 235, 0.25);
+  color: #fff;
+  box-shadow: 0 7px 17px rgba(36, 99, 235, 0.24);
 }
 
 .brand-mark::before {
   content: "";
-  width: 13px;
-  height: 9px;
+  width: 12px;
+  height: 8px;
   border-top: 2px solid currentColor;
   border-right: 2px solid currentColor;
   transform: rotate(45deg) translate(-1px, 1px);
 }
 
-.brand-kicker {
+.brand-kicker,
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   color: var(--blue);
-  font-size: 0.8125rem;
-  font-weight: 850;
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 13px;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.surface-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 18px 45px rgba(18, 39, 76, 0.07);
+/* Кикер поверх тёмной или синей панели. */
+.section-kicker-inverse {
+  color: #dbe6ff;
 }
 
-.blue-panel {
-  border: 1px solid rgba(36, 99, 235, 0.18);
-  border-radius: 8px;
-  background:
-    radial-gradient(
-      circle at 18% 0%,
-      rgba(157, 183, 244, 0.28),
-      transparent 22rem
-    ),
-    linear-gradient(135deg, #2463eb 0%, #1546ad 100%);
-  color: white;
-  box-shadow: 0 24px 70px rgba(36, 99, 235, 0.2);
+/* Микроподпись в таблицах и плитках — единая для всего кабинета. */
+.micro-label {
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint, #64717f);
+}
+
+/* ---------- Кнопки ---------- */
+
+.btn {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-manrope), sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 11px 25px rgba(36, 99, 235, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-dark);
+  box-shadow: 0 15px 30px rgba(36, 99, 235, 0.28);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: rgba(36, 99, 235, 0.35);
+  background: var(--blue-soft);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.btn-danger {
+  border-color: rgba(216, 69, 69, 0.3);
+  background: #fff;
+  color: var(--red);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #fdeded;
+  transform: translateY(-1px);
+}
+
+.btn-sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* ---------- Поверхности ---------- */
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.card-hover:hover {
+  border-color: rgba(36, 99, 235, 0.34);
+  box-shadow: 0 18px 42px rgba(18, 39, 76, 0.09);
+  transform: translateY(-7px);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(18, 39, 76, 0.07);
 }
 
 .soft-panel {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: #f8fbff;
+}
+
+.soft-panel[data-tone="warn"] {
+  border-color: rgba(232, 145, 32, 0.32);
+  background: #fff5df;
+}
+
+.soft-panel[data-tone="danger"] {
+  border-color: rgba(216, 69, 69, 0.25);
+  background: #fdeded;
+}
+
+.soft-panel[data-tone="ok"] {
+  border-color: rgba(19, 166, 107, 0.28);
+  background: #e6f7f0;
+}
+
+.soft-panel[data-tone="brand"] {
+  border-color: rgba(36, 99, 235, 0.2);
+  background: var(--blue-soft);
+}
+
+.glass-card {
+  border: 1px solid rgba(36, 99, 235, 0.16);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 45px rgba(18, 39, 76, 0.07);
+  backdrop-filter: blur(18px) saturate(135%);
+}
+
+.blue-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(36, 99, 235, 0.18);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(157, 183, 244, 0.16), transparent 22rem),
+    linear-gradient(135deg, #2463eb 0%, #1546ad 100%);
+  color: #fff;
+  box-shadow: 0 24px 70px rgba(36, 99, 235, 0.2);
+}
+
+.dark-panel {
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: #fff;
+}
+
+.frame-3d {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: var(--shadow);
+  transform: perspective(1500px) rotateY(-3deg) rotateX(1deg);
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.frame-3d:hover {
+  transform: perspective(1500px) rotateY(0deg) rotateX(0deg) translateY(-4px);
+  box-shadow: 0 30px 80px rgba(18, 39, 76, 0.16);
+}
+
+/* ---------- Эмблемы и чипы ---------- */
+
+.num-badge {
+  display: grid;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--blue);
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(18, 39, 76, 0.07);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.num-badge-sm {
+  width: 48px;
+  height: 48px;
+  font-size: 15px;
+}
+
+/* Состояния шага в пошаговых сценариях (подключение канала, онбординг). */
+.num-badge[data-state="done"] {
+  border-color: rgba(19, 166, 107, 0.35);
+  background: #e6f7f0;
+  color: #0c7a4e;
+}
+
+.num-badge[data-state="current"] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(36, 99, 235, 0.26);
+}
+
+.num-badge[data-state="next"] {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--faint);
+}
+
+.num-badge-xs {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.icon-badge {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.icon-badge-sm {
+  width: 36px;
+  height: 36px;
+}
+
+.icon-badge-danger {
+  background: var(--red-soft, #fdeded);
+  color: #a72f2f;
+}
+
+.icon-badge-ok {
+  background: #e6f7f0;
+  color: #0c7a4e;
+}
+
+.icon-badge-warn {
+  background: #fff5df;
+  color: #94600b;
+}
+
+.icon-badge-inverse {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* ---------- Уведомления внутри форм и панелей ----------
+   Один способ показать пояснение/предупреждение/ошибку вместо пяти самописных. */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #f8fbff;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.notice-brand {
+  border-color: rgba(36, 99, 235, 0.2);
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.notice-warn {
+  border-color: rgba(232, 145, 32, 0.28);
+  background: #fff5df;
+  color: #94600b;
+}
+
+.notice-danger {
+  border-color: rgba(216, 69, 69, 0.25);
+  background: #fdeded;
+  color: #a72f2f;
+}
+
+/* ---------- Сегментированный переключатель (фильтры в кабинете) ---------- */
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.segmented-item {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.segmented-item:hover {
+  background: #fff;
+  color: var(--ink);
+}
+
+.segmented-item[data-active="true"] {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(36, 99, 235, 0.22);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chip-blue {
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.chip-amber {
+  background: #fff5df;
+  color: #94600b;
+}
+
+.chip-green {
+  background: #e6f7f0;
+  color: #0c7a4e;
+}
+
+.chip-red {
+  background: #fdeded;
+  color: #a72f2f;
+}
+
+.chip-grey {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+/* Чип поверх синей заливки (пузырь менеджера, синие панели). */
+.chip-inverse {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- Формы ---------- */
+
+/* Без `outline: none`: у этого правила та же специфичность, что у :focus-visible
+   выше, и оно идёт позже — сброс выигрывал каскад и гасил кольцо фокуса на всех
+   полях ввода. Кольцо рисует :focus-visible, мягкая тень ниже его дополняет. */
+.field {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--ink);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+textarea.field {
+  min-height: 120px;
+  padding: 12px 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.field:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(36, 99, 235, 0.1);
+}
+
+.field:disabled {
+  background: var(--surface);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ink);
+  font-family: var(--font-manrope), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-hint {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.field-error {
+  margin-top: 7px;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- Статусные точки ---------- */
+
+.status-dot {
+  position: relative;
+  display: inline-grid;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(19, 166, 107, 0.5);
+  animation: status-pulse 2.4s ease-out infinite;
+}
+
+.status-dot[data-tone="amber"] {
+  background: var(--amber);
+}
+
+.status-dot[data-tone="grey"] {
+  background: #9aa7b8;
+}
+
+.status-dot[data-tone="grey"]::after,
+.status-dot[data-tone="amber"]::after {
+  animation: none;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(19, 166, 107, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(19, 166, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(19, 166, 107, 0);
+  }
+}
+
+/* ---------- Появление при скролле ---------- */
+
+.reveal-block {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 700ms ease,
+    transform 700ms var(--ease-out-soft);
+}
+
+.reveal-block.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 620ms ease,
+    transform 620ms var(--ease-out-soft);
+}
+
+.reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0ms; }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 90ms; }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 180ms; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 270ms; }
+.reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 360ms; }
+.reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 450ms; }
+
+/* ---------- Скелетоны загрузки ---------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.75),
+    transparent
+  );
+  animation: skeleton-sweep 1.5s infinite;
+}
+
+@keyframes skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------- Утилиты ---------- */
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.container-page {
+  width: min(var(--max), calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #c8d3e4 transparent;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #c8d3e4;
+}
+
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Совместимость со старыми именами классов ----------
+   Страховка на время редизайна: если экран ещё не переведён на новые
+   классы, он всё равно выглядит по дизайн-системе, а не «голым». */
+
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(18, 39, 76, 0.07);
 }
 
 .primary-button {
@@ -220,10 +919,11 @@ select {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--blue);
-  color: white;
-  font-weight: 750;
+  color: #fff;
+  font-family: var(--font-manrope), sans-serif;
+  font-weight: 700;
   box-shadow: 0 11px 25px rgba(36, 99, 235, 0.2);
   transition:
     transform 0.2s ease,
@@ -243,10 +943,11 @@ select {
   justify-content: center;
   gap: 0.5rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
-  color: var(--foreground);
-  font-weight: 750;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-manrope), sans-serif;
+  font-weight: 700;
   transition:
     transform 0.2s ease,
     background 0.2s ease,
@@ -259,13 +960,13 @@ select {
   transform: translateY(-1px);
 }
 
+/* Тот же случай, что и у .field: сброс outline гасил кольцо :focus-visible. */
 .form-field {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
-  color: var(--foreground);
-  outline: none;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--ink);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -284,4 +985,38 @@ select {
 .status-amber {
   background: #fff5df;
   color: #94600b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Общий предохранитель: гасит и те анимации, что заданы утилитами Tailwind
+     прямо в разметке, а не только перечисленные ниже классы. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal-block,
+  .reveal-stagger > *,
+  .card,
+  .btn,
+  .num-badge,
+  .frame-3d {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .status-dot::after,
+  .skeleton::after {
+    animation: none !important;
+  }
 }
