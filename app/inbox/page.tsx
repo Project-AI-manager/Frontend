@@ -1,20 +1,15 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  Bot,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
+  CheckCheck,
   Loader2,
-  MessageCircle,
-  RefreshCw,
+  Paperclip,
+  Search,
   Send,
-  Sparkles,
-  UserRound,
 } from "lucide-react";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ChangeEvent, type FormEvent, type ReactNode, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -26,19 +21,10 @@ import type {
 } from "@/lib/api/generated/ai.schemas";
 import { getConversations } from "@/lib/api/generated/conversations/conversations";
 
-type ConversationStatus =
-  | "open"
-  | "ai_replied"
-  | "escalated"
-  | "closed"
-  | "unknown";
-type MessageDirection = "inbound" | "outbound" | "internal" | "unknown";
 type ConversationView = {
   id: string;
-  channelId: string;
-  customerId: string;
   customerName: string;
-  status: ConversationStatus;
+  status: string;
   lastMessageAt: string | null;
   lastMessagePreview: string;
   unreadCount: number;
@@ -49,43 +35,38 @@ const conversationsApi = getConversations();
 
 export default function InboxPage() {
   const queryClient = useQueryClient();
-  const [selectedConversationId, setSelectedConversationId] = useState<
-    string | null
-  >(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [replyText, setReplyText] = useState("");
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    data: conversationsData,
-    isLoading: isConversationsLoading,
-    isFetching: isConversationsFetching,
-    error: conversationsError,
-    refetch: refetchConversations,
-  } = useQuery({
+  const conversationsQuery = useQuery({
     queryKey: ["conversations"],
-    queryFn: () =>
-      conversationsApi.listConversationItemsApiV1ConversationsGet(),
+    queryFn: () => conversationsApi.listConversationItemsApiV1ConversationsGet(),
     retry: 1,
   });
 
   const conversations = useMemo(
-    () => normalizeConversations(conversationsData),
-    [conversationsData],
+    () => normalizeConversations(conversationsQuery.data),
+    [conversationsQuery.data],
   );
+  const visibleConversations = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("ru");
+    if (!query) return conversations;
+    return conversations.filter((conversation) =>
+      `${conversation.customerName} ${conversation.lastMessagePreview}`
+        .toLocaleLowerCase("ru")
+        .includes(query),
+    );
+  }, [conversations, search]);
 
-  const activeConversationId =
-    selectedConversationId ?? conversations[0]?.id ?? null;
-  const selectedConversation = conversations.find(
+  const activeConversationId = selectedConversationId ?? conversations[0]?.id ?? null;
+  const fallbackConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
 
-  const {
-    data: threadData,
-    isLoading: isThreadLoading,
-    isFetching: isThreadFetching,
-    error: threadError,
-    refetch: refetchThread,
-  } = useQuery({
+  const threadQuery = useQuery({
     queryKey: ["conversation", activeConversationId],
     queryFn: () =>
       conversationsApi.getConversationApiV1ConversationsConversationIdGet(
@@ -95,17 +76,12 @@ export default function InboxPage() {
     retry: 1,
   });
 
-  const thread = normalizeThread(threadData, selectedConversation);
-  const messages = thread?.messages ?? [];
+  const thread = normalizeThread(threadQuery.data, fallbackConversation);
 
   const replyMutation = useMutation({
     mutationFn: async (text: string) => {
-      if (!activeConversationId) {
-        throw new Error("Диалог не выбран");
-      }
-
+      if (!activeConversationId) throw new Error("Диалог не выбран");
       const payload: ConversationReplyRequest = { text };
-
       return conversationsApi.replyApiV1ConversationsConversationIdReplyPost(
         activeConversationId,
         payload,
@@ -113,667 +89,348 @@ export default function InboxPage() {
     },
     onSuccess: async () => {
       setReplyText("");
-      setActionMessage("Ответ отправлен. Диалог обновлён.");
-      await refetchAfterAction(queryClient, activeConversationId);
+      setNotice("Сообщение отправлено");
+      await refreshConversationQueries(queryClient, activeConversationId);
     },
-    onError: (error) => {
-      setActionMessage(
-        getApiErrorMessage(
-          error,
-          "Не удалось отправить ответ. Проверь подключение к сервису.",
-        ),
-      );
-    },
+    onError: (error) =>
+      setNotice(getApiErrorMessage(error, "Не удалось отправить сообщение.")),
   });
 
-  const escalateMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeConversationId) {
-        throw new Error("Диалог не выбран");
-      }
+  function handleSelect(id: string) {
+    setSelectedConversationId(id);
+    setNotice(null);
+  }
 
-      return conversationsApi.escalateApiV1ConversationsConversationIdEscalatePost(
-        activeConversationId,
-      );
-    },
-    onSuccess: async () => {
-      setActionMessage("Диалог передан менеджеру и обновлён.");
-      await refetchAfterAction(queryClient, activeConversationId);
-    },
-    onError: (error) => {
-      setActionMessage(
-        getApiErrorMessage(
-          error,
-          "Не удалось эскалировать диалог. Попробуй ещё раз.",
-        ),
-      );
-    },
-  });
-
-  async function handleReplySubmit(event: FormEvent<HTMLFormElement>) {
+  function handleReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setActionMessage(null);
+    const text = replyText.trim();
+    if (!text) return;
+    setNotice(null);
+    replyMutation.mutate(text);
+  }
 
-    const trimmedText = replyText.trim();
+  function handleAttachmentClick() {
+    fileInputRef.current?.click();
+  }
 
-    if (!trimmedText) {
-      setActionMessage("Напиши текст ответа перед отправкой.");
-      return;
+  function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) {
+      setNotice(`Файл «${file.name}» выбран. Отправка вложений появится вместе с серверным хранилищем.`);
     }
-
-    replyMutation.mutate(trimmedText);
+    event.target.value = "";
   }
-
-  async function handleRefresh() {
-    setActionMessage(null);
-    await Promise.all([
-      refetchConversations(),
-      activeConversationId ? refetchThread() : Promise.resolve(),
-    ]);
-  }
-
-  const isActionPending = replyMutation.isPending || escalateMutation.isPending;
 
   return (
     <AppShell
       title="Диалоги"
-      description="Разбирайте обращения последовательно: выберите диалог, изучите контекст и ответьте клиенту."
+      description="Все обращения в одном спокойном рабочем пространстве."
+      showTopbar={false}
     >
-      <section className="glass-card overflow-hidden rounded-lg">
-        <div className="border-b border-[#d9e1ec] bg-white/75 px-5 py-4 md:px-6">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-bold text-[#526071]">
-              <WorkflowStep number="1" label="Выберите обращение" active />
-              <ChevronRight
-                size={15}
-                className="hidden text-neutral-300 sm:block"
-              />
-              <WorkflowStep
-                number="2"
-                label="Проверьте контекст"
-                active={Boolean(thread)}
-              />
-              <ChevronRight
-                size={15}
-                className="hidden text-neutral-300 sm:block"
-              />
-              <WorkflowStep
-                number="3"
-                label="Ответьте клиенту"
-                active={Boolean(thread)}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="secondary-button self-start px-3 py-2 text-xs md:self-auto"
-            >
-              {isConversationsFetching || isThreadFetching ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <RefreshCw size={14} />
-              )}
-              Обновить данные
-            </button>
-          </div>
-        </div>
-
-        <div className="grid min-h-[680px] lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="border-b border-[#d9e1ec] bg-[#f8fbff]/80 lg:border-b-0 lg:border-r">
-            <div className="flex items-end justify-between border-b border-[#d9e1ec] px-5 py-4">
-              <div>
-                <p className="brand-kicker">Очередь</p>
-                <h2 className="mt-1 text-lg font-black">Входящие</h2>
-              </div>
-              <span className="font-mono text-sm font-bold text-[#526071]">
-                {conversations.length}
-              </span>
+      <div className="inbox-frame overflow-hidden bg-white">
+        <div className="inbox-grid grid lg:grid-cols-[420px_minmax(0,1fr)]">
+          <aside className="border-b border-[#d8ddd9] bg-white lg:border-b-0 lg:border-r">
+            <div className="px-4 py-4">
+              <label className="flex h-10 items-center gap-2 rounded-full bg-[#f0f2f1] px-4 text-[#63716c] focus-within:ring-2 focus-within:ring-[#25a885]/25">
+                <Search size={17} strokeWidth={1.8} aria-hidden="true" />
+                <span className="sr-only">Поиск диалогов</span>
+                <input
+                  aria-label="Поиск диалогов"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-[#182a24] outline-none placeholder:text-[#7c8985]"
+                  placeholder="Поиск"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
             </div>
 
-            <div className="divide-y divide-[#d9e1ec]">
-              {isConversationsLoading ? (
-                <div className="p-4">
-                  <StateCard
-                    icon={<Loader2 className="animate-spin" size={18} />}
-                    title="Загружаем диалоги"
-                  />
-                </div>
-              ) : conversationsError ? (
-                <div className="p-4">
-                  <StateCard
-                    icon={<AlertCircle size={18} />}
-                    title="Не удалось загрузить диалоги"
-                    description={getApiErrorMessage(
-                      conversationsError,
-                      "Проверь авторизацию и подключение к сервису.",
-                    )}
-                    tone="error"
-                  />
-                </div>
-              ) : conversations.length > 0 ? (
-                conversations.map((conversation) => {
-                  const isActive = conversation.id === activeConversationId;
-
+            <div className="border-t border-[#eef0ef]" aria-live="polite">
+              {conversationsQuery.isLoading ? (
+                <InboxState icon={<Loader2 className="animate-spin" size={20} />} title="Загружаем диалоги" />
+              ) : conversationsQuery.error ? (
+                <InboxState
+                  icon={<AlertCircle size={20} />}
+                  title="Не удалось загрузить диалоги"
+                  description={getApiErrorMessage(
+                    conversationsQuery.error,
+                    "Войдите в аккаунт и проверьте подключение к backend.",
+                  )}
+                />
+              ) : visibleConversations.length ? (
+                visibleConversations.map((conversation) => {
+                  const active = conversation.id === activeConversationId;
                   return (
                     <button
                       key={conversation.id}
                       type="button"
-                      aria-pressed={isActive}
-                      onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setActionMessage(null);
-                      }}
-                      className={`relative w-full px-5 py-4 text-left transition-colors hover:bg-white ${
-                        isActive ? "bg-white" : "bg-transparent"
+                      aria-pressed={active}
+                      onClick={() => handleSelect(conversation.id)}
+                      className={`relative flex w-full gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#f5f7f6] ${
+                        active ? "bg-[#eef7f3]" : "bg-white"
                       }`}
                     >
-                      {isActive ? (
-                        <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#2463eb]" />
-                      ) : null}
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="min-w-0 truncate text-sm font-black">
-                          {conversation.customerName}
-                        </h3>
-                        <span className="shrink-0 font-mono text-[11px] text-neutral-400">
-                          {formatCompactDate(conversation.lastMessageAt)}
+                      {active ? <span className="absolute inset-y-3 left-0 w-[3px] rounded-r-full bg-[#25a885]" /> : null}
+                      <Avatar name={conversation.customerName} />
+                      <span className="min-w-0 flex-1 border-b border-[#edf0ee] pb-3">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="truncate text-sm font-semibold text-[#1f2d28]">{conversation.customerName}</span>
+                          <time className={`shrink-0 text-[11px] ${conversation.unreadCount ? "font-semibold text-[#159570]" : "text-[#8a9692]"}`}>
+                            {formatConversationTime(conversation.lastMessageAt)}
+                          </time>
                         </span>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-neutral-500">
-                        {conversation.lastMessagePreview ||
-                          "Сообщений пока нет"}
-                      </p>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <StatusPill status={conversation.status} />
-                        {conversation.unreadCount > 0 ? (
-                          <span className="flex size-6 items-center justify-center rounded-full bg-[#2463eb] text-[11px] font-black text-white">
-                            {conversation.unreadCount}
+                        <span className="mt-1 flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-xs text-[#6c7975]">
+                            {conversation.lastMessagePreview || "Сообщений пока нет"}
                           </span>
-                        ) : null}
-                      </div>
+                          {conversation.unreadCount > 0 ? (
+                            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#25a885] text-[10px] font-bold text-white">
+                              {conversation.unreadCount}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
                     </button>
                   );
                 })
               ) : (
-                <div className="p-4">
-                  <StateCard
-                    icon={<MessageCircle size={20} />}
-                    title="Диалогов пока нет"
-                    description="Новое обращение появится здесь сразу после поступления из подключённого канала."
-                  />
-                </div>
+                <InboxState title={search ? "Ничего не найдено" : "Диалогов пока нет"} />
               )}
             </div>
           </aside>
 
-          <div className="flex min-w-0 flex-col bg-white/70">
-            <header className="border-b border-[#d9e1ec] px-5 py-5 md:px-6">
+          <section
+            className="inbox-chat flex min-w-0 flex-col bg-[#efeae2]"
+            aria-label={thread ? `Диалог с ${thread.customerName}` : "Область диалога"}
+          >
+            <header className="flex min-h-16 items-center gap-3 border-b border-[#d8ddd9] bg-[#f7f9f8] px-4 sm:px-5">
               {thread ? (
                 <>
-                  <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="truncate text-xl font-black">
-                          {thread.customerName}
-                        </h2>
-                        <StatusPill status={thread.status} />
-                      </div>
-                      <p className="mt-2 text-sm text-neutral-500">
-                        Канал {thread.channelId} · клиент {thread.customerId}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-neutral-500">
-                      <span>{thread.unreadCount} непрочитано</span>
-                      <span>{aiSignal(messages)}</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d9e1ec] pt-3 text-xs text-neutral-500">
-                    <Signal
-                      icon={<CheckCircle2 size={14} />}
-                      title="История синхронизирована"
-                    />
-                    <Signal
-                      icon={<Clock size={14} />}
-                      title={`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
-                    />
+                  <Avatar name={thread.customerName} />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-sm font-semibold text-[#1d2b26]">{thread.customerName}</h2>
+                    <p className="truncate text-xs text-[#71807a]">{conversationStatusLabel(thread.status)}</p>
                   </div>
                 </>
               ) : (
-                <div>
-                  <h2 className="text-xl font-black">Выберите диалог</h2>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    История обращения и действия появятся в этой рабочей
-                    области.
-                  </p>
-                </div>
+                <p className="text-sm text-[#71807a]">Выберите диалог</p>
               )}
             </header>
 
-            <div
-              className="min-h-[380px] flex-1 space-y-4 overflow-y-auto bg-[#f8fbff]/60 p-5 md:p-6"
-              aria-live="polite"
-            >
-              {isThreadLoading ? (
-                <StateCard
-                  icon={<Loader2 className="animate-spin" size={18} />}
-                  title="Загружаем историю"
-                />
-              ) : threadError ? (
-                <StateCard
-                  icon={<AlertCircle size={18} />}
-                  title="Не удалось загрузить диалог"
-                  description={getApiErrorMessage(
-                    threadError,
-                    "Попробуй обновить данные или выбрать другой диалог.",
-                  )}
-                  tone="error"
-                />
-              ) : !activeConversationId ? (
-                <StateCard
-                  icon={<MessageCircle size={20} />}
-                  title="Нет выбранного диалога"
-                  description="Список обращений пуст или ещё загружается."
-                />
-              ) : messages.length > 0 ? (
-                messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
-                ))
-              ) : (
-                <StateCard
-                  icon={<MessageCircle size={20} />}
-                  title="История пуста"
-                  description="В этом диалоге пока нет сообщений."
-                />
-              )}
+            <div className="chat-wallpaper flex-1 overflow-y-auto px-4 py-6 sm:px-7" aria-live="polite">
+              <div className="relative z-[1] flex w-full flex-col gap-2.5">
+                {threadQuery.isLoading ? (
+                  <InboxState icon={<Loader2 className="animate-spin" size={20} />} title="Загружаем историю" />
+                ) : threadQuery.error ? (
+                  <InboxState
+                    icon={<AlertCircle size={20} />}
+                    title="Не удалось загрузить историю"
+                    description={getApiErrorMessage(threadQuery.error, "Попробуйте выбрать диалог ещё раз.")}
+                  />
+                ) : thread?.messages.length ? (
+                  <MessageTimeline messages={thread.messages} />
+                ) : (
+                  <InboxState title="История диалога пуста" />
+                )}
+              </div>
             </div>
 
-            <div className="border-t border-[#d9e1ec] bg-white p-5 md:p-6">
-              <form onSubmit={handleReplySubmit}>
-                <label
-                  htmlFor="conversation-reply"
-                  className="flex items-center gap-2 text-sm font-black"
-                >
-                  <Sparkles size={16} className="text-[#2463eb]" />
-                  Ответ клиенту
-                </label>
-                <textarea
-                  id="conversation-reply"
-                  value={replyText}
-                  onChange={(event) => setReplyText(event.target.value)}
-                  placeholder="Напишите короткий и точный ответ..."
-                  disabled={!activeConversationId || isActionPending}
-                  className="form-field mt-3 min-h-24 resize-y px-4 py-3 text-sm leading-6 placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
+            <form onSubmit={handleReply} className="border-t border-[#d8ddd9] bg-[#f4f6f5] px-3 py-3 sm:px-4">
+              <div className="mx-auto flex max-w-3xl items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="sr-only"
+                  aria-label="Выбрать файл"
+                  onChange={handleAttachmentChange}
                 />
-                {actionMessage ? (
-                  <p
-                    role="status"
-                    className="mt-3 border-l-2 border-[#2463eb] pl-3 text-sm font-semibold text-neutral-600"
-                  >
-                    {actionMessage}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex flex-col-reverse justify-between gap-3 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => escalateMutation.mutate()}
-                    disabled={!activeConversationId || isActionPending}
-                    className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                  >
-                    {escalateMutation.isPending
-                      ? "Передаём менеджеру..."
-                      : "Передать менеджеру"}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!activeConversationId || isActionPending}
-                    className="primary-button px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                  >
-                    {replyMutation.isPending ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <Send size={15} />
-                    )}
-                    Отправить ответ
-                  </button>
+                <button
+                  type="button"
+                  aria-label="Прикрепить файл"
+                  onClick={handleAttachmentClick}
+                  className="grid size-10 shrink-0 place-items-center rounded-full text-[#63716c] hover:bg-[#e5eae7]"
+                >
+                  <Paperclip size={19} />
+                </button>
+                <div className="flex min-h-11 flex-1 items-center rounded-[22px] bg-white px-3.5 shadow-sm ring-1 ring-[#e0e5e2]">
+                  <label className="sr-only" htmlFor="inbox-reply">Ответ</label>
+                  <input
+                    id="inbox-reply"
+                    aria-label="Ответ"
+                    className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-[#22312c] outline-none placeholder:text-[#84908c] focus-visible:outline-none"
+                    placeholder="Написать сообщение"
+                    value={replyText}
+                    onChange={(event) => setReplyText(event.target.value)}
+                    disabled={!activeConversationId || replyMutation.isPending}
+                  />
                 </div>
-              </form>
-            </div>
-          </div>
+                <button
+                  type="submit"
+                  aria-label="Отправить сообщение"
+                  disabled={!activeConversationId || !replyText.trim() || replyMutation.isPending}
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1fa681] text-white shadow-sm hover:bg-[#198f70] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {replyMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                </button>
+              </div>
+              {notice ? <p role="status" className="mx-auto mt-2 max-w-3xl text-center text-xs text-[#53635d]">{notice}</p> : null}
+            </form>
+          </section>
         </div>
-      </section>
+      </div>
     </AppShell>
   );
 }
 
-function WorkflowStep({
-  number,
-  label,
-  active,
-}: {
-  number: string;
-  label: string;
-  active: boolean;
-}) {
+function Avatar({ name }: { name: string }) {
   return (
-    <span
-      className={`flex items-center gap-2 ${active ? "text-[#1546ad]" : ""}`}
-    >
-      <span
-        className={`flex size-6 items-center justify-center rounded-full font-mono text-[11px] font-black ${
-          active ? "bg-[#2463eb] text-white" : "bg-neutral-100 text-neutral-400"
-        }`}
-      >
-        {number}
-      </span>
-      {label}
+    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#d8eee6] text-sm font-semibold text-[#176b55]">
+      {getInitials(name)}
     </span>
   );
 }
 
 function MessageBubble({ message }: { message: ConversationMessageResponse }) {
-  const direction = normalizeDirection(message.direction, message.sender_type);
-  const isOutbound = direction === "outbound";
-  const isInternal = direction === "internal";
-
+  const outgoing = message.direction === "outbound" || message.sender_type === "manager" || message.sender_type === "ai";
   return (
-    <div className={isOutbound ? "flex justify-end" : "flex justify-start"}>
-      <div
-        className={
-          isOutbound
-            ? "max-w-[78%] rounded-lg bg-[#2463eb] px-5 py-3 text-sm leading-6 text-white"
-            : isInternal
-              ? "max-w-[78%] rounded-lg bg-[#eaf1ff] px-5 py-3 text-sm leading-6 text-[#1546ad] shadow-sm"
-              : "max-w-[78%] rounded-lg border border-[#d9e1ec] bg-white px-5 py-3 text-sm leading-6 shadow-sm"
-        }
-      >
-        <div className="mb-2 flex items-center gap-2 text-xs font-black opacity-70">
-          {isOutbound ? <Bot size={13} /> : <UserRound size={13} />}
-          {directionLabel(direction, message.sender_type)}
-          <span>·</span>
-          <span>{formatNullableDate(message.created_at, "нет даты")}</span>
-        </div>
+    <div className={outgoing ? "flex justify-end" : "flex justify-start"}>
+      <div className={`max-w-[82%] rounded-[18px] px-3.5 py-2.5 text-[13px] leading-5 text-[#26332f] shadow-[0_1px_1px_rgba(25,40,34,.12)] sm:text-sm ${
+        outgoing ? "rounded-br-[5px] bg-[#d9fdd3]" : "rounded-bl-[5px] bg-white"
+      }`}>
         <p>{message.text || "Пустое сообщение"}</p>
-        <p className="mt-2 text-xs font-semibold opacity-60">
-          {messageStatusLabel(message.status)}
-        </p>
+        <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-[#73817c]">
+          <time>{formatMessageTime(message.created_at)}</time>
+          {outgoing ? <CheckCheck size={14} className="text-[#2496c7]" aria-label="Отправлено" /> : null}
+        </span>
       </div>
     </div>
   );
 }
 
-function Signal({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <span className="flex items-center gap-2 font-semibold">
-      <span className="text-[#2463eb]">{icon}</span>
-      {title}
-    </span>
-  );
+function MessageTimeline({ messages }: { messages: ConversationMessageResponse[] }) {
+  let dateKey = "";
+
+  return messages.map((message) => {
+    const nextDateKey = getMessageDateKey(message.created_at);
+    const showDate = nextDateKey !== dateKey;
+    dateKey = nextDateKey;
+
+    return (
+      <div key={message.id} className="contents">
+        {showDate ? <DateSeparator value={message.created_at} /> : null}
+        <MessageBubble message={message} />
+      </div>
+    );
+  });
 }
 
-function StateCard({
-  icon,
-  title,
-  description,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  tone?: "neutral" | "error";
-}) {
+function DateSeparator({ value }: { value: string }) {
   return (
-    <div
-      className={`rounded-3xl border p-5 text-center ${
-        tone === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-[#d9e1ec] bg-white text-neutral-600"
-      }`}
-    >
-      <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-white shadow-sm">
-        {icon}
-      </div>
-      <p className="mt-3 font-black">{title}</p>
-      {description ? (
-        <p className="mt-2 text-sm leading-6 opacity-75">{description}</p>
-      ) : null}
+    <div className="flex justify-center py-2">
+      <time className="rounded-lg bg-[#e7ede9] px-3 py-1 text-[11px] font-medium text-[#53635d] shadow-sm">
+        {formatConversationDay(value)}
+      </time>
     </div>
   );
 }
 
-function StatusPill({ status }: { status: ConversationStatus }) {
-  const className =
-    status === "open"
-      ? "bg-[#eaf1ff] text-[#1546ad]"
-      : status === "ai_replied"
-        ? "bg-emerald-100 text-emerald-700"
-        : status === "escalated"
-          ? "bg-[#fff5df] text-[#94600b]"
-          : status === "closed"
-            ? "bg-neutral-200 text-neutral-700"
-            : "bg-red-100 text-red-700";
-
+function InboxState({ icon, title, description }: { icon?: ReactNode; title: string; description?: string }) {
   return (
-    <span
-      className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black ${className}`}
-    >
-      {statusLabel(status)}
-    </span>
+    <div className="m-4 rounded-2xl bg-white/85 p-5 text-center text-[#53635d] shadow-sm">
+      {icon ? <span className="mx-auto grid size-9 place-items-center text-[#16845f]">{icon}</span> : null}
+      <p className="font-semibold">{title}</p>
+      {description ? <p className="mt-2 text-xs leading-5 text-[#71807a]">{description}</p> : null}
+    </div>
   );
 }
 
-function normalizeConversations(
-  value: ConversationResponse[] | undefined,
-): ConversationView[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
+function normalizeConversations(value: ConversationResponse[] | undefined): ConversationView[] {
+  if (!Array.isArray(value)) return [];
   return value.map((conversation) => ({
     id: conversation.id,
-    channelId: conversation.channel_id,
-    customerId: conversation.customer_id,
-    customerName: safeText(conversation.customer_name, "Клиент без имени"),
-    status: normalizeStatus(conversation.status),
+    customerName: safeText(conversation.customer_name, "Клиент"),
+    status: conversation.status,
     lastMessageAt: conversation.last_message_at,
     lastMessagePreview: safeText(conversation.last_message_preview, ""),
-    unreadCount: Number.isFinite(conversation.unread_count)
-      ? conversation.unread_count
-      : 0,
+    unreadCount: Number.isFinite(conversation.unread_count) ? conversation.unread_count : 0,
     messages: [],
   }));
 }
 
-function normalizeThread(
-  value: ConversationThreadResponse | undefined,
-  fallback?: ConversationView,
-): ConversationView | null {
-  if (!value && fallback) {
-    return fallback;
-  }
-
-  const thread = value;
-
-  if (!thread) {
-    return null;
-  }
-
+function normalizeThread(value: ConversationThreadResponse | undefined, fallback?: ConversationView): ConversationView | null {
+  if (!value) return fallback ?? null;
   return {
-    id: thread.id,
-    channelId: thread.channel_id,
-    customerId: thread.customer_id,
-    customerName: safeText(thread.customer_name, "Клиент без имени"),
-    status: normalizeStatus(thread.status),
-    lastMessageAt: thread.last_message_at,
-    lastMessagePreview: safeText(thread.last_message_preview, ""),
-    unreadCount: Number.isFinite(thread.unread_count) ? thread.unread_count : 0,
-    messages: Array.isArray(thread.messages) ? thread.messages : [],
+    id: value.id,
+    customerName: safeText(value.customer_name, "Клиент"),
+    status: value.status,
+    lastMessageAt: value.last_message_at,
+    lastMessagePreview: safeText(value.last_message_preview, ""),
+    unreadCount: Number.isFinite(value.unread_count) ? value.unread_count : 0,
+    messages: Array.isArray(value.messages) ? value.messages : [],
   };
-}
-
-function normalizeStatus(value: unknown): ConversationStatus {
-  if (
-    value === "open" ||
-    value === "ai_replied" ||
-    value === "escalated" ||
-    value === "closed"
-  ) {
-    return value;
-  }
-
-  return "unknown";
-}
-
-function normalizeDirection(
-  direction: unknown,
-  senderType?: string,
-): MessageDirection {
-  if (
-    direction === "inbound" ||
-    direction === "outbound" ||
-    direction === "internal"
-  ) {
-    return direction;
-  }
-
-  if (senderType === "customer") {
-    return "inbound";
-  }
-
-  if (senderType === "manager" || senderType === "ai") {
-    return "outbound";
-  }
-
-  if (senderType === "system") {
-    return "internal";
-  }
-
-  return "unknown";
-}
-
-function statusLabel(status: ConversationStatus) {
-  switch (status) {
-    case "open":
-      return "Открыт";
-    case "ai_replied":
-      return "AI ответил";
-    case "escalated":
-      return "Эскалация";
-    case "closed":
-      return "Закрыт";
-    default:
-      return "Неизвестно";
-  }
-}
-
-function directionLabel(direction: MessageDirection, senderType?: string) {
-  if (direction === "inbound") {
-    return "Клиент";
-  }
-
-  if (direction === "outbound") {
-    return senderType === "ai" ? "AI" : "Менеджер";
-  }
-
-  if (direction === "internal") {
-    return "Система";
-  }
-
-  return "Неизвестный отправитель";
-}
-
-function messageStatusLabel(status: string) {
-  switch (status) {
-    case "sent":
-      return "отправлено";
-    case "delivered":
-      return "доставлено";
-    case "failed":
-      return "ошибка отправки";
-    case "draft":
-      return "черновик";
-    default:
-      return status ? `статус: ${status}` : "статус неизвестен";
-  }
-}
-
-function formatNullableDate(
-  value: string | null | undefined,
-  fallback: string,
-) {
-  if (!value) {
-    return fallback;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return fallback;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatCompactDate(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  const today = new Date();
-  const isToday = date.toDateString() === today.toDateString();
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    ...(isToday
-      ? { hour: "2-digit", minute: "2-digit" }
-      : { day: "2-digit", month: "2-digit" }),
-  }).format(date);
 }
 
 function safeText(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function aiSignal(messages: ConversationMessageResponse[]) {
-  const aiMessages = messages.filter((message) => message.sender_type === "ai");
-  const confidenceValues = aiMessages
-    .map((message) => message.confidence)
-    .filter(
-      (value): value is number =>
-        typeof value === "number" && Number.isFinite(value),
-    );
-
-  if (confidenceValues.length === 0) {
-    return aiMessages.length > 0
-      ? "AI уже участвовал в диалоге"
-      : "AI ещё не отвечал";
-  }
-
-  const average =
-    confidenceValues.reduce((sum, value) => sum + value, 0) /
-    confidenceValues.length;
-  return `Средняя уверенность AI: ${Math.round(average * 100)}%`;
+function getInitials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toLocaleUpperCase("ru") || "К";
 }
 
-async function refetchAfterAction(
+function formatConversationTime(value: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const today = date.toDateString() === new Date().toDateString();
+  return new Intl.DateTimeFormat("ru-RU", today ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit" }).format(date);
+}
+
+function formatMessageTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
+function getMessageDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function formatConversationDay(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Дата неизвестна";
+
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startMessage = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const difference = Math.round((startToday.getTime() - startMessage.getTime()) / 86_400_000);
+
+  if (difference === 0) return "Сегодня";
+  if (difference === 1) return "Вчера";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(date);
+}
+
+function conversationStatusLabel(status: string) {
+  if (status === "escalated") return "Передан менеджеру";
+  if (status === "closed") return "Диалог закрыт";
+  if (status === "auto" || status === "ai_replied") return "Отвечает Автопилот";
+  return "Активный диалог";
+}
+
+async function refreshConversationQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   conversationId: string | null,
 ) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["conversations"] }),
     conversationId
-      ? queryClient.invalidateQueries({
-          queryKey: ["conversation", conversationId],
-        })
+      ? queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] })
       : Promise.resolve(),
   ]);
 }

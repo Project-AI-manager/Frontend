@@ -8,7 +8,6 @@ const api = vi.hoisted(() => ({
   listConversationItemsApiV1ConversationsGet: vi.fn(),
   getConversationApiV1ConversationsConversationIdGet: vi.fn(),
   replyApiV1ConversationsConversationIdReplyPost: vi.fn(),
-  escalateApiV1ConversationsConversationIdEscalatePost: vi.fn(),
 }));
 
 vi.mock("@/components/layout/app-shell", () => ({
@@ -23,15 +22,10 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-
-  return render(
-    <QueryClientProvider client={client}>
-      <InboxPage />
-    </QueryClientProvider>,
-  );
+  return render(<QueryClientProvider client={client}><InboxPage /></QueryClientProvider>);
 }
 
-describe("InboxPage live actions", () => {
+describe("Inbox page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.listConversationItemsApiV1ConversationsGet.mockResolvedValue([
@@ -62,44 +56,58 @@ describe("InboxPage live actions", () => {
           direction: "inbound",
           sender_type: "customer",
           status: "delivered",
+          confidence: null,
+          ai_meta: {},
           created_at: "2026-07-21T10:00:00Z",
+        },
+        {
+          id: "message-2",
+          text: "Доставим завтра.",
+          direction: "outbound",
+          sender_type: "manager",
+          status: "sent",
+          confidence: null,
+          ai_meta: {},
+          created_at: "2026-07-21T10:05:00Z",
         },
       ],
     });
     api.replyApiV1ConversationsConversationIdReplyPost.mockResolvedValue({});
-    api.escalateApiV1ConversationsConversationIdEscalatePost.mockResolvedValue(
-      {},
+  });
+
+  it("loads conversations and messages from the API without the removed controls", async () => {
+    renderPage();
+    expect(screen.getByLabelText("Поиск диалогов")).toBeInTheDocument();
+    expect(await screen.findByText("Когда будет доставка?")).toBeInTheDocument();
+    expect(await screen.findByText("Доставим завтра.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Чаты" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Все" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Нужен человек" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Действия с диалогом" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Добавить эмодзи" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Отправлено")).toBeInTheDocument();
+    expect(screen.getByText(/вторник, 21 июля/i)).toBeInTheDocument();
+  });
+
+  it("sends a reply through the backend API", async () => {
+    renderPage();
+    await screen.findByText("Когда будет доставка?");
+    fireEvent.change(screen.getByLabelText("Ответ"), { target: { value: "Доставим завтра." } });
+    fireEvent.click(screen.getByRole("button", { name: "Отправить сообщение" }));
+    await waitFor(() =>
+      expect(api.replyApiV1ConversationsConversationIdReplyPost).toHaveBeenCalledWith(
+        "conversation-1",
+        { text: "Доставим завтра." },
+      ),
     );
   });
 
-  it("loads the live thread and sends a manager reply", async () => {
+  it("opens the native file chooser from the attachment button", async () => {
     renderPage();
-
-    expect(
-      await screen.findByText("Когда будет доставка?"),
-    ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Ответ клиенту"), {
-      target: { value: "Доставим завтра." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Отправить ответ" }));
-
-    await waitFor(() =>
-      expect(
-        api.replyApiV1ConversationsConversationIdReplyPost,
-      ).toHaveBeenCalledWith("conversation-1", { text: "Доставим завтра." }),
-    );
-  });
-
-  it("passes the selected conversation to a manager", async () => {
-    renderPage();
-
-    await screen.findByRole("heading", { name: "Анна", level: 2 });
-    fireEvent.click(screen.getByRole("button", { name: "Передать менеджеру" }));
-
-    await waitFor(() =>
-      expect(
-        api.escalateApiV1ConversationsConversationIdEscalatePost,
-      ).toHaveBeenCalledWith("conversation-1"),
-    );
+    await screen.findByText("Когда будет доставка?");
+    const click = vi.spyOn(HTMLInputElement.prototype, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Прикрепить файл" }));
+    expect(click).toHaveBeenCalled();
+    click.mockRestore();
   });
 });

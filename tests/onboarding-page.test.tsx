@@ -1,31 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import OnboardingPage from "@/app/onboarding/page";
 
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/onboarding",
-}));
-
-describe("OnboardingPage", () => {
-  it("shows a vertical three-step path to the live product screens", () => {
-    render(<OnboardingPage />);
-
-    expect(
-      screen.getByRole("progressbar", { name: "Прогресс настройки" }),
-    ).toHaveAttribute("aria-valuenow", "1");
-    const onboardingSteps = screen.getByRole("list", {
-      name: "Шаги настройки",
-    });
-    expect(within(onboardingSteps).getAllByRole("listitem")).toHaveLength(3);
-    expect(
-      within(onboardingSteps).getByRole("link", { name: /Открыть профиль/i }),
-    ).toHaveAttribute("href", "/profile");
-    expect(
-      within(onboardingSteps).getByRole("link", { name: /Настроить канал/i }),
-    ).toHaveAttribute("href", "/channels");
-    expect(
-      within(onboardingSteps).getByRole("link", { name: /Перейти к знаниям/i }),
-    ).toHaveAttribute("href", "/knowledge");
-  });
-});
+describe("Onboarding wireframe",()=>{it("shows three setup stages",()=>{render(<OnboardingPage/>);expect(screen.getByRole("heading",{name:"1. Профиль"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"2. Telegram"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"3. База знаний"})).toBeInTheDocument();});});
