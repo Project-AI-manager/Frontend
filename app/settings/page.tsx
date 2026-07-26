@@ -1,25 +1,10 @@
 "use client";
 
-import {
-  Activity,
-  AlertCircle,
-  Bot,
-  Building2,
-  CreditCard,
-  Database,
-  Loader2,
-  Mail,
-  RefreshCw,
-  Save,
-  Send,
-  SlidersHorizontal,
-  UsersRound,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { IntegrationProbeResponse } from "@/lib/api/generated/ai.schemas";
 import { integrationsApi } from "@/lib/api/integrations";
@@ -152,6 +137,11 @@ export default function SettingsPage() {
   const pageError = aiQuery.error ?? workspaceQuery.error ?? billingQuery.error;
   const isSaving =
     updateAiMutation.isPending || updateWorkspaceMutation.isPending;
+  const isRefreshing =
+    aiQuery.isFetching ||
+    workspaceQuery.isFetching ||
+    billingQuery.isFetching ||
+    integrationsHealthQuery.isFetching;
   const aiSettings = aiQuery.data;
   const billing = billingQuery.data;
   const integrationsHealth = integrationsHealthQuery.data;
@@ -171,7 +161,7 @@ export default function SettingsPage() {
     ? aiQuery.data.available_providers
     : ["mock", "openai-compatible", "unirouter"];
 
-  /* Значения тарифа для крупной метрики и полосы расхода диалогов. */
+  /* Значения тарифа для метрики и полосы расхода диалогов. */
   const dialogsUsed = billing?.dialogs_used ?? 0;
   const dialogsLimit = billing?.dialogs_limit ?? 0;
   const dialogsPercent =
@@ -184,19 +174,16 @@ export default function SettingsPage() {
       title="Настройки"
       description="Управление компанией, поведением AI и состоянием интеграций."
     >
-      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-5">
         {/* Шапка экрана: назначение настроек, общее обновление данных, статусы загрузки. */}
-        <section className="panel overflow-hidden">
-          <div className="soft-grid flex flex-col justify-between gap-4 border-b border-line bg-mist p-5 sm:p-6 md:flex-row md:items-start">
+        <section className="wf-box p-4 sm:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <span className="brand-kicker">
-                <Building2 size={16} aria-hidden="true" />
-                Рабочее пространство
-              </span>
-              <h2 className="mt-2 text-balance font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
+              <p className="wf-kicker">Рабочее пространство</p>
+              <h2 className="wf-title mt-1 text-balance">
                 Настройки ассистента
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
                 Настрой поведение AI, название компании и проверь готовность
                 сервисов перед запуском автоответов.
               </p>
@@ -204,55 +191,47 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={refreshAll}
-              className="btn btn-secondary btn-sm shrink-0"
+              className="wf-btn shrink-0"
             >
-              {aiQuery.isFetching ||
-              workspaceQuery.isFetching ||
-              billingQuery.isFetching ||
-              integrationsHealthQuery.isFetching ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <RefreshCw size={16} />
-              )}
-              Обновить
+              <RefreshCw size={18} className="text-muted" />
+              {isRefreshing ? "Обновляем..." : "Обновить"}
             </button>
           </div>
 
           {isPageLoading ? (
-            <div className="p-5 sm:p-6">
-              <StateCard
-                variant="loading"
-                title="Загружаем настройки"
-                description="Загружаем AI, компанию и тариф."
-              />
-            </div>
+            <LoadingRows
+              className="mt-4"
+              label="Загружаем настройки"
+              description="Загружаем AI, компанию и тариф."
+              rows={3}
+            />
           ) : pageError ? (
-            <div className="p-5 sm:p-6">
-              <StateCard
-                variant="error"
-                icon={<AlertCircle size={22} />}
-                title="Не удалось загрузить настройки"
-                description={getApiErrorMessage(
+            <div role="alert" className="wf-fill mt-4 p-4">
+              <p className="text-sm font-semibold">
+                Не удалось загрузить настройки
+              </p>
+              <p className="wf-muted mt-1 text-sm leading-6">
+                {getApiErrorMessage(
                   pageError,
                   "Обнови страницу или повтори попытку позже.",
                 )}
-              />
+              </p>
             </div>
           ) : null}
 
           {notice ? (
-            <div className="border-t border-line p-5 sm:p-6">
-              <p role="status" className="notice notice-brand font-semibold">
-                {notice}
-              </p>
-            </div>
+            <p
+              role="status"
+              className="wf-fill mt-4 break-words px-3 py-2 text-sm leading-6"
+            >
+              {notice}
+            </p>
           ) : null}
         </section>
 
         {/* Поведение AI: модель, порог автоответа и инструкция ассистента. */}
         <SettingsSection
           onSubmit={handleAiSubmit}
-          icon={<Bot size={22} />}
           kicker="Ассистент"
           title="Поведение AI"
           description="Эти параметры определяют стиль ответа и условия автоматической отправки."
@@ -260,14 +239,11 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isSaving || aiQuery.isLoading}
-              className="btn btn-primary"
+              className="wf-btn wf-btn-primary"
             >
-              {updateAiMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Save size={16} />
-              )}
-              Сохранить AI-настройки
+              {updateAiMutation.isPending
+                ? "Сохраняем..."
+                : "Сохранить AI-настройки"}
             </button>
           }
         >
@@ -279,7 +255,7 @@ export default function SettingsPage() {
                 id="settings-llm-provider"
                 value={llmProvider}
                 onChange={(event) => setLlmProviderDraft(event.target.value)}
-                className="field text-sm"
+                className="wf-field text-sm"
                 disabled={isSaving || aiQuery.isLoading}
               >
                 {availableProviders.map((provider) => (
@@ -291,7 +267,7 @@ export default function SettingsPage() {
             }
           />
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
           <SettingRow
             htmlFor="settings-embedding-model"
@@ -301,27 +277,18 @@ export default function SettingsPage() {
                 id="settings-embedding-model"
                 value={embeddingModel}
                 onChange={(event) => setEmbeddingModelDraft(event.target.value)}
-                className="field text-sm"
+                className="wf-field text-sm"
                 disabled={isSaving || aiQuery.isLoading}
               />
             }
           />
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
           <SettingRow
             labelId="settings-auto-reply-label"
             hintId="settings-auto-reply-hint"
-            label={
-              <>
-                <SlidersHorizontal
-                  size={16}
-                  className="mr-2 inline-block align-[-3px] text-brand"
-                  aria-hidden="true"
-                />
-                Автоответы
-              </>
-            }
+            label="Автоответы"
             hint="Безопасный режим: AI отвечает автоматически только при наличии контекста и confidence выше порога."
             control={
               /* Подпись строки — не <label>, поэтому связываем её с переключателем
@@ -333,43 +300,34 @@ export default function SettingsPage() {
                 aria-labelledby="settings-auto-reply-label"
                 aria-describedby="settings-auto-reply-hint"
                 onClick={() => setAutoReplyEnabledDraft(!autoReplyEnabled)}
-                className="inline-flex min-h-10 items-center gap-3 rounded-md py-1 font-display text-sm font-bold transition"
+                className="inline-flex min-h-10 items-center gap-3 text-sm"
               >
                 <span
                   aria-hidden="true"
-                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border p-[2px] transition-colors ${
-                    autoReplyEnabled
-                      ? "border-brand bg-brand"
-                      : "border-line bg-surface"
+                  className={`inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-line p-[2px] ${
+                    autoReplyEnabled ? "bg-ink" : "bg-fill"
                   }`}
                 >
                   <span
-                    className={`size-[18px] rounded-full bg-white shadow-soft transition-transform duration-200 ${
-                      autoReplyEnabled ? "translate-x-[20px]" : "translate-x-0"
+                    className={`size-[18px] rounded-full border border-line bg-white ${
+                      autoReplyEnabled ? "translate-x-[18px]" : "translate-x-0"
                     }`}
                   />
                 </span>
-                <span
-                  className={
-                    autoReplyEnabled ? "text-brand-dark" : "text-muted"
-                  }
-                >
+                <span className={autoReplyEnabled ? "font-medium" : "wf-muted"}>
                   {autoReplyEnabled ? "Включены" : "Выключены"}
                 </span>
               </button>
             }
           />
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
-          {/* Порог автоответа: текущее значение крупным синим числом. */}
-          <div className="py-5">
-            <label
-              htmlFor="settings-confidence-threshold"
-              className="field-label"
-            >
+          {/* Порог автоответа: текущее значение рядом с подписью. */}
+          <div className="py-3">
+            <label htmlFor="settings-confidence-threshold" className="wf-label">
               Порог уверенности:{" "}
-              <span className="font-display text-3xl font-extrabold tabular-nums tracking-[-0.04em] text-brand">
+              <span className="font-semibold tabular-nums">
                 {confidenceThreshold}%
               </span>
             </label>
@@ -382,26 +340,26 @@ export default function SettingsPage() {
               onChange={(event) =>
                 setConfidenceThresholdDraft(Number(event.target.value))
               }
-              className="mt-2 h-10 w-full accent-brand [&::-webkit-slider-thumb]:size-6"
+              className="mt-1 h-10 w-full accent-ink"
               disabled={isSaving || aiQuery.isLoading}
             />
             <div
-              className="micro-label mt-1 flex items-center justify-between tabular-nums"
+              className="wf-muted flex items-center justify-between text-xs tabular-nums"
               aria-hidden="true"
             >
               <span>0%</span>
               <span>100%</span>
             </div>
-            <p className="field-hint">
+            <p className="wf-hint">
               Если уверенность модели выше порога, ответ уходит клиенту
               автоматически.
             </p>
           </div>
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
-          <div className="py-5">
-            <label htmlFor="settings-system-prompt" className="field-label">
+          <div className="py-3">
+            <label htmlFor="settings-system-prompt" className="wf-label">
               Инструкция для ассистента
             </label>
             <textarea
@@ -409,35 +367,32 @@ export default function SettingsPage() {
               rows={7}
               value={systemPrompt}
               onChange={(event) => setSystemPromptDraft(event.target.value)}
-              className="field text-sm"
+              className="wf-field text-sm"
               placeholder="Например: отвечай кратко, не выдумывай цены, если данных нет — эскалируй менеджеру."
               disabled={isSaving || aiQuery.isLoading}
             />
-            <p className="field-hint">
+            <p className="wf-hint">
               Инструкция применяется ко всем новым ответам ассистента.
             </p>
           </div>
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
           {/* Итог выбора модели — виден до сохранения формы. */}
-          <div className="py-5">
-            <div className="soft-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6">
-              <span className="icon-badge shrink-0" aria-hidden="true">
-                <Bot size={22} />
-              </span>
+          <div className="py-3">
+            <div className="wf-fill flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
               <div className="min-w-0 flex-1">
-                <h3 className="font-display text-base font-extrabold tracking-[-0.02em]">
+                <h3 className="text-base font-semibold">
                   Модель для новых ответов
                 </h3>
-                <p className="mt-1.5 text-sm leading-6 text-muted">
+                <p className="wf-muted mt-1.5 text-sm leading-6">
                   После сохранения выбранная модель будет использоваться в новых
                   диалогах и при проверке базы знаний.
                 </p>
               </div>
-              <div className="min-w-0 shrink-0 rounded-md border border-line bg-white px-4 py-3 sm:w-52">
-                <p className="micro-label">Текущая модель</p>
-                <p className="mt-1 truncate font-display text-sm font-extrabold tracking-[-0.02em] text-brand">
+              <div className="wf-box min-w-0 shrink-0 p-3 sm:w-52">
+                <p className="wf-kicker">Текущая модель</p>
+                <p className="mt-1 truncate text-sm font-semibold">
                   {providerLabel(llmProvider)}
                 </p>
               </div>
@@ -448,7 +403,6 @@ export default function SettingsPage() {
         {/* Компания: название и технические идентификаторы пространства. */}
         <SettingsSection
           onSubmit={handleWorkspaceSubmit}
-          icon={<Building2 size={22} />}
           kicker="Рабочее пространство"
           title="Компания"
           description="Название используется в кабинете и профиле ассистента."
@@ -458,13 +412,8 @@ export default function SettingsPage() {
               disabled={
                 updateWorkspaceMutation.isPending || workspaceQuery.isLoading
               }
-              className="btn btn-primary"
+              className="wf-btn wf-btn-primary"
             >
-              {updateWorkspaceMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Save size={16} />
-              )}
               {updateWorkspaceMutation.isPending ? "Сохраняем..." : "Сохранить"}
             </button>
           }
@@ -477,7 +426,7 @@ export default function SettingsPage() {
                 id="settings-workspace-name"
                 value={workspaceName}
                 onChange={(event) => setWorkspaceNameDraft(event.target.value)}
-                className="field text-sm"
+                className="wf-field text-sm"
                 disabled={
                   updateWorkspaceMutation.isPending || workspaceQuery.isLoading
                 }
@@ -485,60 +434,49 @@ export default function SettingsPage() {
             }
           />
 
-          <div className="divider" />
+          <div className="wf-divider" />
 
-          <div className="grid gap-3 py-5 sm:grid-cols-3">
+          <div className="grid gap-2 py-3 sm:grid-cols-3">
             <InfoTile label="Workspace ID" value={workspace?.id ?? "—"} />
             <InfoTile label="Slug" value={workspace?.slug ?? "—"} />
             <InfoTile label="Статус" value={workspace?.status ?? "—"} />
           </div>
         </SettingsSection>
 
-        {/* Тариф: план и расход диалогов вынесены в акцентную синюю панель. */}
-        <section className="blue-panel overflow-hidden">
-          <div className="border-b border-white/15 p-5 sm:p-6">
-            <span className="section-kicker section-kicker-inverse">
-              <CreditCard size={16} aria-hidden="true" />
-              Биллинг
-            </span>
-            <h2 className="mt-2 font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
-              Тариф и лимиты
-            </h2>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-on-brand-strong">
-              Данные приходят из Subscription, Plan и UsageCounter.
-            </p>
-          </div>
+        {/* Тариф: план и расход диалогов. */}
+        <section className="wf-fill p-4 sm:p-5">
+          <p className="wf-kicker">Биллинг</p>
+          <h2 className="wf-title mt-1 text-balance">Тариф и лимиты</h2>
+          <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
+            Данные приходят из Subscription, Plan и UsageCounter.
+          </p>
 
-          <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2">
-            <div className="min-w-0 rounded-md bg-white/10 p-5 sm:p-6">
-              {/* Модификатор ! обязателен: .micro-label объявлен вне каскадных
-                  слоёв и иначе перебивает утилиту своим тёмным var(--faint).
-                  Здесь -strong, а не -on-brand: подложка bg-white/10 осветляет
-                  синий, и на ней #dbe6ff даёт ~4.2:1 вместо нужных 4.5:1. */}
-              <p className="micro-label text-on-brand-strong!">План</p>
-              <p className="mt-2 truncate font-display text-2xl font-extrabold tracking-[-0.04em]">
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            <div className="wf-box min-w-0 p-3">
+              <p className="wf-kicker">План</p>
+              <p className="mt-1 truncate text-lg font-semibold">
                 {billing?.plan_name ?? "Trial"}
               </p>
             </div>
 
-            <div className="min-w-0 rounded-md bg-white/10 p-5 sm:p-6">
-              <p className="micro-label text-on-brand-strong!">Диалоги</p>
-              <p className="mt-2 truncate font-display text-2xl font-extrabold tabular-nums tracking-[-0.04em]">
+            <div className="wf-box min-w-0 p-3">
+              <p className="wf-kicker">Диалоги</p>
+              <p className="mt-1 truncate text-lg font-semibold tabular-nums">
                 {`${dialogsUsed} / ${dialogsLimit}`}
               </p>
               <span
-                className="mt-3 block h-2 w-full overflow-hidden rounded-full bg-white/20"
+                className="mt-2 block h-2 w-full overflow-hidden rounded-full border border-line bg-fill"
                 aria-hidden="true"
               >
                 <span
-                  className="block h-full rounded-full bg-white transition-all duration-500 motion-reduce:transition-none"
+                  className="block h-full bg-ink"
                   style={{ width: `${dialogsPercent}%` }}
                 />
               </span>
             </div>
           </div>
 
-          <div className="grid divide-y divide-white/15 border-t border-white/15 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
             <BillingStat
               label="Статус"
               value={billing?.subscription_status ?? "trial"}
@@ -554,11 +492,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <div className="grid items-start gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <div className="grid items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           {/* Диагностика: состояние внешних сервисов и ручная проверка модели. */}
           <SettingsSection
-            padded
-            icon={<Activity size={22} />}
             kicker="Интеграции"
             title="Диагностика интеграций"
             description="Проверка модели, базы знаний, почты и Telegram."
@@ -570,55 +506,49 @@ export default function SettingsPage() {
                   probeLlmMutation.mutate();
                 }}
                 disabled={probeLlmMutation.isPending}
-                className="btn btn-secondary"
+                className="wf-btn"
               >
-                {probeLlmMutation.isPending ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Bot size={16} />
-                )}
-                Проверить модель ответов
+                {probeLlmMutation.isPending
+                  ? "Проверяем..."
+                  : "Проверить модель ответов"}
               </button>
             }
           >
             {integrationsHealthQuery.error ? (
-              <StateCard
-                variant="error"
-                icon={<AlertCircle size={22} />}
-                title="Не удалось проверить сервисы"
-                description={getApiErrorMessage(
-                  integrationsHealthQuery.error,
-                  "Обнови страницу или повтори попытку позже.",
-                )}
-                className="mb-4"
-              />
+              <div role="alert" className="wf-fill mb-3 p-4">
+                <p className="text-sm font-semibold">
+                  Не удалось проверить сервисы
+                </p>
+                <p className="wf-muted mt-1 text-sm leading-6">
+                  {getApiErrorMessage(
+                    integrationsHealthQuery.error,
+                    "Обнови страницу или повтори попытку позже.",
+                  )}
+                </p>
+              </div>
             ) : null}
 
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               <li>
                 <IntegrationStatusCard
-                  icon={<Bot size={20} />}
                   probe={integrationsHealth?.llm}
                   fallbackName="LLM"
                 />
               </li>
               <li>
                 <IntegrationStatusCard
-                  icon={<Database size={20} />}
                   probe={integrationsHealth?.qdrant}
                   fallbackName="Qdrant"
                 />
               </li>
               <li>
                 <IntegrationStatusCard
-                  icon={<Mail size={20} />}
                   probe={integrationsHealth?.email}
                   fallbackName="Email"
                 />
               </li>
               <li>
                 <IntegrationStatusCard
-                  icon={<Send size={20} />}
                   probe={integrationsHealth?.telegram}
                   fallbackName="Telegram"
                 />
@@ -632,21 +562,14 @@ export default function SettingsPage() {
 
           {/* Команда: раздел-заглушка до появления управления доступом. */}
           <SettingsSection
-            padded
-            icon={<UsersRound size={22} />}
             kicker="Доступ"
             title="Команда"
             description="Управление доступом появится в одном из следующих обновлений."
           >
-            <div className="soft-panel flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-              <span className="icon-badge shrink-0" aria-hidden="true">
-                <UsersRound size={22} />
-              </span>
-              <p className="min-w-0 flex-1 text-sm leading-6 text-muted">
-                Сейчас здесь отображается только информация о владельце. Состав
-                команды пока нельзя менять в кабинете.
-              </p>
-            </div>
+            <p className="wf-fill wf-muted p-4 text-sm leading-6">
+              Сейчас здесь отображается только информация о владельце. Состав
+              команды пока нельзя менять в кабинете.
+            </p>
           </SettingsSection>
         </div>
       </div>
@@ -656,63 +579,52 @@ export default function SettingsPage() {
 
 /** Секция настроек: шапка с кикером, тело со строками и футер с сохранением. */
 function SettingsSection({
-  icon,
   kicker,
   title,
   description,
   action,
   footer,
-  padded = false,
   onSubmit,
   children,
 }: {
-  icon: ReactNode;
   kicker: string;
   title: string;
   description: string;
   action?: ReactNode;
   footer?: ReactNode;
-  padded?: boolean;
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
   children: ReactNode;
 }) {
   const header = (
-    <div className="flex flex-col gap-4 border-b border-line p-5 sm:p-6 md:flex-row md:items-start md:justify-between">
-      <div className="flex min-w-0 items-start gap-4">
-        <span className="icon-badge shrink-0" aria-hidden="true">
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <span className="section-kicker">{kicker}</span>
-          <h2 className="mt-1.5 text-balance font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
-            {title}
-          </h2>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
-            {description}
-          </p>
-        </div>
+    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="min-w-0">
+        <p className="wf-kicker">{kicker}</p>
+        <h2 className="wf-title mt-1 text-balance">{title}</h2>
+        <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
+          {description}
+        </p>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 
-  /* Без padded вертикальный ритм задают сами строки (py-5), поэтому
-     панельный p-5 sm:p-6 добираем только горизонтально. */
   const body = (
-    <div className={`px-5 sm:px-6 ${padded ? "py-5 sm:py-6" : ""}`}>
+    <>
+      <div className="wf-divider my-4" />
       {children}
-    </div>
+    </>
   );
 
   const foot = footer ? (
-    <div className="flex flex-wrap justify-end gap-3 border-t border-line bg-mist px-5 py-4 sm:px-6">
-      {footer}
-    </div>
+    <>
+      <div className="wf-divider my-4" />
+      <div className="flex flex-wrap justify-end gap-2">{footer}</div>
+    </>
   ) : null;
 
   if (onSubmit) {
     return (
-      <form onSubmit={onSubmit} className="panel overflow-hidden">
+      <form onSubmit={onSubmit} className="wf-box p-4 sm:p-5">
         {header}
         {body}
         {foot}
@@ -721,7 +633,7 @@ function SettingsSection({
   }
 
   return (
-    <section className="panel overflow-hidden">
+    <section className="wf-box p-4 sm:p-5">
       {header}
       {body}
       {foot}
@@ -747,19 +659,19 @@ function SettingRow({
   control: ReactNode;
 }) {
   return (
-    <div className="grid gap-2 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:items-center md:gap-8">
+    <div className="grid gap-2 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:items-center md:gap-6">
       <div className="min-w-0">
         {htmlFor ? (
-          <label htmlFor={htmlFor} id={labelId} className="field-label">
+          <label htmlFor={htmlFor} id={labelId} className="wf-label">
             {label}
           </label>
         ) : (
-          <span id={labelId} className="field-label">
+          <span id={labelId} className="wf-label">
             {label}
           </span>
         )}
         {hint ? (
-          <p id={hintId} className="field-hint max-w-xl">
+          <p id={hintId} className="wf-hint max-w-xl">
             {hint}
           </p>
         ) : null}
@@ -771,12 +683,9 @@ function SettingRow({
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="soft-panel min-w-0 p-5 sm:p-6">
-      <p className="micro-label">{label}</p>
-      <p
-        title={value}
-        className="mt-1.5 truncate font-display text-sm font-extrabold tracking-[-0.02em]"
-      >
+    <div className="wf-fill min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
+      <p title={value} className="mt-1 truncate text-sm font-semibold">
         {value}
       </p>
     </div>
@@ -785,10 +694,9 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 
 function BillingStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 px-5 py-4 sm:px-6">
-      {/* text-on-brand! — .micro-label вне каскадных слоёв перебивает утилиту цвета. */}
-      <p className="micro-label text-on-brand!">{label}</p>
-      <p className="mt-1 truncate font-display text-base font-extrabold tabular-nums tracking-[-0.02em]">
+    <div className="wf-box min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold tabular-nums">
         {value}
       </p>
     </div>
@@ -796,36 +704,26 @@ function BillingStat({ label, value }: { label: string; value: string }) {
 }
 
 function IntegrationStatusCard({
-  icon,
   probe,
   fallbackName,
 }: {
-  icon: ReactNode;
   probe?: IntegrationProbeResponse;
   fallbackName: string;
 }) {
   const status = probe?.status ?? "disabled";
 
   return (
-    <div className="card card-hover p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="icon-badge shrink-0" aria-hidden="true">
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-[15px] font-extrabold tracking-[-0.02em]">
-              {probe?.name ?? fallbackName}
-            </p>
-            <p className="mt-1 text-sm leading-5 text-muted">
-              {probe?.message ?? "Статус еще не загружен."}
-            </p>
-          </div>
-        </div>
-        <span className={`chip shrink-0 ${statusChipClass(status)}`}>
-          {statusLabel(status)}
-        </span>
+    <div className="wf-box flex items-start justify-between gap-3 p-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">{probe?.name ?? fallbackName}</p>
+        <p className="wf-muted mt-1 text-sm leading-5">
+          {probe?.message ?? "Статус еще не загружен."}
+        </p>
       </div>
+      <span className="wf-tag shrink-0">
+        <span className="wf-dot" />
+        {statusLabel(status)}
+      </span>
     </div>
   );
 }
@@ -838,31 +736,55 @@ function ProbeDetails({ probe }: { probe: IntegrationProbeResponse }) {
   ]);
 
   return (
-    <div className="soft-panel mt-4 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-display text-base font-extrabold tracking-[-0.02em]">
-          Результат проверки
-        </h3>
-        <span className={`chip ${statusChipClass(probe.status)}`}>
+    <div className="wf-fill mt-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-base font-semibold">Результат проверки</h3>
+        <span className="wf-tag">
+          <span className="wf-dot" />
           {statusLabel(probe.status)}
         </span>
       </div>
-      <p className="mt-2 text-sm leading-6 text-muted">{probe.message}</p>
+      <p className="wf-muted mt-2 text-sm leading-6">{probe.message}</p>
       {detailRows.length ? (
-        <dl className="mt-4 border-t border-line">
+        <dl className="mt-3 border-t border-line">
           {detailRows.map(([key, value]) => (
             <div
               key={key}
-              className="grid gap-1 border-b border-line py-2.5 last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] sm:gap-4"
+              className="grid gap-1 border-b border-line-soft py-2 last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] sm:gap-4"
             >
-              <dt className="micro-label min-w-0 truncate">{key}</dt>
-              <dd className="min-w-0 break-words text-sm font-semibold text-ink">
-                {value}
-              </dd>
+              <dt className="wf-kicker min-w-0 truncate">{key}</dt>
+              <dd className="min-w-0 break-words text-sm">{value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
+    </div>
+  );
+}
+
+/** Состояние загрузки: скелетоны для глаз, текст — для скринридера. */
+function LoadingRows({
+  label,
+  description,
+  rows,
+  className = "",
+}: {
+  label: string;
+  description?: string;
+  rows: number;
+  className?: string;
+}) {
+  return (
+    <div role="status" aria-busy="true" className={`space-y-2 ${className}`}>
+      <span className="sr-only">{label}</span>
+      {description ? <span className="sr-only">{description}</span> : null}
+      {Array.from({ length: rows }, (_, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          className="wf-skeleton block h-12"
+        />
+      ))}
     </div>
   );
 }
@@ -879,21 +801,6 @@ function statusLabel(status: string) {
       return "Отключено";
     default:
       return status;
-  }
-}
-
-function statusChipClass(status: string) {
-  switch (status) {
-    case "ok":
-      return "chip-green";
-    case "not_configured":
-      return "chip-amber";
-    case "error":
-      return "chip-red";
-    case "disabled":
-      return "chip-grey";
-    default:
-      return "chip-blue";
   }
 }
 

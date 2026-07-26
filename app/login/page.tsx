@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  AlertCircle,
-  ArrowRight,
-  Cable,
-  KeyRound,
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -23,11 +13,11 @@ const authApi = getAuth();
 const DEMO_EMAIL = "owner.demo@example.com";
 const DEMO_PASSWORD = "demo-password";
 
-/** Витрина слева: держит доверие, пока пользователь вводит данные. */
+/** Витрина слева: что именно ждёт пользователя после входа. */
 const showcasePoints = [
-  { icon: ShieldCheck, text: "Безопасная сессия между входами" },
-  { icon: KeyRound, text: "Email-регистрация и восстановление пароля" },
-  { icon: Cable, text: "Интеграции проверяются из настроек" },
+  "Безопасная сессия между входами",
+  "Email-регистрация и восстановление пароля",
+  "Интеграции проверяются из настроек",
 ];
 
 export default function LoginPage() {
@@ -149,256 +139,201 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid-backdrop min-h-screen px-4 py-8 sm:px-6 sm:py-10">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-        <aside className="blue-panel hidden flex-col p-10 lg:flex xl:p-12">
-          <Link
-            href="/"
-            className="inline-flex w-fit shrink-0 items-center gap-3"
-          >
-            <span
-              className="brand-mark size-10"
-              style={{
-                background: "#fff",
-                color: "var(--color-brand)",
-                boxShadow: "none",
-              }}
-            />
-            <span className="font-display text-xl font-extrabold tracking-[-0.04em]">
-              Автопилот
-            </span>
+    <main className="min-h-screen px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-start">
+        {/* Витрина видна только с lg, как и раньше: на узком экране форма
+            занимает всю ширину и ничем не разбавляется. */}
+        <aside className="hidden flex-col lg:flex">
+          <Link href="/" className="w-fit text-base font-semibold">
+            Автопилот
           </Link>
 
-          <div className="flex flex-1 flex-col justify-center py-12">
-            <div className="max-w-lg">
-              <span className="pill-tag bg-white/10 text-on-brand-strong">
-                <Sparkles size={16} />
-                Кабинет уже ждет
-              </span>
-              <h2 className="mt-6 text-balance font-display text-[2.6rem] font-extrabold leading-[1.06] xl:text-5xl">
-                Вернись к диалогам без лишней рутины.
-              </h2>
-              <p className="mt-5 max-w-md leading-7 text-on-brand">
-                После входа откроется inbox: обращения клиентов, база знаний,
-                черновики AI и настройки интеграций в одном рабочем контуре.
-              </p>
+          <div className="mt-10 max-w-md">
+            <span className="wf-tag">Кабинет уже ждет</span>
 
-              <ul className="mt-8 space-y-3">
-                {showcasePoints.map((point) => (
-                  <li
-                    key={point.text}
-                    className="flex items-center gap-3 rounded-md border border-white/15 bg-white/10 px-4 py-3"
-                  >
-                    <point.icon size={18} className="shrink-0 text-[#c9d9ff]" />
-                    <span className="text-sm text-on-brand">{point.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <h2 className="mt-4 text-balance text-2xl font-semibold">
+              Вернись к диалогам без лишней рутины.
+            </h2>
+
+            <p className="wf-muted mt-4 leading-7">
+              После входа откроется inbox: обращения клиентов, база знаний,
+              черновики AI и настройки интеграций в одном рабочем контуре.
+            </p>
+
+            <ul className="mt-6 space-y-2">
+              {showcasePoints.map((point) => (
+                <li key={point} className="wf-fill p-4 text-sm leading-6">
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <p className="flex shrink-0 items-start gap-2.5 text-xs leading-5 text-on-brand">
-            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#c9d9ff]" />
+          <p className="wf-muted mt-10 max-w-md text-xs leading-5">
             Автопилот — AI-сотрудник в едином окне для продаж и поддержки.
           </p>
         </aside>
 
-        <section className="flex items-center justify-center">
-          <div className="w-full max-w-[440px] py-2">
-            <Link
-              href="/"
-              className="mb-7 inline-flex items-center gap-3 lg:hidden"
-            >
-              <span className="brand-mark size-9" />
-              <span className="font-display text-lg font-extrabold tracking-[-0.04em]">
-                Автопилот
-              </span>
-            </Link>
+        <div className="mx-auto w-full max-w-[420px] lg:mx-0">
+          <Link href="/" className="text-base font-semibold lg:hidden">
+            Автопилот
+          </Link>
 
-            <div className="panel p-5 sm:p-7">
-              <span className="icon-badge">
-                <LockKeyhole size={22} />
-              </span>
-              <h1 className="mt-5 font-display text-3xl font-extrabold tracking-[-0.04em]">
-                Вход
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Используй тестового пользователя или свой аккаунт после
-                регистрации.
-              </p>
+          <div className="wf-box mt-5 p-5 sm:p-6 lg:mt-0">
+            <h1 className="wf-title">Вход</h1>
+            <p className="wf-muted mt-2 text-sm leading-6">
+              Используй тестового пользователя или свой аккаунт после регистрации.
+            </p>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <label className="block">
+                <span className="wf-label">Email</span>
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="wf-field"
+                  type="email"
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              <div>
                 <label className="block">
-                  <span className="field-label">Email</span>
+                  <span className="wf-label">Пароль</span>
                   <input
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="field"
-                    type="email"
-                    autoComplete="email"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="wf-field"
+                    type="password"
+                    autoComplete="current-password"
                     required
                   />
                 </label>
-
-                <div>
-                  <label className="block">
-                    <span className="field-label">Пароль</span>
-                    <input
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      className="field"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                    />
-                  </label>
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setIsResetOpen((open) => !open)}
-                      aria-expanded={isResetOpen}
-                      className="cursor-pointer text-sm font-semibold text-brand underline decoration-[#9db7f4] underline-offset-4 transition-colors hover:text-brand-dark"
-                    >
-                      Забыли пароль?
-                    </button>
-                  </div>
-                </div>
-
-                {error ? (
-                  <div className="flex items-start gap-3 rounded-md border border-danger/25 bg-danger-soft p-4">
-                    <AlertCircle size={18} className="shrink-0 text-danger" />
-                    <p className="text-sm font-semibold leading-5 text-danger-ink">
-                      {error}
-                    </p>
-                  </div>
-                ) : null}
-
-                <button
-                  disabled={isSubmitting}
-                  className="btn btn-primary w-full"
-                  type="submit"
-                >
-                  {isSubmitting ? "Входим..." : "Войти"}
-                  <ArrowRight size={18} />
-                </button>
-              </form>
-
-              {isResetOpen ? (
-                <div className="soft-panel mt-4 p-4 sm:p-5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="icon-badge icon-badge-sm shrink-0">
-                      <KeyRound size={17} />
-                    </span>
-                    <h3 className="font-display text-base font-extrabold">
-                      Восстановление пароля
-                    </h3>
-                  </div>
-                  <p className="field-hint">
-                    Для локальной проверки код восстановления появится сразу
-                    после запроса.
-                  </p>
-
-                  <form
-                    onSubmit={handleResetRequest}
-                    className="mt-4 space-y-2.5"
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsResetOpen((open) => !open)}
+                    aria-expanded={isResetOpen}
+                    className="wf-muted cursor-pointer text-sm underline underline-offset-4"
                   >
-                    <label className="block">
-                      <span className="field-label">
-                        Email для восстановления
-                      </span>
-                      <input
-                        value={resetEmail}
-                        onChange={(event) => setResetEmail(event.target.value)}
-                        className="field"
-                        type="email"
-                        autoComplete="email"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={isResetRequesting}
-                      className="btn btn-secondary btn-sm w-full"
-                    >
-                      {isResetRequesting ? "Запрашиваем..." : "Получить token"}
-                      <Mail size={16} />
-                    </button>
-                  </form>
-
-                  <div className="divider my-4" />
-
-                  <form
-                    onSubmit={handleResetConfirm}
-                    className="grid gap-2.5 sm:grid-cols-2"
-                  >
-                    <label htmlFor="reset-token" className="block">
-                      <span className="sr-only">Token</span>
-                      <input
-                        id="reset-token"
-                        value={resetToken}
-                        onChange={(event) => setResetToken(event.target.value)}
-                        className="field text-sm"
-                        placeholder="Token"
-                      />
-                    </label>
-                    <label htmlFor="reset-new-password" className="block">
-                      <span className="sr-only">Новый пароль</span>
-                      <input
-                        id="reset-new-password"
-                        value={newPassword}
-                        onChange={(event) => setNewPassword(event.target.value)}
-                        className="field text-sm"
-                        type="password"
-                        autoComplete="new-password"
-                        placeholder="Новый пароль"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={isResetConfirming}
-                      className="btn btn-primary btn-sm w-full sm:col-span-2"
-                    >
-                      {isResetConfirming ? "..." : "Сменить"}
-                    </button>
-                  </form>
-
-                  {resetNotice ? (
-                    <p className="mt-3 break-words rounded-md border border-line bg-white p-3 text-sm font-semibold leading-6 text-ink-soft">
-                      {resetNotice}
-                    </p>
-                  ) : null}
+                    Забыли пароль?
+                  </button>
                 </div>
-              ) : null}
-
-              <div className="mt-6 flex items-center gap-3">
-                <span className="divider flex-1" />
-                <span className="micro-label">или</span>
-                <span className="divider flex-1" />
               </div>
+
+              {error ? <p className="wf-error">{error}</p> : null}
 
               <button
                 disabled={isSubmitting}
-                onClick={handleDemoLogin}
-                className="btn btn-secondary mt-6 w-full text-sm sm:text-base"
-                type="button"
+                className="wf-btn wf-btn-primary w-full"
+                type="submit"
               >
-                {isSubmitting
-                  ? "Открываем демо..."
-                  : "Войти в демо без регистрации"}
-                <Sparkles size={18} />
+                {isSubmitting ? "Входим..." : "Войти"}
               </button>
+            </form>
+
+            {isResetOpen ? (
+              <div className="wf-fill mt-4 p-4">
+                <h2 className="text-sm font-semibold">Восстановление пароля</h2>
+                <p className="wf-hint">
+                  Для локальной проверки код восстановления появится сразу после
+                  запроса.
+                </p>
+
+                <form onSubmit={handleResetRequest} className="mt-4 space-y-3">
+                  <label className="block">
+                    <span className="wf-label">Email для восстановления</span>
+                    <input
+                      value={resetEmail}
+                      onChange={(event) => setResetEmail(event.target.value)}
+                      className="wf-field"
+                      type="email"
+                      autoComplete="email"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={isResetRequesting}
+                    className="wf-btn w-full"
+                  >
+                    {isResetRequesting ? "Запрашиваем..." : "Получить token"}
+                  </button>
+                </form>
+
+                <div className="wf-divider my-4" />
+
+                <form
+                  onSubmit={handleResetConfirm}
+                  className="grid gap-3 sm:grid-cols-2"
+                >
+                  <label htmlFor="reset-token" className="block">
+                    <span className="sr-only">Token</span>
+                    <input
+                      id="reset-token"
+                      value={resetToken}
+                      onChange={(event) => setResetToken(event.target.value)}
+                      className="wf-field text-sm"
+                      placeholder="Token"
+                    />
+                  </label>
+                  <label htmlFor="reset-new-password" className="block">
+                    <span className="sr-only">Новый пароль</span>
+                    <input
+                      id="reset-new-password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      className="wf-field text-sm"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Новый пароль"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={isResetConfirming}
+                    className="wf-btn wf-btn-primary w-full sm:col-span-2"
+                  >
+                    {isResetConfirming ? "..." : "Сменить"}
+                  </button>
+                </form>
+
+                {resetNotice ? (
+                  <p className="wf-box mt-3 break-words p-3 text-sm leading-6">
+                    {resetNotice}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex items-center gap-3">
+              <span className="wf-divider flex-1" />
+              <span className="wf-muted text-xs">или</span>
+              <span className="wf-divider flex-1" />
             </div>
 
-            <p className="mt-6 text-center text-sm text-muted">
-              Нет аккаунта?{" "}
-              <Link
-                href="/register"
-                className="font-bold text-brand underline decoration-[#9db7f4] underline-offset-4"
-              >
-                Создать аккаунт
-              </Link>
-            </p>
+            <button
+              disabled={isSubmitting}
+              onClick={handleDemoLogin}
+              className="wf-btn mt-5 w-full"
+              type="button"
+            >
+              {isSubmitting
+                ? "Открываем демо..."
+                : "Войти в демо без регистрации"}
+            </button>
           </div>
-        </section>
+
+          <p className="wf-muted mt-5 text-center text-sm">
+            Нет аккаунта?{" "}
+            <Link
+              href="/register"
+              className="text-ink underline underline-offset-4"
+            >
+              Создать аккаунт
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );

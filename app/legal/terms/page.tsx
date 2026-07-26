@@ -1,4 +1,4 @@
-import { CalendarCheck, ChevronDown, ListTree, ScrollText } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
@@ -24,18 +24,11 @@ function OutlineLinks() {
     <ol className="space-y-1">
       {SECTIONS.map((section, index) => (
         <li key={section.id}>
-          <a
-            href={`#${section.id}`}
-            className="group/link flex items-start gap-3 rounded-md px-3 py-2 transition duration-200 hover:translate-x-1 hover:bg-white"
-          >
-            <span className="micro-label mt-[3px] w-3 shrink-0 text-right">
+          <a href={`#${section.id}`} className="wf-nav-item">
+            <span className="wf-muted w-4 shrink-0 text-right text-xs tabular-nums">
               {index + 1}
             </span>
-            {/* Цвет держим на span: глобальное правило a { color: inherit }
-                перебивает утилиты цвета, навешенные прямо на ссылку. */}
-            <span className="text-sm leading-6 font-semibold text-muted transition-colors duration-200 group-hover/link:text-brand">
-              {section.title}
-            </span>
+            {section.title}
           </a>
         </li>
       ))}
@@ -47,37 +40,27 @@ export default function TermsPage() {
   return (
     <>
       <Header />
-      <main className="grid-backdrop pt-24 pb-20 lg:pt-28 lg:pb-24">
-        <div className="mx-auto w-full max-w-5xl px-5 lg:px-8">
+      <main className="px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mx-auto w-full max-w-5xl">
           <header>
-            <span className="icon-badge" aria-hidden="true">
-              <ScrollText size={22} />
-            </span>
+            <p className="wf-kicker">Документы</p>
 
-            <p className="section-kicker mt-5">Документы</p>
-
-            <h1 className="mt-3 text-3xl leading-[1.08] font-extrabold tracking-[-0.04em] text-balance text-ink sm:text-4xl lg:text-5xl">
+            <h1 className="wf-title mt-3 text-2xl text-balance">
               Условия использования
             </h1>
 
-            <p className="mt-5">
-              <span className="chip chip-grey">
-                <CalendarCheck size={13} aria-hidden="true" />
-                Обновлено {LAST_UPDATED}
-              </span>
-            </p>
+            <p className="wf-muted mt-2 text-sm">Обновлено {LAST_UPDATED}</p>
           </header>
 
-          <div className="divider mt-7" />
+          <div className="wf-divider my-6" />
 
-          <div className="mt-7 grid items-start gap-5 lg:grid-cols-[0.28fr_0.72fr] lg:gap-6">
-            <details className="soft-panel group p-2 lg:hidden">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-md px-3 text-sm font-bold text-ink-soft [&::-webkit-details-marker]:hidden">
-                <ListTree size={16} className="text-brand" aria-hidden="true" />
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.3fr)_minmax(0,0.7fr)]">
+            <details className="wf-box group p-2 lg:hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
                 Разделы документа
                 <span
                   aria-hidden="true"
-                  className="ml-auto inline-flex text-faint transition-transform duration-200 group-open:rotate-180"
+                  className="wf-muted ml-auto inline-flex group-open:rotate-180"
                 >
                   <ChevronDown size={16} />
                 </span>
@@ -89,53 +72,46 @@ export default function TermsPage() {
 
             <nav
               aria-label="Разделы документа, боковое оглавление"
-              className="soft-panel hidden p-3 lg:sticky lg:top-28 lg:block"
+              className="wf-box hidden p-3 lg:sticky lg:top-6 lg:block"
             >
-              <p className="micro-label px-3 pt-1 pb-2">Разделы</p>
+              <p className="wf-kicker px-3 pt-1 pb-2">Разделы</p>
               <OutlineLinks />
             </nav>
 
-            <article className="panel p-7 lg:p-10">
-              <div className="space-y-8">
-                <section id="status" className="scroll-mt-28">
-                  <h2 className="font-display text-xl font-extrabold tracking-[-0.04em] text-ink sm:text-2xl">
-                    Статус документа
-                  </h2>
-                  <p className="mt-4 text-lg leading-8 text-ink-soft">
-                    Это MVP-заготовка условий. Здесь будут правила использования
-                    кабинета, AI-черновиков, базы знаний, каналов связи и
-                    ограничений тарифа.
-                  </p>
-                </section>
+            <article className="space-y-8">
+              <section id="status" className="scroll-mt-6">
+                <h2 className="text-lg font-semibold">Статус документа</h2>
+                <p className="mt-3 leading-7">
+                  Это MVP-заготовка условий. Здесь будут правила использования
+                  кабинета, AI-черновиков, базы знаний, каналов связи и
+                  ограничений тарифа.
+                </p>
+              </section>
 
-                <section
-                  id="ai-drafts"
-                  className="scroll-mt-28 border-t border-line-soft pt-8"
-                >
-                  <h2 className="font-display text-xl font-extrabold tracking-[-0.04em] text-ink sm:text-2xl">
-                    AI-ответы и проверка
-                  </h2>
-                  <p className="mt-4 leading-7 text-muted">
-                    AI-ответы на текущем этапе считаются подсказками для
-                    менеджера. Пользователь отвечает за проверку фактов,
-                    источников и финального текста перед отправкой клиенту.
-                  </p>
-                </section>
+              <section
+                id="ai-drafts"
+                className="scroll-mt-6 border-t border-line pt-8"
+              >
+                <h2 className="text-lg font-semibold">AI-ответы и проверка</h2>
+                <p className="mt-3 leading-7">
+                  AI-ответы на текущем этапе считаются подсказками для менеджера.
+                  Пользователь отвечает за проверку фактов, источников и
+                  финального текста перед отправкой клиенту.
+                </p>
+              </section>
 
-                <section
-                  id="auto-send"
-                  className="scroll-mt-28 border-t border-line-soft pt-8"
-                >
-                  <h2 className="font-display text-xl font-extrabold tracking-[-0.04em] text-ink sm:text-2xl">
-                    Автоматическая отправка
-                  </h2>
-                  <p className="mt-4 leading-7 text-muted">
-                    Автоматическая отправка ответов должна включаться только
-                    после настройки порога уверенности, базы знаний и правил
-                    эскалации.
-                  </p>
-                </section>
-              </div>
+              <section
+                id="auto-send"
+                className="scroll-mt-6 border-t border-line pt-8"
+              >
+                <h2 className="text-lg font-semibold">
+                  Автоматическая отправка
+                </h2>
+                <p className="mt-3 leading-7">
+                  Автоматическая отправка ответов должна включаться только после
+                  настройки порога уверенности, базы знаний и правил эскалации.
+                </p>
+              </section>
             </article>
           </div>
         </div>

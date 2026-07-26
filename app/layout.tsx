@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
-import { Manrope, Onest } from "next/font/google";
+import { Onest } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
 
-// Кириллические шрифты по требованию CLAUDE.md: Inter/Roboto/системные не используем.
-const manrope = Manrope({
-  subsets: ["cyrillic", "latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-manrope",
-  display: "swap",
-});
-
+// Каркасная версия: один нейтральный шрифт с кириллицей.
+// Inter/Roboto/системные запрещены по CLAUDE.md.
 const onest = Onest({
   subsets: ["cyrillic", "latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   variable: "--font-onest",
   display: "swap",
 });
@@ -32,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className={`${manrope.variable} ${onest.variable}`}>
+    <html lang="ru" className={onest.variable}>
       <body>
         <Providers>{children}</Providers>
       </body>

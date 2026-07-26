@@ -96,7 +96,10 @@ describe("StateCard", () => {
 
     const card = screen.getByRole("alert");
     expect(card).toHaveClass("text-center");
-    expect(card).toHaveClass("text-danger-ink");
+    // В каркасе тон ошибки монохромный: оформление общее (.wf-fill),
+    // а состояние читается по data-tone и роли alert.
+    expect(card).toHaveClass("wf-fill");
+    expect(card).toHaveAttribute("data-tone", "error");
     expect(card).toHaveAttribute("aria-live", "assertive");
   });
 });
@@ -105,7 +108,7 @@ describe("InfoRow", () => {
   it("renders labels and values", () => {
     render(<InfoRow label="Tenant" value="alpha" />);
 
-    expect(screen.getByText("Tenant")).toHaveClass("text-muted");
+    expect(screen.getByText("Tenant")).toHaveClass("wf-muted");
     expect(screen.getByText("alpha")).toBeInTheDocument();
   });
 
@@ -114,7 +117,13 @@ describe("InfoRow", () => {
       <InfoRow label="Tenant ID" value="very-long-id" inverted truncate />,
     );
 
-    expect(screen.getByText("Tenant ID")).toHaveClass("text-white/60");
+    // Инвертированная поверхность в каркасе не отличается цветом: подпись
+    // остаётся приглушённой, а сам prop виден через data-inverted.
+    expect(screen.getByText("Tenant ID")).toHaveClass("wf-muted");
+    expect(screen.getByText("Tenant ID").parentElement?.parentElement).toHaveAttribute(
+      "data-inverted",
+      "true",
+    );
     expect(screen.getByText("very-long-id")).toHaveClass("truncate");
     expect(screen.getByText("very-long-id")).toHaveAttribute(
       "title",

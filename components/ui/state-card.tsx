@@ -23,15 +23,15 @@ export type StateCardProps = {
   /** Сколько строк-скелетонов рисовать при variant="loading". */
   rows?: number;
   className?: string;
-  /** Необязательное действие: кнопка или ссылка с классами .btn. */
+  /** Необязательное действие: кнопка или ссылка с классами .wf-btn. */
   action?: ReactNode;
 };
 
 /**
  * Единая карточка состояния экрана: загрузка, пустой список, ошибка.
- * Нейтральный тон — мягкая панель, ошибка — палитра danger.
- * Заголовок всегда h3, иконка всегда .icon-badge, загрузка всегда .skeleton —
- * чтобы шесть экранов кабинета показывали состояния одинаково.
+ * В каркасе все тона монохромные — ошибка отличается не цветом, а ролью
+ * alert и aria-live="assertive". Заголовок всегда h3, загрузка всегда
+ * .wf-skeleton, чтобы шесть экранов кабинета показывали состояния одинаково.
  */
 export function StateCard({
   icon,
@@ -50,19 +50,9 @@ export function StateCard({
   const isError = !isLoading && resolvedTone === "error";
   const isCentered = align === "center";
 
-  const shellClass = isError
-    ? "rounded-md border border-danger/25 bg-danger-soft text-danger-ink"
-    : "soft-panel text-muted";
-
-  // Бейдж тонирован под состояние; на danger-панели заливка совпадает с фоном,
-  // поэтому форму держит рамка.
-  const badgeClass = isError
-    ? "icon-badge icon-badge-danger shrink-0 border border-danger/20"
-    : "icon-badge shrink-0";
-
-  const headingClass = `font-display text-base font-extrabold tracking-[-0.02em] ${
-    isError ? "" : "text-ink"
-  } ${isCentered ? "text-balance" : ""}`;
+  const headingClass = `text-base font-semibold ${
+    isCentered ? "text-balance" : ""
+  }`;
 
   const actionClass = `mt-4 ${isCentered ? "flex justify-center" : ""}`;
   const rowCount = Math.max(1, Math.round(rows));
@@ -72,9 +62,10 @@ export function StateCard({
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
       aria-busy={isLoading ? true : undefined}
-      className={`p-5 sm:p-6 ${
+      data-tone={resolvedTone}
+      className={`wf-fill p-5 sm:p-6 ${
         isCentered ? "text-center" : ""
-      } ${shellClass} ${className}`}
+      } ${className}`}
     >
       {isLoading ? (
         <>
@@ -85,7 +76,7 @@ export function StateCard({
             {Array.from({ length: rowCount }, (_, index) => (
               <span
                 key={index}
-                className={`skeleton block ${index === 0 ? "h-4" : "h-3"} ${
+                className={`wf-skeleton block ${index === 0 ? "h-4" : "h-3"} ${
                   SKELETON_WIDTHS[index % SKELETON_WIDTHS.length]
                 } ${isCentered ? "mx-auto" : ""}`}
               />
@@ -100,21 +91,21 @@ export function StateCard({
           }
         >
           {icon ? (
-            <span className={badgeClass} aria-hidden="true">
+            <span className="wf-muted shrink-0" aria-hidden="true">
               {icon}
             </span>
           ) : null}
           <div
             className={`min-w-0 ${isCentered ? "" : "flex-1"} ${
-              isCentered && icon ? "mt-4" : ""
+              isCentered && icon ? "mt-3" : ""
             }`}
           >
             <h3 className={headingClass}>{title}</h3>
             {description ? (
               <p
-                className={`mt-2 text-sm leading-6 ${
-                  isError ? "" : "text-muted"
-                } ${isCentered ? "mx-auto max-w-sm" : ""}`}
+                className={`wf-muted mt-2 text-sm leading-6 ${
+                  isCentered ? "mx-auto max-w-sm" : ""
+                }`}
               >
                 {description}
               </p>

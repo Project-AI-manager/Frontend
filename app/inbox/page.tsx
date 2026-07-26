@@ -1,23 +1,7 @@
 "use client";
 
-import {
-  AlertCircle,
-  ArrowUpRight,
-  BookOpen,
-  Bot,
-  Cable,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Gauge,
-  Loader2,
-  MessageCircle,
-  RefreshCw,
-  Send,
-  Sparkles,
-  UserRound,
-} from "lucide-react";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { ArrowUpRight, ChevronRight, RefreshCw, Send } from "lucide-react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -219,6 +203,7 @@ export default function InboxPage() {
   }
 
   const isActionPending = replyMutation.isPending || escalateMutation.isPending;
+  const isRefreshing = isConversationsFetching || isThreadFetching;
 
   return (
     <AppShell
@@ -226,7 +211,7 @@ export default function InboxPage() {
       description="Разбирайте обращения последовательно: выберите диалог, изучите контекст и ответьте клиенту."
     >
       <div className="flex flex-col gap-4">
-        <div className="soft-panel flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-6 md:px-5">
+        <div className="wf-box flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-6">
           <div className="scroll-thin -mx-1 flex min-w-0 flex-1 items-center gap-3 overflow-x-auto px-1 py-0.5">
             <WorkflowStep number="01" label="Выберите обращение" active />
             <ChevronRight
@@ -250,79 +235,64 @@ export default function InboxPage() {
               active={Boolean(thread)}
             />
           </div>
+
           <button
             type="button"
             onClick={handleRefresh}
-            className="btn btn-secondary btn-sm shrink-0 self-start md:self-auto"
+            aria-busy={isRefreshing}
+            className="wf-btn shrink-0 self-start md:self-auto"
           >
-            {isConversationsFetching || isThreadFetching ? (
-              <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-            ) : (
-              <RefreshCw size={15} aria-hidden="true" />
-            )}
+            <RefreshCw size={18} className="text-muted" aria-hidden="true" />
             Обновить данные
           </button>
         </div>
 
-        {/* 16rem = шапка AppShell (~4.7rem) + вертикальные отступы main (4rem)
-            + панель шагов (5rem) + gap-4 (1rem) и небольшой запас: рабочая
-            область умещается в экран, а прокручиваются только колонки. */}
-        <section className="panel grid overflow-hidden lg:h-[calc(100dvh-16rem)] lg:min-h-[560px] lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_320px] xl:grid-rows-[minmax(0,1fr)]">
-          <aside className="flex min-h-0 min-w-0 flex-col border-b border-line bg-mist lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:border-b-0 lg:border-r xl:row-span-1">
-            <div className="flex-none border-b border-line bg-white/70 px-4 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="section-kicker">Очередь</p>
-                  <h2 className="font-display mt-1 text-lg font-extrabold tracking-[-0.04em]">
-                    Входящие
-                  </h2>
-                </div>
-                <span className="font-display shrink-0 text-2xl font-extrabold tabular-nums text-brand">
-                  {conversations.length}
-                </span>
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_260px]">
+          {/* Колонка 1 — список диалогов. */}
+          <section className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <p className="wf-kicker">Очередь</p>
+                <h2 className="wf-title mt-1">Входящие</h2>
               </div>
-
-              <div
-                role="group"
-                aria-label="Фильтр диалогов по статусу"
-                className="segmented scroll-thin mt-3 w-full overflow-x-auto align-top"
-              >
-                {statusFilters.map((filter) => {
-                  const isSelected = statusFilter === filter.value;
-                  const count =
-                    filter.value === "all"
-                      ? conversations.length
-                      : conversations.filter(
-                          (conversation) =>
-                            conversation.status === filter.value,
-                        ).length;
-
-                  // min-h-10! — .segmented-item задаёт 36px вне каскадных слоёв,
-                  // обычная утилита его не перебивает, а цель нажатия нужна 40px.
-                  return (
-                    <button
-                      key={filter.value}
-                      type="button"
-                      aria-pressed={isSelected}
-                      data-active={isSelected ? "true" : undefined}
-                      onClick={() => setStatusFilter(filter.value)}
-                      className="segmented-item min-h-10! shrink-0"
-                    >
-                      {filter.label}
-                      <span
-                        className={`tabular-nums ${
-                          isSelected ? "text-on-brand-strong" : "text-faint"
-                        }`}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <span className="wf-muted shrink-0 text-sm tabular-nums">
+                {conversations.length}
+              </span>
             </div>
 
-            <div className="scroll-thin min-h-0 max-h-[26rem] flex-1 space-y-2 overflow-y-auto p-3 lg:max-h-none">
+            <div
+              role="group"
+              aria-label="Фильтр диалогов по статусу"
+              className="mt-3 flex flex-wrap gap-2"
+            >
+              {statusFilters.map((filter) => {
+                const isSelected = statusFilter === filter.value;
+                const count =
+                  filter.value === "all"
+                    ? conversations.length
+                    : conversations.filter(
+                        (conversation) => conversation.status === filter.value,
+                      ).length;
+
+                // bg-fill! — .wf-btn объявлен вне каскадных слоёв, поэтому
+                // обычная утилита фона его не перебивает.
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={isSelected}
+                    data-active={isSelected ? "true" : undefined}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={`wf-btn ${isSelected ? "bg-fill!" : ""}`}
+                  >
+                    {filter.label}
+                    <span className="wf-muted tabular-nums">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 space-y-2">
               {isConversationsLoading ? (
                 <div
                   role="status"
@@ -330,37 +300,36 @@ export default function InboxPage() {
                   className="space-y-2"
                 >
                   {skeletonRows.map((row) => (
-                    <div
-                      key={row}
-                      className="rounded-md border border-line bg-white p-4"
-                    >
+                    <div key={row} className="wf-box p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="skeleton block h-3.5 w-28" />
-                        <span className="skeleton block h-3 w-10" />
+                        <span className="wf-skeleton block h-3.5 w-28" />
+                        <span className="wf-skeleton block h-3 w-10" />
                       </div>
-                      <span className="skeleton mt-3 block h-3 w-full" />
-                      <span className="skeleton mt-2 block h-3 w-3/5" />
-                      <span className="skeleton mt-4 block h-5 w-20" />
+                      <span className="wf-skeleton mt-3 block h-3 w-full" />
+                      <span className="wf-skeleton mt-2 block h-3 w-3/5" />
+                      <span className="wf-skeleton mt-3 block h-5 w-20" />
                     </div>
                   ))}
                 </div>
               ) : conversationsError ? (
                 <StateCard
-                  icon={<AlertCircle size={22} />}
                   title="Не удалось загрузить диалоги"
                   description={getApiErrorMessage(
                     conversationsError,
                     "Проверь авторизацию и подключение к сервису.",
                   )}
                   variant="error"
-                  align="center"
                   action={
                     <button
                       type="button"
                       onClick={handleRefresh}
-                      className="btn btn-secondary btn-sm"
+                      className="wf-btn"
                     >
-                      <RefreshCw size={15} aria-hidden="true" />
+                      <RefreshCw
+                        size={18}
+                        className="text-muted"
+                        aria-hidden="true"
+                      />
                       Обновить данные
                     </button>
                   }
@@ -369,8 +338,8 @@ export default function InboxPage() {
                 visibleConversations.map((conversation) => {
                   const isActive = conversation.id === activeConversationId;
 
-                  // border-brand!/bg-brand-soft! — .card объявлен вне каскадных
-                  // слоёв, поэтому обычные утилиты цвета его не перебивают.
+                  // bg-fill! — .wf-box объявлен вне каскадных слоёв, поэтому
+                  // обычная утилита фона его не перебивает.
                   return (
                     <button
                       key={conversation.id}
@@ -380,34 +349,34 @@ export default function InboxPage() {
                         setSelectedConversationId(conversation.id);
                         setActionMessage(null);
                       }}
-                      className={`card card-hover block w-full px-4 py-3.5 text-left ${
-                        isActive ? "border-brand! bg-brand-soft!" : ""
+                      className={`wf-box block w-full p-3 text-left ${
+                        isActive ? "bg-fill!" : ""
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                           {conversation.unreadCount > 0 ? (
                             <span
-                              className="size-1.5 shrink-0 rounded-full bg-brand"
+                              className="wf-dot shrink-0"
                               aria-hidden="true"
                             />
                           ) : null}
-                          <h3 className="font-display min-w-0 truncate text-sm font-extrabold tracking-[-0.03em]">
+                          <h3 className="min-w-0 truncate text-sm font-semibold">
                             {conversation.customerName}
                           </h3>
                         </div>
-                        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-faint">
+                        <span className="wf-muted shrink-0 text-xs tabular-nums">
                           {formatCompactDate(conversation.lastMessageAt)}
                         </span>
                       </div>
-                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 break-words text-muted">
+                      <p className="wf-muted mt-1.5 line-clamp-2 text-sm break-words">
                         {conversation.lastMessagePreview ||
                           "Сообщений пока нет"}
                       </p>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <StatusChip status={conversation.status} />
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <StatusTag status={conversation.status} />
                         {conversation.unreadCount > 0 ? (
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-extrabold tabular-nums text-white">
+                          <span className="wf-muted shrink-0 text-xs tabular-nums">
                             {conversation.unreadCount}
                           </span>
                         ) : null}
@@ -417,158 +386,52 @@ export default function InboxPage() {
                 })
               ) : conversations.length > 0 ? (
                 <StateCard
-                  icon={<MessageCircle size={22} />}
                   title="Нет диалогов с таким статусом"
                   description="Смените фильтр очереди, чтобы увидеть остальные обращения."
-                  align="center"
                 />
               ) : (
                 <StateCard
-                  icon={<MessageCircle size={22} />}
                   title="Диалогов пока нет"
                   description="Новое обращение появится здесь сразу после поступления из подключённого канала."
-                  align="center"
                 />
               )}
             </div>
-          </aside>
+          </section>
 
-          <aside className="scroll-thin flex min-h-0 min-w-0 flex-col gap-4 border-b border-line bg-white p-4 md:p-5 lg:col-start-2 lg:row-start-1 lg:max-h-60 lg:overflow-y-auto xl:col-start-3 xl:row-start-1 xl:max-h-none xl:overflow-y-auto xl:border-b-0 xl:border-l">
-            <p className="section-kicker">Контекст</p>
+          {/* Колонка 2 — лента переписки и композер. */}
+          <section className="min-w-0">
+            <p className="wf-kicker">Переписка</p>
 
             {thread ? (
-              <>
-                <dl className="flex flex-wrap gap-x-8 gap-y-4 xl:block xl:space-y-4">
-                  {channelName ? (
-                    <div className="min-w-0">
-                      <dt className="micro-label">Канал</dt>
-                      <dd
-                        className="font-display mt-1 truncate text-sm font-bold text-ink"
-                        title={thread.channelId || undefined}
-                      >
-                        {channelName}
-                      </dd>
-                    </div>
-                  ) : null}
-                  <div className="min-w-0">
-                    <dt className="micro-label">Клиент</dt>
-                    <dd
-                      className="font-display mt-1 truncate text-sm font-bold text-ink"
-                      title={thread.customerId || undefined}
-                    >
-                      {thread.customerName}
-                    </dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="micro-label">Статус</dt>
-                    <dd className="mt-1.5">
-                      <StatusChip status={thread.status} />
-                    </dd>
-                  </div>
-                </dl>
-
-                <div className="soft-panel flex items-center gap-3 p-4">
-                  <span className="icon-badge shrink-0" aria-hidden="true">
-                    <Gauge size={20} />
-                  </span>
-                  <p className="font-display min-w-0 text-[13px] font-bold leading-5 text-ink">
-                    {aiSignal(messages)}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
-                  <Signal
-                    icon={<MessageCircle size={14} />}
-                    title={`${thread.unreadCount} непрочитано`}
-                  />
-                  <Signal
-                    icon={<CheckCircle2 size={14} />}
-                    title="История синхронизирована"
-                  />
-                  <Signal
-                    icon={<Clock size={14} />}
-                    title={`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
-                  />
-                </div>
-
-                <div className="xl:mt-auto xl:pt-2">
-                  <button
-                    type="button"
-                    onClick={() => escalateMutation.mutate()}
-                    disabled={!activeConversationId || isActionPending}
-                    className="btn btn-secondary w-full sm:w-auto xl:w-full"
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h2 className="wf-title min-w-0 truncate">
+                  {thread.customerName}
+                </h2>
+                <StatusTag status={thread.status} />
+                {channelName ? (
+                  <span
+                    className="wf-muted text-sm"
+                    title={thread.channelId || undefined}
                   >
-                    {escalateMutation.isPending ? (
-                      <Loader2
-                        size={15}
-                        className="animate-spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <ArrowUpRight size={15} aria-hidden="true" />
-                    )}
-                    {escalateMutation.isPending
-                      ? "Передаём менеджеру..."
-                      : "Передать менеджеру"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="soft-panel flex items-center gap-3 p-4">
-                <span className="icon-badge shrink-0" aria-hidden="true">
-                  <UserRound size={20} />
-                </span>
-                <p className="text-[13px] leading-5 text-muted">
-                  Карточка клиента появится после выбора обращения.
-                </p>
+                    {channelName}
+                  </span>
+                ) : null}
               </div>
+            ) : (
+              <>
+                <h2 className="wf-title mt-1">Выберите диалог</h2>
+                <p className="wf-muted mt-2 text-sm">
+                  История обращения и действия появятся в этой рабочей области.
+                </p>
+              </>
             )}
-          </aside>
 
-          <div className="flex min-h-0 min-w-0 flex-col bg-white lg:col-start-2 lg:row-start-2 xl:col-start-2 xl:row-start-1">
-            <header className="flex-none border-b border-line px-4 py-4 md:px-6 md:py-5">
-              {thread ? (
-                <>
-                  <p className="section-kicker">Переписка</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <h2 className="font-display min-w-0 truncate text-xl font-extrabold tracking-[-0.04em] md:text-2xl">
-                      {thread.customerName}
-                    </h2>
-                    <StatusChip status={thread.status} />
-                    {channelName ? (
-                      <span
-                        className="chip chip-grey"
-                        title={thread.channelId || undefined}
-                      >
-                        <Cable size={12} aria-hidden="true" />
-                        {channelName}
-                      </span>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="section-kicker">Переписка</p>
-                  <h2 className="font-display mt-1.5 text-xl font-extrabold tracking-[-0.04em] md:text-2xl">
-                    Выберите диалог
-                  </h2>
-                  <p className="mt-2 text-sm text-muted">
-                    История обращения и действия появятся в этой рабочей
-                    области.
-                  </p>
-                </>
-              )}
-            </header>
-
-            <div
-              className="scroll-thin min-h-[20rem] max-h-[60vh] flex-1 space-y-3 overflow-y-auto bg-surface p-4 md:p-6 lg:max-h-none lg:min-h-0"
-              aria-live="polite"
-            >
+            <div className="mt-3 space-y-2" aria-live="polite">
               {isThreadLoading ? (
                 <div
                   role="status"
                   aria-label="Загружаем историю"
-                  className="space-y-3"
+                  className="space-y-2"
                 >
                   {skeletonRows.map((row) => (
                     <div
@@ -577,111 +440,165 @@ export default function InboxPage() {
                         row === 1 ? "flex justify-end" : "flex justify-start"
                       }
                     >
-                      <div className="w-[78%] max-w-md rounded-md border border-line bg-white p-4">
-                        <span className="skeleton block h-3 w-24" />
-                        <span className="skeleton mt-3 block h-3 w-full" />
-                        <span className="skeleton mt-2 block h-3 w-2/3" />
+                      <div className="wf-box w-[78%] max-w-md p-3">
+                        <span className="wf-skeleton block h-3 w-24" />
+                        <span className="wf-skeleton mt-3 block h-3 w-full" />
+                        <span className="wf-skeleton mt-2 block h-3 w-2/3" />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : threadError ? (
                 <StateCard
-                  icon={<AlertCircle size={22} />}
                   title="Не удалось загрузить диалог"
                   description={getApiErrorMessage(
                     threadError,
                     "Попробуй обновить данные или выбрать другой диалог.",
                   )}
                   variant="error"
-                  align="center"
                   action={
                     <button
                       type="button"
                       onClick={handleRefresh}
-                      className="btn btn-secondary btn-sm"
+                      className="wf-btn"
                     >
-                      <RefreshCw size={15} aria-hidden="true" />
+                      <RefreshCw
+                        size={18}
+                        className="text-muted"
+                        aria-hidden="true"
+                      />
                       Обновить данные
                     </button>
                   }
                 />
               ) : !activeConversationId ? (
                 <StateCard
-                  icon={<MessageCircle size={22} />}
                   title="Нет выбранного диалога"
                   description="Список обращений пуст или ещё загружается."
-                  align="center"
                 />
               ) : messages.length > 0 ? (
                 messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageRow key={message.id} message={message} />
                 ))
               ) : (
                 <StateCard
-                  icon={<MessageCircle size={22} />}
                   title="История пуста"
                   description="В этом диалоге пока нет сообщений."
-                  align="center"
                 />
               )}
             </div>
 
-            <div className="flex-none border-t border-line bg-white p-4 md:p-6">
-              <form onSubmit={handleReplySubmit}>
-                <label htmlFor="conversation-reply" className="field-label">
-                  <span className="inline-flex items-center gap-2">
-                    <Sparkles
-                      size={15}
-                      className="text-brand"
-                      aria-hidden="true"
-                    />
-                    Ответ клиенту
-                  </span>
-                </label>
-                <textarea
-                  id="conversation-reply"
-                  value={replyText}
-                  onChange={(event) => setReplyText(event.target.value)}
-                  placeholder="Напишите короткий и точный ответ..."
+            <form onSubmit={handleReplySubmit} className="mt-4">
+              <label htmlFor="conversation-reply" className="wf-label">
+                Ответ клиенту
+              </label>
+              <textarea
+                id="conversation-reply"
+                value={replyText}
+                onChange={(event) => setReplyText(event.target.value)}
+                placeholder="Напишите короткий и точный ответ..."
+                disabled={!activeConversationId || isActionPending}
+                className="wf-field scroll-thin text-sm"
+              />
+              {actionMessage ? (
+                <p role="status" className="wf-hint">
+                  {actionMessage}
+                </p>
+              ) : null}
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="submit"
                   disabled={!activeConversationId || isActionPending}
-                  className="field scroll-thin max-h-56 text-sm leading-6 placeholder:text-faint [field-sizing:content]"
-                />
-                {actionMessage ? (
-                  <p
-                    role="status"
-                    className="mt-3 rounded-md border border-line border-l-2 border-l-brand bg-mist px-4 py-3 text-sm font-semibold text-ink-soft"
-                  >
-                    {actionMessage}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={!activeConversationId || isActionPending}
-                    className="btn btn-primary w-full sm:w-auto"
-                  >
-                    {replyMutation.isPending ? (
-                      <Loader2
-                        size={16}
-                        className="animate-spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Send size={16} aria-hidden="true" />
-                    )}
-                    Отправить ответ
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </section>
+                  className="wf-btn wf-btn-primary w-full sm:w-auto"
+                >
+                  <Send size={18} aria-hidden="true" />
+                  {replyMutation.isPending
+                    ? "Отправляем ответ..."
+                    : "Отправить ответ"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Колонка 3 — контекст диалога. */}
+          <section className="min-w-0">
+            <p className="wf-kicker">Контекст</p>
+
+            {thread ? (
+              <>
+                <dl className="mt-2">
+                  {channelName ? (
+                    <>
+                      <div className="flex items-baseline justify-between gap-4 py-2">
+                        <dt className="wf-muted shrink-0 text-sm">Канал</dt>
+                        <dd
+                          className="min-w-0 truncate text-sm"
+                          title={thread.channelId || undefined}
+                        >
+                          {channelName}
+                        </dd>
+                      </div>
+                      <div className="wf-divider" />
+                    </>
+                  ) : null}
+                  <div className="flex items-baseline justify-between gap-4 py-2">
+                    <dt className="wf-muted shrink-0 text-sm">Клиент</dt>
+                    <dd
+                      className="min-w-0 truncate text-sm"
+                      title={thread.customerId || undefined}
+                    >
+                      {thread.customerName}
+                    </dd>
+                  </div>
+                  <div className="wf-divider" />
+                  <div className="flex items-center justify-between gap-4 py-2">
+                    <dt className="wf-muted shrink-0 text-sm">Статус</dt>
+                    <dd className="min-w-0">
+                      <StatusTag status={thread.status} />
+                    </dd>
+                  </div>
+                  <div className="wf-divider" />
+                </dl>
+
+                <ul className="wf-muted mt-3 space-y-1 text-sm">
+                  <li>{aiSignal(messages)}</li>
+                  <li>{`${thread.unreadCount} непрочитано`}</li>
+                  <li>История синхронизирована</li>
+                  <li>
+                    {`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
+                  </li>
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => escalateMutation.mutate()}
+                  disabled={!activeConversationId || isActionPending}
+                  className="wf-btn mt-4 w-full"
+                >
+                  <ArrowUpRight
+                    size={18}
+                    className="text-muted"
+                    aria-hidden="true"
+                  />
+                  {escalateMutation.isPending
+                    ? "Передаём менеджеру..."
+                    : "Передать менеджеру"}
+                </button>
+              </>
+            ) : (
+              <p className="wf-muted mt-2 text-sm">
+                Карточка клиента появится после выбора обращения.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </AppShell>
   );
 }
 
+/** Шаг маршрута разбора обращения. Пройденный шаг отличается только тоном
+    текста: цвета в каркасе нет, поэтому неактивный шаг приглушён. */
 function WorkflowStep({
   number,
   label,
@@ -692,12 +609,12 @@ function WorkflowStep({
   active: boolean;
 }) {
   return (
-    <span className="flex shrink-0 items-center gap-3">
-      <span className="num-badge num-badge-sm" aria-hidden="true">
+    <span className="flex shrink-0 items-center gap-2">
+      <span className="wf-muted text-xs tabular-nums" aria-hidden="true">
         {number}
       </span>
       <span
-        className={`font-display whitespace-nowrap text-[13px] font-bold tracking-[-0.02em] ${
+        className={`whitespace-nowrap text-[13px] font-medium ${
           active ? "text-ink" : "text-faint"
         }`}
       >
@@ -707,12 +624,11 @@ function WorkflowStep({
   );
 }
 
-function MessageBubble({ message }: { message: ConversationMessageResponse }) {
+function MessageRow({ message }: { message: ConversationMessageResponse }) {
   const direction = normalizeDirection(message.direction, message.sender_type);
   const isOutbound = direction === "outbound";
   const isInternal = direction === "internal";
   const isAi = isOutbound && message.sender_type === "ai";
-  const isManager = isOutbound && !isAi;
   const sources = messageSources(message.ai_meta);
   const confidence = confidencePercent(message.confidence);
 
@@ -720,15 +636,15 @@ function MessageBubble({ message }: { message: ConversationMessageResponse }) {
     return (
       <div className="flex justify-center">
         <div className="max-w-[86%] text-center">
-          <p className="micro-label">
+          <p className="wf-muted text-xs">
             {directionLabel(direction, message.sender_type)}
             <span className="px-1.5">·</span>
             {formatNullableDate(message.created_at, "нет даты")}
           </p>
-          <p className="mt-1 text-[13px] leading-5 break-words text-muted">
+          <p className="wf-muted mt-1 text-sm break-words">
             {message.text || "Пустое сообщение"}
           </p>
-          <p className="mt-1 text-[11px] text-faint">
+          <p className="wf-muted mt-1 text-xs">
             {messageStatusLabel(message.status)}
           </p>
         </div>
@@ -736,128 +652,48 @@ function MessageBubble({ message }: { message: ConversationMessageResponse }) {
     );
   }
 
+  // Клиент — слева на сером фоне, AI и менеджер — справа на белом.
   return (
     <div className={isOutbound ? "flex justify-end" : "flex justify-start"}>
-      <div
-        className={
-          isManager
-            ? "max-w-[86%] rounded-md bg-brand p-4 text-white shadow-brand"
-            : isAi
-              ? "max-w-[86%] rounded-md border border-brand/35 bg-white p-4 shadow-soft"
-              : "soft-panel max-w-[78%] p-4"
-        }
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {isAi ? (
-            <span className="chip chip-blue">
-              <Bot size={12} aria-hidden="true" />
-              {directionLabel(direction, message.sender_type)}
-            </span>
-          ) : isManager ? (
-            <span className="chip chip-inverse">
-              <UserRound size={12} aria-hidden="true" />
-              {directionLabel(direction, message.sender_type)}
-            </span>
-          ) : (
-            <span className="chip chip-grey">
-              <UserRound size={12} aria-hidden="true" />
-              {directionLabel(direction, message.sender_type)}
-            </span>
-          )}
-          {isAi && confidence !== null ? (
-            <span className="chip chip-grey">
-              <Gauge size={12} aria-hidden="true" />
-              {confidence}%
-            </span>
-          ) : null}
-          <span
-            className={`text-[11px] font-semibold tabular-nums ${
-              isManager ? "text-on-brand-strong" : "text-faint"
-            }`}
-          >
+      <div className={`${isOutbound ? "wf-box" : "wf-fill"} max-w-[86%] p-3`}>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="font-semibold">
+            {directionLabel(direction, message.sender_type)}
+          </span>
+          <span className="wf-muted tabular-nums">
             {formatNullableDate(message.created_at, "нет даты")}
           </span>
+          {isAi && confidence !== null ? (
+            <span className="wf-muted tabular-nums">
+              Уверенность {confidence}%
+            </span>
+          ) : null}
         </div>
-        <p
-          className={`mt-2.5 break-words whitespace-pre-line text-sm leading-6 ${
-            isManager ? "text-white" : "text-ink"
-          }`}
-        >
+        <p className="mt-2 text-sm break-words whitespace-pre-line">
           {message.text || "Пустое сообщение"}
         </p>
         {sources.length > 0 ? (
-          <div
-            className={`mt-3 flex items-start gap-3 rounded-md p-3 ${
-              isManager ? "bg-white/12" : "border border-line-soft bg-mist"
-            }`}
-          >
-            <span className="icon-badge shrink-0" aria-hidden="true">
-              <BookOpen size={20} />
-            </span>
-            <div className="min-w-0">
-              <p
-                className={`font-display text-[13px] font-extrabold tracking-[-0.02em] ${
-                  isManager ? "text-white" : "text-ink"
-                }`}
-              >
-                Источники ответа
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {sources.map((source) => (
-                  <li key={source} className="max-w-full">
-                    <span className="chip chip-grey max-w-full truncate">
-                      {source}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold">Источники ответа</p>
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+              {sources.map((source) => (
+                <li key={source} className="max-w-full">
+                  <span className="wf-tag max-w-full truncate">{source}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
-        {message.status === "failed" ? (
-          // Красный тон — только для настоящей ошибки: сбоя отправки.
-          <span className="chip chip-red mt-2">
-            <AlertCircle size={12} aria-hidden="true" />
-            {messageStatusLabel(message.status)}
-          </span>
-        ) : (
-          <p
-            className={`mt-2 text-[11px] font-semibold ${
-              isManager ? "text-on-brand-strong" : "text-faint"
-            }`}
-          >
-            {messageStatusLabel(message.status)}
-          </p>
-        )}
+        <p className="wf-muted mt-2 text-xs">
+          {messageStatusLabel(message.status)}
+        </p>
       </div>
     </div>
   );
 }
 
-function Signal({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 font-semibold text-muted">
-      <span className="text-brand" aria-hidden="true">
-        {icon}
-      </span>
-      {title}
-    </span>
-  );
-}
-
-function StatusChip({ status }: { status: ConversationStatus }) {
-  // Красный тон означает сбой, а не «состояние неизвестно»:
-  // неизвестный статус — нейтральный, поэтому серый.
-  const toneClass =
-    status === "open"
-      ? "chip-blue"
-      : status === "ai_replied"
-        ? "chip-green"
-        : status === "escalated"
-          ? "chip-amber"
-          : "chip-grey";
-
-  return <span className={`chip ${toneClass}`}>{statusLabel(status)}</span>;
+function StatusTag({ status }: { status: ConversationStatus }) {
+  return <span className="wf-tag">{statusLabel(status)}</span>;
 }
 
 function normalizeConversations(

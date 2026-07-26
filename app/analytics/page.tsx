@@ -1,23 +1,9 @@
 "use client";
 
-import {
-  AlertCircle,
-  BarChart3,
-  BookOpen,
-  BrainCircuit,
-  Loader2,
-  MessageCircle,
-  RefreshCw,
-  Timer,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
-import type { ReactNode } from "react";
+import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { InfoRow } from "@/components/ui/info-row";
-import { StateCard } from "@/components/ui/state-card";
 import {
   analyticsApi,
   type AnalyticsOverviewResponse,
@@ -32,36 +18,26 @@ export default function AnalyticsPage() {
   });
 
   const overview = data ?? emptyOverview;
-  // Это метрики, а не статусы: эмблемы всегда в синем акценте, цвет несут
-  // только точки статусов и чипы.
   const metrics = [
     {
       label: "Диалогов",
       value: formatNumber(overview.dialogs_total),
       helper: `${overview.dialogs_open} открытых`,
-      icon: MessageCircle,
-      rate: null,
     },
     {
       label: "AI-ответов",
       value: formatNumber(overview.ai_replies_count),
       helper: `${formatPercent(overview.auto_reply_rate)} автоответов`,
-      icon: Zap,
-      rate: overview.auto_reply_rate,
     },
     {
       label: "Среднее время",
       value: formatDuration(overview.avg_response_sec),
       helper: "первый ответ после входящего",
-      icon: Timer,
-      rate: null,
     },
     {
       label: "Эскалаций",
       value: formatNumber(overview.dialogs_escalated),
       helper: `${formatPercent(overview.escalation_rate)} диалогов`,
-      icon: BarChart3,
-      rate: overview.escalation_rate,
     },
   ] as const;
 
@@ -76,49 +52,57 @@ export default function AnalyticsPage() {
       title="Аналитика"
       description="Главные показатели диалогов, качества AI и использования тарифа."
     >
-      <div className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+      <div className="mx-auto w-full max-w-5xl space-y-4 sm:space-y-5">
         {/* Шапка обзора: кикер, заголовок и ручное обновление выборки. */}
-        <section className="panel overflow-hidden">
-          <div className="soft-grid flex flex-col gap-5 bg-mist p-5 sm:p-6 md:flex-row md:items-start md:justify-between">
+        <section className="wf-box p-4 sm:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <span className="section-kicker">
-                <BarChart3 size={16} />
-                Обзор
-              </span>
-              <h2 className="font-display mt-3 text-balance text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
+              <span className="wf-kicker">Обзор</span>
+              <h2 className="wf-title mt-2 text-balance">
                 Результаты работы ассистента
               </h2>
-              <p className="mt-2.5 max-w-2xl text-sm leading-6 text-muted">
+              <p className="wf-muted mt-2 max-w-2xl text-sm leading-6">
                 Данные обновляются из рабочего пространства и учитывают только
                 ваши диалоги, ответы и документы.
               </p>
             </div>
+            {/* Идущий фоновый запрос показываем отключённой кнопкой:
+                отдельного индикатора в каркасе нет. */}
             <button
               type="button"
               onClick={() => refetch()}
-              className="btn btn-secondary btn-sm shrink-0 self-start"
+              disabled={isFetching}
+              aria-busy={isFetching}
+              className="wf-btn shrink-0 self-start"
             >
-              {isFetching ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <RefreshCw size={16} />
-              )}
+              <RefreshCw size={18} className="text-muted" />
               Обновить
             </button>
           </div>
         </section>
 
         {isLoading ? (
-          <StateCard
-            variant="loading"
-            title="Загружаем аналитику"
-            description="Собираем показатели рабочего пространства."
-            rows={4}
-          />
+          <section
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="wf-box p-4 sm:p-5"
+          >
+            {/* Скринридер получает текст состояния, глазами его заменяют скелетоны. */}
+            <h3 className="sr-only">Загружаем аналитику</h3>
+            <p className="sr-only">Собираем показатели рабочего пространства.</p>
+            <div className="space-y-3" aria-hidden="true">
+              {SKELETON_WIDTHS.map((width, index) => (
+                <span
+                  key={width}
+                  className={`wf-skeleton block ${index === 0 ? "h-4" : "h-3"} ${width}`}
+                />
+              ))}
+            </div>
+          </section>
         ) : error ? (
-          <StateCard
-            variant="error"
-            icon={<AlertCircle size={22} />}
+          <StateBlock
+            tone="error"
             title="Не удалось загрузить аналитику"
             description={getApiErrorMessage(
               error,
@@ -128,74 +112,59 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {overview.dialogs_total === 0 ? (
-              <StateCard
-                icon={<MessageCircle size={22} />}
+              <StateBlock
                 title="Данных пока нет"
                 description="После первых Telegram-диалогов и ответов менеджеров здесь появятся реальные KPI."
               />
             ) : null}
 
             {/* Ряд KPI: четыре показателя, приходящие из /analytics/overview. */}
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {metrics.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
             </section>
 
-            <div className="grid gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-              {/* Распределение диалогов по статусам — CSS-бары без библиотек. */}
-              <section className="panel p-5 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+              {/* Распределение диалогов по статусам — CSS-полосы без библиотек. */}
+              <section className="wf-box p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <span className="section-kicker">
-                      <BarChart3 size={16} />
-                      Распределение
-                    </span>
-                    <h2 className="font-display mt-3 text-xl font-extrabold tracking-[-0.04em]">
-                      Статусы диалогов
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">
+                    <span className="wf-kicker">Распределение</span>
+                    <h2 className="wf-title mt-2">Статусы диалогов</h2>
+                    <p className="wf-muted mt-2 text-sm leading-6">
                       Текущее состояние обращений в рабочем пространстве.
                     </p>
                   </div>
-                  <span className="chip chip-blue shrink-0 self-start">
+                  <span className="wf-tag shrink-0 self-start">
                     {overview.dialogs_total} всего
                   </span>
                 </div>
 
-                <div className="mt-7">
+                <div className="mt-5">
                   {statusBars.length > 0 ? (
-                    <ul className="space-y-5">
+                    <ul className="space-y-4">
                       {statusBars.map((item) => (
                         <li key={item.status}>
                           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                            <span className="flex items-center gap-2.5 text-sm font-bold text-ink">
-                              <span
-                                className={`size-2 shrink-0 rounded-full ${statusColor(item.status)}`}
-                                aria-hidden="true"
-                              />
+                            <span className="text-sm">
                               {statusLabel(item.status)}
                             </span>
                             <span className="flex items-baseline gap-2">
-                              <span className="font-display text-base font-extrabold tabular-nums text-ink">
+                              <span className="text-sm font-semibold tabular-nums">
                                 {item.count}
                               </span>
-                              <span className="text-xs font-semibold tabular-nums text-faint">
+                              <span className="wf-muted text-xs tabular-nums">
                                 {item.percent}%
                               </span>
                             </span>
                           </div>
-                          <MeterBar
-                            className="mt-2.5"
-                            value={item.share}
-                            fillClassName={statusColor(item.status)}
-                          />
+                          <MeterBar className="mt-2" value={item.share} />
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <StateCard
-                      icon={<BarChart3 size={22} />}
+                    <StateBlock
                       title="Статусов пока нет"
                       description="Диалоги появятся здесь, как только клиенты напишут в подключённый Telegram-бот."
                     />
@@ -204,81 +173,64 @@ export default function AnalyticsPage() {
               </section>
 
               {/* Потребление тарифа: сколько диалогов израсходовано из лимита. */}
-              <section className="blue-panel flex flex-col p-5 sm:p-6">
-                <div className="flex items-center gap-3.5">
-                  <span
-                    className="icon-badge icon-badge-inverse shrink-0"
-                    aria-hidden="true"
-                  >
-                    <TrendingUp size={22} />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="font-display text-xl font-extrabold tracking-[-0.04em]">
-                      Лимит диалогов
-                    </h2>
-                    <p className="mt-0.5 text-sm text-on-brand">
-                      Расход диалогов по вашему тарифу
-                    </p>
-                  </div>
+              <section className="wf-box flex flex-col p-4 sm:p-5">
+                <div className="min-w-0">
+                  <h2 className="wf-title">Лимит диалогов</h2>
+                  <p className="wf-muted mt-2 text-sm leading-6">
+                    Расход диалогов по вашему тарифу
+                  </p>
                 </div>
 
-                <div className="mt-auto pt-8">
+                <div className="mt-auto pt-6">
                   <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                    <p className="font-display text-3xl font-extrabold leading-none tracking-[-0.04em] tabular-nums">
+                    <p className="text-2xl font-semibold leading-none tabular-nums">
                       {overview.dialogs_used}{" "}
-                      <span className="text-sm font-bold text-on-brand-strong">
+                      <span className="wf-muted text-sm font-normal">
                         использовано
                       </span>
                     </p>
-                    <span className="text-sm font-bold tabular-nums text-on-brand-strong">
+                    <span className="wf-muted text-sm tabular-nums">
                       {overview.dialogs_limit || "Без лимита"}
                     </span>
                   </div>
                   {overview.dialogs_limit > 0 ? (
-                    <MeterBar
-                      className="mt-4"
-                      value={dialogUsagePercent}
-                      trackClassName="h-2 bg-white/25"
-                      fillClassName="bg-white"
-                    />
+                    <MeterBar className="mt-3" value={dialogUsagePercent} />
                   ) : null}
                 </div>
               </section>
             </div>
 
-            <div className="grid gap-5 sm:gap-6 md:grid-cols-2">
+            <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
               {/* Качество AI: доля уверенности и разрез по авторам сообщений. */}
-              <section className="panel h-full p-5 sm:p-6">
+              <section className="wf-box h-full p-4 sm:p-5">
                 <SectionHeader
-                  icon={<BrainCircuit size={22} />}
                   title="Качество AI"
                   description="Показатели по ответам ассистента."
                 />
-                <div className="soft-panel mt-5 p-4 sm:p-5">
+                <div className="wf-fill mt-4 p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <span className="text-sm text-muted">
+                    <span className="wf-muted text-sm">
                       Средняя уверенность ответов
                     </span>
-                    <span className="font-display text-2xl font-extrabold leading-none tracking-[-0.04em] tabular-nums text-brand">
+                    <span className="text-2xl font-semibold leading-none tabular-nums">
                       {formatPercent(overview.avg_ai_confidence)}
                     </span>
                   </div>
                   <MeterBar
-                    className="mt-3.5"
+                    className="mt-3"
                     value={toPercent(overview.avg_ai_confidence)}
-                    trackClassName="h-2 bg-line-soft"
                   />
                 </div>
-                <div className="mt-5 text-sm">
-                  <InfoRow
+                <div className="mt-4">
+                  <StatRow
                     label="AI-ответы"
                     value={formatNumber(overview.ai_replies_count)}
                   />
-                  <InfoRow
+                  <StatRow
                     label="Ответы менеджера"
                     value={formatNumber(overview.manager_replies_count)}
                   />
-                  <InfoRow
+                  <StatRow
                     label="Входящие"
                     value={formatNumber(overview.inbound_messages_count)}
                   />
@@ -286,22 +238,21 @@ export default function AnalyticsPage() {
               </section>
 
               {/* База знаний: что уже проиндексировано и что ждёт проверки. */}
-              <section className="panel h-full p-5 sm:p-6">
+              <section className="wf-box h-full p-4 sm:p-5">
                 <SectionHeader
-                  icon={<BookOpen size={22} />}
                   title="База знаний"
                   description="Документы, фрагменты и кандидаты на обучение."
                 />
-                <div className="mt-5 text-sm">
-                  <InfoRow
+                <div className="mt-4">
+                  <StatRow
                     label="Готовые документы"
                     value={formatNumber(overview.knowledge_documents_ready)}
                   />
-                  <InfoRow
+                  <StatRow
                     label="Фрагменты"
                     value={formatNumber(overview.knowledge_chunks_count)}
                   />
-                  <InfoRow
+                  <StatRow
                     label="Кандидаты"
                     value={formatNumber(overview.pending_candidates_count)}
                   />
@@ -315,97 +266,99 @@ export default function AnalyticsPage() {
   );
 }
 
+/** Ширины строк-скелетонов: имитируют заголовок и три строки текста. */
+const SKELETON_WIDTHS = ["w-2/5", "w-full", "w-4/5", "w-3/5"] as const;
+
 function MetricCard({
   label,
   value,
   helper,
-  icon: Icon,
-  rate,
 }: {
   label: string;
   value: string;
   helper: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  rate: number | null;
 }) {
   return (
-    <article className="card card-hover flex h-full flex-col p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <span className="icon-badge shrink-0" aria-hidden="true">
-          <Icon size={22} />
-        </span>
-        <span className="chip chip-grey shrink-0">
-          <span className="status-dot" data-tone="grey" aria-hidden="true" />
-          live
-        </span>
-      </div>
-      <p className="mt-5 text-sm text-muted">{label}</p>
-      <p className="font-display mt-1.5 text-3xl font-extrabold leading-none tracking-[-0.04em] tabular-nums text-brand">
+    <article className="wf-box flex h-full flex-col p-4">
+      <p className="wf-muted text-sm">{label}</p>
+      <p className="mt-1.5 text-2xl font-semibold leading-none tabular-nums">
         {value}
       </p>
-      <p className="mt-2.5 text-xs font-semibold leading-5 text-muted">
-        {helper}
-      </p>
-      {/* Полоса стоит вплотную к helper и показывает ровно ту долю, которая в
-          нём названа словами, — отдельная подпись не нужна. Где доли нет
-          (счётчик или время), нет и полосы. */}
-      {rate === null ? null : (
-        <MeterBar className="mt-3.5" value={toPercent(rate)} />
-      )}
+      <p className="wf-muted mt-2 text-xs leading-5">{helper}</p>
     </article>
   );
 }
 
 function SectionHeader({
-  icon,
   title,
   description,
 }: {
-  icon: ReactNode;
   title: string;
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3.5">
-      <span className="icon-badge shrink-0" aria-hidden="true">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <h2 className="font-display text-xl font-extrabold tracking-[-0.04em]">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
-      </div>
+    <div className="min-w-0">
+      <h2 className="wf-title">{title}</h2>
+      <p className="wf-muted mt-2 text-sm leading-6">{description}</p>
     </div>
   );
 }
 
+/** Строка «подпись → значение» для сводок. */
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 border-b border-line-soft py-2.5 first:pt-0 last:border-0 last:pb-0">
+      <span className="wf-muted text-sm">{label}</span>
+      <span className="text-sm font-medium tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+/** Пустое состояние и ошибка: один блок без цветовых тонов. */
+function StateBlock({
+  title,
+  description,
+  tone = "empty",
+}: {
+  title: string;
+  description: string;
+  tone?: "empty" | "error";
+}) {
+  const isError = tone === "error";
+
+  return (
+    <section
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
+      className="wf-fill p-4 sm:p-5"
+    >
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <p className="wf-muted mt-2 text-sm leading-6">{description}</p>
+    </section>
+  );
+}
+
 /**
- * Горизонтальная полоса на чистом CSS.
+ * Горизонтальная полоса на чистом CSS: дорожка bg-fill, заливка bg-ink.
  * Заливка рисуется сразу из значения — она не ждёт ни следующего кадра, ни
  * скролла, поэтому полоса не может остаться пустой при ненулевой доле.
- * Анимируется только смена значения (обновление данных).
  */
 function MeterBar({
   value,
-  trackClassName = "h-2 bg-surface",
-  fillClassName = "bg-brand",
   className = "",
 }: {
   value: number;
-  trackClassName?: string;
-  fillClassName?: string;
   className?: string;
 }) {
   const width = clampPercent(value);
 
   return (
     <div
-      className={`overflow-hidden rounded-full ${trackClassName} ${className}`}
+      className={`h-2 overflow-hidden rounded-md bg-fill ${className}`}
       aria-hidden="true"
     >
       <div
-        className={`h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none ${fillClassName}`}
+        className="h-full bg-ink"
         // Ненулевая доля не должна схлопываться в невидимую полоску:
         // минимум — квадратик высотой в полосу.
         style={{ width: width > 0 ? `max(${width}%, 0.5rem)` : "0%" }}
@@ -481,21 +434,6 @@ function statusLabel(status: string) {
       return "Отложенные";
     default:
       return status || "Неизвестно";
-  }
-}
-
-function statusColor(status: string) {
-  switch (status) {
-    case "auto":
-      return "bg-ok";
-    case "escalated":
-      return "bg-warn";
-    case "closed":
-      return "bg-faint";
-    case "open":
-      return "bg-brand";
-    default:
-      return "bg-brand";
   }
 }
 

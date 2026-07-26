@@ -1,41 +1,24 @@
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Bot,
-  BrainCircuit,
-  CheckCircle2,
-  FileText,
-  Gauge,
-  MessageSquareText,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
-import { AutopilotScene, HomeClient } from "./home-client";
+import { HomeClient } from "./home-client";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
 const features = [
   {
-    icon: MessageSquareText,
     title: "Единое окно",
     text: "Telegram и будущие каналы собираются в одну рабочую ленту без переключения между вкладками.",
   },
   {
-    icon: BrainCircuit,
     title: "База знаний",
     text: "Документы, ответы менеджеров и кандидаты автообучения становятся источником для AI.",
   },
   {
-    icon: Bot,
     title: "Ответ по базе",
     text: "AI готовит черновик, показывает источники и не делает вид, что знает больше, чем знает база.",
   },
   {
-    icon: ShieldCheck,
     title: "Контроль человека",
     text: "Порог уверенности и эскалация держат качество под контролем на раннем этапе внедрения.",
   },
@@ -68,42 +51,35 @@ const metrics = [
   {
     value: "70-80%",
     label: "типовых обращений в проверяемой цели",
-    chip: "Цель MVP",
-    chipClass: "chip-amber",
+    tag: "Цель MVP",
   },
   {
     value: "1 канал",
     label: "Telegram-first MVP",
-    chip: "Сейчас",
-    chipClass: "chip-amber",
+    tag: "Сейчас",
   },
   {
     value: "100%",
     label: "контроль менеджера на старте",
-    chip: "По умолчанию",
-    chipClass: "chip-amber",
+    tag: "По умолчанию",
   },
   {
     value: "0 ₽",
     label: "демо-кабинет на время проверки",
-    chip: "Демо",
-    chipClass: "chip-amber",
+    tag: "Демо",
   },
 ];
 
 const answerRules = [
   {
-    icon: FileText,
     title: "Только источники компании",
     text: "Черновик собирается из документов базы знаний, и рядом видно, что именно использовано.",
   },
   {
-    icon: Gauge,
     title: "Порог уверенности",
     text: "Если уверенности не хватает, автопилот не отправляет ответ клиенту сам.",
   },
   {
-    icon: UserCheck,
     title: "Эскалация менеджеру",
     text: "Нетиповой диалог уходит человеку вместе с историей переписки и найденными источниками.",
   },
@@ -112,19 +88,28 @@ const answerRules = [
 const confidenceRoutes = [
   {
     text: "Источники найдены, вопрос типовой",
-    chip: "Черновик",
-    chipClass: "chip-green",
+    tag: "Черновик",
   },
   {
     text: "Контекста не хватает",
-    chip: "Менеджеру",
-    chipClass: "chip-amber",
+    tag: "Менеджеру",
   },
   {
     text: "Ответа нет в базе знаний",
-    chip: "Не отвечаем",
-    chipClass: "chip-red",
+    tag: "Не отвечаем",
   },
+];
+
+const demoTags = [
+  "Telegram-first",
+  "Ответы по базе знаний",
+  "Эскалация менеджеру",
+];
+
+const demoIncludes = [
+  "Полный кабинет менеджера",
+  "Своя база знаний",
+  "Без карты и обязательств",
 ];
 
 export default function Home() {
@@ -133,51 +118,46 @@ export default function Home() {
       <HomeClient />
       <Header />
 
-      <main className="grid-backdrop overflow-hidden pt-24">
+      <main>
         {/* ---------- HERO ---------- */}
-        <section className="px-5 lg:px-8">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 py-12 lg:grid-cols-[0.94fr_1.06fr] lg:gap-14 lg:py-20">
-            <div className="reveal-block is-visible min-w-0">
-              <span className="brand-kicker">
-                <Sparkles size={15} />
-                AI-сотрудник для клиентских обращений
-              </span>
+        <section className="px-5 py-12 lg:px-8 lg:py-16">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2 lg:items-start lg:gap-12">
+            <div className="min-w-0">
+              <p className="wf-kicker">AI-сотрудник для клиентских обращений</p>
 
-              <h1 className="font-display mt-7 max-w-4xl text-balance text-5xl font-extrabold leading-[0.98] tracking-[-0.055em] text-ink sm:text-6xl lg:text-7xl">
+              <h1 className="mt-3 max-w-2xl text-balance text-2xl font-semibold text-ink sm:text-3xl">
                 Единое окно с ответами по базе знаний.
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-muted lg:text-[22px] lg:leading-[1.5]">
+              <p className="wf-muted mt-4 max-w-2xl leading-7">
                 Автопилот собирает обращения, находит ответы в базе компании и
                 помогает менеджеру отвечать быстрее. Сначала контроль человека,
                 затем постепенная автоматизация.
               </p>
 
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className="btn btn-primary px-6">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Link href="/register" className="wf-btn wf-btn-primary">
                   Начать проверку
-                  <ArrowRight size={18} />
+                  <ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <Link href="/login" className="btn btn-secondary px-6">
+                <Link href="/login" className="wf-btn">
                   Войти в демо
                 </Link>
               </div>
 
-              <p className="mt-8 flex items-start gap-3 text-sm leading-6 text-muted">
-                <span className="status-dot mt-2 shrink-0" aria-hidden="true" />
+              <p className="mt-6 flex items-start gap-2 text-sm leading-6 text-muted">
+                <span className="wf-dot mt-2 shrink-0" aria-hidden="true" />
                 Демо-кабинет уже работает: Telegram-first канал, ответы строго по
                 базе знаний, эскалация менеджеру.
               </p>
             </div>
 
-            <div className="reveal-block is-visible min-w-0">
-              {/* Высота задана явно (не только min-h), иначе h-full внутри сцены
-                  разрешается в auto и канвас не заполняет контейнер. */}
-              <div className="frame-3d h-[420px] min-h-[420px] w-full p-2 sm:p-3 lg:h-[560px] lg:min-h-[560px]">
-                <AutopilotScene className="h-full w-full" />
+            <div className="min-w-0">
+              <div className="wf-placeholder min-h-[220px] lg:min-h-[320px]">
+                Главный визуал
               </div>
 
-              <p className="soft-panel mt-[14px] max-w-[560px] p-4 text-[13px] leading-6 text-muted">
+              <p className="wf-muted mt-3 max-w-[560px] text-sm leading-6">
                 Схема показывает путь обращения: канал — база знаний — черновик
                 ответа — решение менеджера.
               </p>
@@ -186,34 +166,25 @@ export default function Home() {
         </section>
 
         {/* ---------- Полоса метрик ---------- */}
-        <section className="px-5 pb-16 lg:px-8 lg:pb-20">
+        <section className="px-5 pb-12 lg:px-8 lg:pb-16">
           <div className="mx-auto max-w-7xl">
-            <div
-              data-reveal
-              className="reveal-block panel grid grid-cols-1 overflow-hidden sm:grid-cols-2 lg:grid-cols-4"
-            >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {metrics.map((metric) => (
-                <div
-                  key={metric.label}
-                  className="border-line p-6 transition-[transform,background-color] duration-[250ms] hover:relative hover:z-10 hover:-translate-y-[5px] hover:bg-mist motion-reduce:hover:translate-y-0 max-sm:border-b max-sm:last:border-b-0 sm:max-lg:[&:nth-child(-n+2)]:border-b sm:max-lg:[&:nth-child(odd)]:border-r lg:border-r lg:last:border-r-0 lg:p-7"
-                >
-                  <p className="font-display text-4xl font-extrabold tracking-[-0.04em] text-brand lg:text-[40px]">
+                <div key={metric.label} className="wf-box min-w-0 p-5">
+                  <p className="text-xl font-semibold text-ink">
                     {metric.value}
                   </p>
-                  <p className="mt-2 text-sm leading-5 text-muted">
+                  <p className="wf-muted mt-2 text-sm leading-5">
                     {metric.label}
                   </p>
-                  <span className={`chip ${metric.chipClass} mt-4`}>
-                    {metric.chip}
-                  </span>
+                  <span className="wf-tag mt-3">{metric.tag}</span>
                 </div>
               ))}
             </div>
 
-            <p className="mt-4 text-xs leading-5 text-muted sm:text-right">
-              <span className="font-semibold text-ink-soft">Уточнение:</span>{" "}
-              цифры выше — цели и условия проверки MVP, а не измеренный результат
-              внедрения.
+            <p className="mt-3 text-sm leading-5 text-muted">
+              <span className="font-medium text-ink">Уточнение:</span> цифры выше
+              — цели и условия проверки MVP, а не измеренный результат внедрения.
             </p>
           </div>
         </section>
@@ -221,37 +192,29 @@ export default function Home() {
         {/* ---------- Что внутри MVP ---------- */}
         <section
           id="features"
-          className="scroll-mt-28 border-t border-line-soft px-5 py-20 lg:px-8 lg:py-24"
+          className="scroll-mt-16 border-t border-line px-5 py-12 lg:px-8 lg:py-16"
         >
           <div className="mx-auto max-w-7xl">
-            <div data-reveal className="reveal-block max-w-3xl">
-              <p className="section-kicker">Что внутри MVP</p>
-              <h2 className="font-display mt-4 text-balance text-4xl font-extrabold tracking-[-0.04em] text-ink lg:text-5xl">
+            <div className="max-w-3xl">
+              <p className="wf-kicker">Что внутри MVP</p>
+              <h2 className="mt-3 text-balance text-xl font-semibold text-ink sm:text-2xl">
                 Минимальный продукт, который уже можно проверять на реальных
                 диалогах.
               </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
+              <p className="wf-muted mt-4 max-w-2xl leading-7">
                 Ничего лишнего: канал, база знаний, черновик ответа и человек,
                 который принимает решение.
               </p>
             </div>
 
-            <div
-              data-reveal
-              className="reveal-stagger mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-            >
+            <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {features.map((feature) => (
                 <article
                   key={feature.title}
-                  className="card card-hover flex min-w-0 flex-col p-6 lg:p-7"
+                  className="wf-box flex min-w-0 flex-col p-5"
                 >
-                  <span className="icon-badge">
-                    <feature.icon size={22} />
-                  </span>
-                  <h3 className="font-display mt-8 text-xl font-extrabold tracking-[-0.03em] text-ink">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-muted">
+                  <h3 className="wf-title">{feature.title}</h3>
+                  <p className="wf-muted mt-2 text-sm leading-6">
                     {feature.text}
                   </p>
                 </article>
@@ -263,160 +226,116 @@ export default function Home() {
         {/* ---------- Как работает ---------- */}
         <section
           id="how"
-          className="scroll-mt-28 border-t border-line-soft bg-surface px-5 py-20 lg:px-8 lg:py-24"
+          className="scroll-mt-16 border-t border-line px-5 py-12 lg:px-8 lg:py-16"
         >
           <div className="mx-auto max-w-7xl">
-            <div data-reveal className="reveal-block max-w-3xl">
-              <p className="section-kicker">Как работает</p>
-              <h2 className="font-display mt-4 text-balance text-4xl font-extrabold tracking-[-0.04em] text-ink lg:text-5xl">
+            <div className="max-w-3xl">
+              <p className="wf-kicker">Как работает</p>
+              <h2 className="mt-3 text-balance text-xl font-semibold text-ink sm:text-2xl">
                 Четыре шага от канала до управляемого ответа.
               </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
+              <p className="wf-muted mt-4 max-w-2xl leading-7">
                 Логика такая же, как в one-page: канал, база знаний, ответ и
                 контроль. Без лишней магии, зато с проверяемым результатом.
               </p>
             </div>
 
-            <div data-reveal className="reveal-block relative mt-14">
-              <span
-                aria-hidden="true"
-                className="absolute inset-x-[12.5%] top-[37px] hidden h-px bg-line lg:block"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute left-[12.5%] top-[37px] hidden h-px w-0 bg-brand transition-[width] duration-[1600ms] ease-out motion-reduce:duration-0 lg:block [.is-visible_&]:w-[75%]"
-              />
-
-              <ol className="relative grid gap-9 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                {steps.map((step) => (
-                  <li
-                    key={step.num}
-                    className="group flex min-w-0 items-start gap-5 lg:flex-col lg:items-center lg:gap-0 lg:text-center"
-                  >
-                    <span className="inline-block shrink-0 transition-transform duration-300 ease-out group-hover:-translate-y-1 motion-reduce:transition-none">
-                      <span className="num-badge">{step.num}</span>
-                    </span>
-                    <div className="min-w-0 lg:mt-5">
-                      <h3 className="font-display text-lg font-extrabold tracking-[-0.03em] text-ink">
-                        {step.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-muted lg:mx-auto lg:max-w-[16rem]">
-                        {step.text}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
+            <ol className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {steps.map((step) => (
+                <li key={step.num} className="wf-box min-w-0 p-5">
+                  <p className="text-sm text-muted">{step.num}</p>
+                  <h3 className="wf-title mt-2">{step.title}</h3>
+                  <p className="wf-muted mt-2 text-sm leading-6">{step.text}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
         {/* ---------- Продукт ---------- */}
         <section
           id="product"
-          className="scroll-mt-28 border-t border-line px-5 py-20 lg:px-8 lg:py-24"
+          className="scroll-mt-16 border-t border-line px-5 py-12 lg:px-8 lg:py-16"
         >
           <div className="mx-auto max-w-7xl">
-            <div
-              data-reveal
-              className="reveal-block grid gap-8 lg:grid-cols-[1fr_0.82fr] lg:items-end"
-            >
+            <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
               <div className="min-w-0">
-                <p className="section-kicker">Кабинет менеджера</p>
-                <h2 className="font-display mt-4 text-balance text-4xl font-extrabold tracking-[-0.04em] text-ink lg:text-5xl">
+                <p className="wf-kicker">Кабинет менеджера</p>
+                <h2 className="mt-3 text-balance text-xl font-semibold text-ink sm:text-2xl">
                   AI отвечает по источникам, а сложное отдаёт менеджеру.
                 </h2>
               </div>
 
-              <div className="soft-panel min-w-0 p-6 lg:p-7">
-                <ul className="space-y-5">
-                  {answerRules.map((rule) => (
-                    <li key={rule.title} className="flex items-start gap-4">
-                      <span className="icon-badge shrink-0">
-                        <rule.icon size={20} />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-display text-sm font-extrabold text-ink">
-                          {rule.title}
-                        </p>
-                        <p className="mt-1 text-sm leading-6 text-muted">
-                          {rule.text}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="wf-box min-w-0 divide-y divide-line-soft">
+                {answerRules.map((rule) => (
+                  <li key={rule.title} className="min-w-0 p-5">
+                    <p className="text-sm font-medium text-ink">{rule.title}</p>
+                    <p className="wf-muted mt-1 text-sm leading-6">
+                      {rule.text}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div data-reveal className="reveal-block mt-12">
-              <div className="frame-3d p-2 sm:p-3">
-                <ProductMockup />
-              </div>
+            <div className="wf-placeholder mt-8 min-h-[220px] lg:min-h-[320px]">
+              Скриншот интерфейса продукта
             </div>
           </div>
         </section>
 
-        {/* ---------- Контроль человека (тёмная пауза) ---------- */}
+        {/* ---------- Контроль человека ---------- */}
         <section
           id="control"
-          className="scroll-mt-28 border-t border-line bg-ink py-20 text-white lg:py-24"
+          className="scroll-mt-16 border-t border-line px-5 py-12 lg:px-8 lg:py-16"
         >
-          <div className="container-page">
-            <div data-reveal className="reveal-block">
-              <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:gap-16">
-                <div className="min-w-0">
-                  <p className="section-kicker section-kicker-inverse">
-                    <ShieldCheck size={15} />
-                    Контроль человека
-                  </p>
-                  <h2 className="font-display mt-5 text-balance text-3xl font-extrabold leading-[1.08] tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
-                    Пока автопилот не уверен, отвечает человек.
-                  </h2>
-                  <p className="mt-6 max-w-xl text-base leading-7 text-on-brand-strong">
-                    Автопилот не додумывает. Он отвечает только тем, что нашёл в
-                    базе знаний компании, а при низкой уверенности передаёт диалог
-                    менеджеру вместе с контекстом. Порог настраивается:
-                    автоматизацию усиливают по мере того, как база растёт.
-                  </p>
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2 lg:gap-12">
+            <div className="min-w-0">
+              <p className="wf-kicker">Контроль человека</p>
+              <h2 className="mt-3 text-balance text-xl font-semibold text-ink sm:text-2xl">
+                Пока автопилот не уверен, отвечает человек.
+              </h2>
+              <p className="wf-muted mt-4 max-w-xl leading-7">
+                Автопилот не додумывает. Он отвечает только тем, что нашёл в базе
+                знаний компании, а при низкой уверенности передаёт диалог
+                менеджеру вместе с контекстом. Порог настраивается: автоматизацию
+                усиливают по мере того, как база растёт.
+              </p>
 
-                  <Link
-                    href="/register"
-                    className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-[#9db7f4] transition-colors hover:text-white"
+              <Link
+                href="/register"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-ink"
+              >
+                Посмотреть, как это устроено
+                <ArrowUpRight
+                  size={18}
+                  className="text-muted"
+                  aria-hidden="true"
+                />
+              </Link>
+            </div>
+
+            <div className="wf-box min-w-0 p-5">
+              <p className="wf-kicker">Что происходит с диалогом</p>
+
+              <ul className="mt-4 space-y-2">
+                {confidenceRoutes.map((route) => (
+                  <li
+                    key={route.tag}
+                    className="wf-fill flex flex-wrap items-center justify-between gap-3 p-4"
                   >
-                    Посмотреть, как это устроено
-                    <ArrowUpRight size={16} />
-                  </Link>
-                </div>
+                    <span className="min-w-0 text-sm leading-6">
+                      {route.text}
+                    </span>
+                    <span className="wf-tag shrink-0">{route.tag}</span>
+                  </li>
+                ))}
+              </ul>
 
-                <div className="min-w-0 rounded-md border border-white/12 bg-white/[0.05] p-6 lg:p-7">
-                  <p className="section-kicker section-kicker-inverse">
-                    Что происходит с диалогом
-                  </p>
-
-                  <ul className="mt-6 space-y-3">
-                    {confidenceRoutes.map((route) => (
-                      <li
-                        key={route.chip}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] px-4 py-4"
-                      >
-                        <span className="min-w-0 text-sm leading-6 text-on-brand-strong">
-                          {route.text}
-                        </span>
-                        <span className={`chip ${route.chipClass} shrink-0`}>
-                          {route.chip}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-on-brand">
-                    <Gauge size={14} className="mt-0.5 shrink-0" />
-                    Порог уверенности задаёт компания — на старте он держит
-                    менеджера в каждом диалоге.
-                  </p>
-                </div>
-              </div>
+              <p className="mt-4 text-sm leading-5 text-muted">
+                Порог уверенности задаёт компания — на старте он держит менеджера
+                в каждом диалоге.
+              </p>
             </div>
           </div>
         </section>
@@ -424,69 +343,46 @@ export default function Home() {
         {/* ---------- Финальный CTA ---------- */}
         <section
           id="pricing"
-          className="scroll-mt-28 border-t border-line px-5 pt-20 pb-24 lg:px-8 lg:pt-24 lg:pb-28"
+          className="scroll-mt-16 border-t border-line px-5 py-12 lg:px-8 lg:py-16"
         >
-          <div
-            data-reveal
-            className="reveal-stagger mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_0.42fr]"
-          >
-            <div className="blue-panel min-w-0 p-8 lg:p-12">
-              <p className="section-kicker section-kicker-inverse">
-                Тестовый запуск
-              </p>
-              <h2 className="font-display mt-5 max-w-3xl text-balance text-4xl font-extrabold tracking-[-0.04em] text-white lg:text-5xl">
+          <div className="mx-auto grid max-w-7xl gap-3 lg:grid-cols-[1fr_0.5fr]">
+            <div className="wf-box min-w-0 p-6 lg:p-8">
+              <p className="wf-kicker">Тестовый запуск</p>
+              <h2 className="mt-3 max-w-3xl text-balance text-xl font-semibold text-ink sm:text-2xl">
                 Проверяем продукт на реальных обращениях, а не на красивых
                 обещаниях.
               </h2>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-on-brand-strong">
+              <p className="wf-muted mt-4 max-w-2xl leading-7">
                 Демо-кабинет уже работает локально: регистрация, Telegram-first
                 канал, inbox, база знаний, аналитика, настройки и профиль.
               </p>
 
-              <div className="mt-9 flex flex-wrap gap-2">
-                {[
-                  "Telegram-first",
-                  "Ответы по базе знаний",
-                  "Эскалация менеджеру",
-                ].map((tag) => (
-                  <span key={tag} className="pill-tag bg-white/20 text-white">
-                    <CheckCircle2 size={14} />
+              <div className="mt-6 flex flex-wrap gap-2">
+                {demoTags.map((tag) => (
+                  <span key={tag} className="wf-tag">
                     {tag}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="panel flex min-w-0 flex-col p-6 lg:p-7">
-              <p className="section-kicker">Демо</p>
-              <p className="font-display mt-5 text-5xl font-extrabold tracking-[-0.055em] text-ink">
-                0 ₽
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted">
+            <div className="wf-box flex min-w-0 flex-col p-6">
+              <p className="wf-kicker">Демо</p>
+              <p className="mt-3 text-xl font-semibold text-ink">0 ₽</p>
+              <p className="wf-muted mt-2 text-sm leading-6">
                 для локальной проверки MVP
               </p>
 
-              <div className="divider my-6" />
+              <div className="wf-divider my-5" />
 
-              <ul className="space-y-3 text-sm leading-6 text-ink-soft">
-                {[
-                  "Полный кабинет менеджера",
-                  "Своя база знаний",
-                  "Без карты и обязательств",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <CheckCircle2
-                      size={16}
-                      className="mt-1 shrink-0 text-ok"
-                      aria-hidden="true"
-                    />
-                    {item}
-                  </li>
+              <ul className="space-y-2 text-sm leading-6 text-muted">
+                {demoIncludes.map((item) => (
+                  <li key={item}>{item}</li>
                 ))}
               </ul>
 
-              <div className="mt-auto pt-8">
-                <Link href="/login" className="btn btn-primary w-full">
+              <div className="mt-auto pt-6">
+                <Link href="/login" className="wf-btn wf-btn-primary w-full">
                   Открыть демо
                 </Link>
               </div>
@@ -497,128 +393,5 @@ export default function Home() {
 
       <Footer />
     </>
-  );
-}
-
-function ProductMockup() {
-  const conversations = [
-    {
-      name: "Алина",
-      message: "Можно подключить Telegram?",
-      status: "AI нашёл 2 источника",
-    },
-    {
-      name: "Павел",
-      message: "Сколько стоит демо?",
-      status: "Готов черновик",
-    },
-    {
-      name: "Мария",
-      message: "Нужна интеграция с CRM",
-      status: "Передать менеджеру",
-    },
-  ];
-
-  return (
-    <div className="overflow-hidden rounded-md border border-line-soft bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-mist px-5 py-4">
-        <div className="flex items-center gap-3">
-          <span className="brand-mark size-8" />
-          <div>
-            <p className="font-display text-sm font-extrabold tracking-[-0.02em] text-ink">
-              Автопилот
-            </p>
-            <p className="text-xs text-muted">Кабинет менеджера</p>
-          </div>
-        </div>
-        <span className="chip chip-blue">
-          <span className="status-dot" aria-hidden="true" />
-          Telegram online
-        </span>
-      </div>
-
-      <div className="grid xl:grid-cols-[0.82fr_1.18fr]">
-        <div className="min-w-0 border-b border-line bg-mist p-4 xl:border-b-0 xl:border-r">
-          <p className="section-kicker">Входящие</p>
-
-          <div className="mt-4 space-y-3">
-            {conversations.map((item, index) => (
-              <div
-                key={item.name}
-                className={
-                  index === 0
-                    ? "rounded-md border border-brand/45 bg-brand-soft p-4"
-                    : "rounded-md border border-line bg-white p-4"
-                }
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-display text-sm font-extrabold text-ink">
-                      {item.name}
-                    </p>
-                    <p className="mt-1 text-sm leading-5 text-muted">
-                      {item.message}
-                    </p>
-                  </div>
-                  <span
-                    className="mt-1 size-2 shrink-0 rounded-full bg-ok"
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="font-display mt-4 text-xs font-bold text-brand">
-                  {item.status}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="min-w-0 p-5 lg:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="section-kicker">Ответ по базе</p>
-              <h3 className="font-display mt-2 text-2xl font-extrabold tracking-[-0.035em] text-ink">
-                Подключение Telegram
-              </h3>
-            </div>
-            <span className="chip chip-amber shrink-0">контроль</span>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <div className="max-w-[86%] rounded-md border border-line bg-mist p-4 text-sm leading-6 text-muted">
-              Можно подключить Telegram, чтобы заявки сразу попадали в кабинет?
-            </div>
-            <div className="ml-auto max-w-[92%] rounded-md bg-brand p-4 text-sm leading-6 text-white shadow-brand">
-              Да. Telegram подключается через токен бота, после чего входящие
-              сообщения появляются в разделе “Диалоги”. Для запуска webhook нужен
-              постоянный защищённый адрес сервиса.
-            </div>
-          </div>
-
-          <div className="soft-panel mt-6 p-4">
-            <p className="font-display flex items-center gap-2 text-sm font-extrabold text-brand">
-              <Zap size={16} />
-              Источники ответа
-            </p>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {["FAQ Telegram", "Настройки каналов"].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-md border border-line bg-white p-3 text-sm font-semibold text-ink"
-                >
-                  <CheckCircle2
-                    size={15}
-                    className="mb-2 text-ok"
-                    aria-hidden="true"
-                  />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

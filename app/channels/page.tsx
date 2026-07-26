@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  AlertCircle,
-  Check,
-  ClipboardCheck,
-  Copy,
-  Loader2,
-  RadioTower,
-  Send,
-  ShieldCheck,
-  Smartphone,
-  Webhook,
-} from "lucide-react";
+import { Check, ClipboardCheck, Copy, RefreshCw, Send } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -32,19 +21,13 @@ type ChannelRow = {
   updatedAt?: string;
 };
 
-/**
- * Тон статуса. Правило одно на весь экран:
- * `ok` — всё работает, `error` — реальная поломка, `warn` — от пользователя
- * нужно действие, `neutral` — нейтральный факт или идущий процесс.
- * Янтарный никогда не используется для «идёт проверка» и «события ещё не было».
- */
-type Tone = "ok" | "warn" | "error" | "neutral";
-
-type BadgeState = "done" | "current" | "next";
+type StepState = "done" | "current" | "next";
 
 const channelsApi = getChannels();
 
 const UNKNOWN_TYPE_LABEL = "Тип не определён";
+
+const skeletonRows = [0, 1, 2];
 
 const onboardingSteps = [
   "Ввести номер личного Telegram-аккаунта.",
@@ -82,41 +65,22 @@ export default function ChannelsPage() {
   );
   const hasTelegram = Boolean(telegramChannel);
 
-  // Канал не заведён — это единственное состояние Telegram, требующее действия
-  // пользователя. «Выключен» тоже включается вручную. «Неизвестно» — просто
-  // отсутствие данных о статусе, тревожить им незачем.
-  const telegramTone: Tone = !hasTelegram
-    ? "warn"
-    : telegramChannel?.status === "active"
-      ? "ok"
-      : telegramChannel?.status === "error"
-        ? "error"
-        : telegramChannel?.status === "disabled"
-          ? "warn"
-          : "neutral";
-
   const syncCards = [
     {
       label: "Связь с сервисом",
       value: error ? "Ошибка запроса" : isLoading ? "Проверяем" : "Доступен",
-      // «Проверяем» — идущий процесс, а не проблема: нейтральный тон.
-      tone: error ? "error" : isLoading ? "neutral" : "ok",
     },
     {
       label: "Telegram",
       value: hasTelegram
         ? statusLabel(telegramChannel?.status)
         : "Не подключён",
-      tone: telegramTone,
     },
     {
       label: "Последняя синхронизация",
       value: telegramChannel?.updatedAt
         ? formatDate(telegramChannel.updatedAt)
         : "ещё не запускалась",
-      // Дата — факт, а не состояние; её отсутствие ничего не требует от
-      // пользователя. Поэтому тон нейтральный в обоих случаях.
-      tone: "neutral",
     },
   ] as const;
 
@@ -192,67 +156,45 @@ export default function ChannelsPage() {
     >
       <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
         {/* Карточка канала: статус, диагностика, технические детали. */}
-        <section className="panel p-5 sm:p-6">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
-            <div className="flex min-w-0 items-start gap-4">
-              <span className="icon-badge shrink-0" aria-hidden="true">
-                <Send size={20} />
-              </span>
-              <div className="min-w-0">
-                <p className="section-kicker">Состояние подключения</p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <h2 className="font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
-                    Telegram
-                  </h2>
-                  <span
-                    className="status-dot shrink-0"
-                    data-tone={
-                      telegramTone === "ok"
-                        ? undefined
-                        : telegramTone === "neutral"
-                          ? "grey"
-                          : "amber"
-                    }
-                    aria-hidden="true"
-                  />
-                  <span className={`chip shrink-0 ${chipToneClass(telegramTone)}`}>
-                    {hasTelegram
-                      ? statusLabel(telegramChannel?.status)
-                      : "Не подключён"}
-                  </span>
-                </div>
-                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-balance text-muted">
-                  Авторизуй личный аккаунт и отправь ему тестовое сообщение —
-                  оно появится в общей ленте диалогов.
-                </p>
+        <section className="wf-box p-4 sm:p-5">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+            <div className="min-w-0">
+              <p className="wf-kicker">Состояние подключения</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h2 className="wf-title">Telegram</h2>
+                <span className="wf-dot shrink-0" aria-hidden="true" />
+                <span className="wf-tag shrink-0">
+                  {hasTelegram
+                    ? statusLabel(telegramChannel?.status)
+                    : "Не подключён"}
+                </span>
               </div>
+              <p className="wf-muted mt-2 max-w-2xl text-sm leading-6 text-balance">
+                Авторизуй личный аккаунт и отправь ему тестовое сообщение —
+                оно появится в общей ленте диалогов.
+              </p>
             </div>
 
             <button
               type="button"
               onClick={() => refetch()}
-              className="btn btn-secondary btn-sm shrink-0 self-start"
+              disabled={isFetching}
+              className="wf-btn shrink-0 self-start"
             >
-              {isFetching ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <RadioTower size={16} />
-              )}
+              <RefreshCw size={18} className="text-muted" aria-hidden="true" />
               Обновить статус
             </button>
           </div>
 
-          <dl className="mt-6 grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3">
+          {/* Диагностика: строки «параметр → значение». */}
+          <dl className="wf-fill mt-4">
             {syncCards.map((item) => (
-              <div key={item.label} className="min-w-0 bg-white p-4">
-                <dt className="micro-label truncate">{item.label}</dt>
-                <dd className="mt-2 min-w-0">
-                  <span
-                    className={`chip max-w-full overflow-hidden ${chipToneClass(item.tone)}`}
-                  >
-                    {item.value}
-                  </span>
-                </dd>
+              <div
+                key={item.label}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2.5 last:border-b-0"
+              >
+                <dt className="wf-muted text-sm">{item.label}</dt>
+                <dd className="min-w-0 text-sm">{item.value}</dd>
               </div>
             ))}
           </dl>
@@ -265,7 +207,6 @@ export default function ChannelsPage() {
                   ? "Личный аккаунт подключён через постоянную MTProto-сессию."
                   : "Webhook и Telegram-бот для этого режима не требуются."
               }
-              icon={<Webhook size={20} />}
               value="MTProto · локальный listener"
               copied={copied === "webhook"}
               onCopy={() => copyToClipboard("MTProto · локальный listener", "webhook")}
@@ -275,38 +216,30 @@ export default function ChannelsPage() {
           {error ? (
             <StateCard
               className="mt-4"
-              icon={<AlertCircle size={22} />}
               title="Не удалось получить список каналов"
               description={getApiErrorMessage(
                 error,
                 "Обнови страницу или повтори попытку позже.",
               )}
-              tone="error"
+              variant="error"
             />
           ) : null}
         </section>
 
         {/* Пошаговый поток авторизации личного аккаунта. */}
-        <section className="panel grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px]">
-          <form onSubmit={handleSubmit} className="min-w-0 p-5 sm:p-6">
-            <div className="flex items-start gap-4">
-              <span className="icon-badge shrink-0" aria-hidden="true">
-                <Send size={20} />
-              </span>
-              <div className="min-w-0">
-                <p className="section-kicker">Авторизация</p>
-                <h2 className="mt-1.5 font-display text-xl font-extrabold tracking-[-0.04em] text-balance sm:text-2xl">
-                  Подключение личного Telegram
-                </h2>
-                <p className="mt-1.5 text-sm leading-6 text-muted">
-                  Данные передаются и хранятся в защищённом виде.
-                </p>
-              </div>
-            </div>
+        <section className="wf-box grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px]">
+          <form onSubmit={handleSubmit} className="min-w-0 p-4 sm:p-5">
+            <p className="wf-kicker">Авторизация</p>
+            <h2 className="wf-title mt-1.5 text-balance">
+              Подключение личного Telegram
+            </h2>
+            <p className="wf-muted mt-2 text-sm leading-6">
+              Данные передаются и хранятся в защищённом виде.
+            </p>
 
-            <ol className="mt-6 grid gap-3 sm:grid-cols-3">
+            <ol className="mt-4 space-y-1.5">
               {authSteps.map((step, index) => {
-                const state: BadgeState =
+                const state: StepState =
                   index < activeStepIndex
                     ? "done"
                     : index === activeStepIndex
@@ -316,37 +249,27 @@ export default function ChannelsPage() {
                 return (
                   <li
                     key={step.key}
-                    className={`flex min-w-0 items-center gap-3 rounded-md border p-3 ${
-                      state === "current"
-                        ? "border-brand/35 bg-white"
-                        : "border-line-soft bg-mist"
+                    aria-current={state === "current" ? "step" : undefined}
+                    className={`flex items-center gap-2 text-sm leading-6 ${
+                      state === "current" ? "font-semibold" : "wf-muted"
                     }`}
                   >
-                    <span
-                      className="num-badge num-badge-sm shrink-0"
-                      data-state={state}
-                      aria-hidden="true"
-                    >
-                      {state === "done" ? (
-                        <Check size={18} />
-                      ) : (
-                        String(index + 1).padStart(2, "0")
-                      )}
-                    </span>
-                    <span
-                      className={`font-display min-w-0 text-[13px] leading-5 font-extrabold tracking-[-0.02em] ${
-                        state === "next" ? "text-faint" : "text-ink"
-                      }`}
-                    >
-                      {step.label}
-                    </span>
+                    <span className="shrink-0 tabular-nums">{index + 1}.</span>
+                    <span className="min-w-0">{step.label}</span>
+                    {state === "done" ? (
+                      <Check
+                        size={18}
+                        className="shrink-0 text-muted"
+                        aria-hidden="true"
+                      />
+                    ) : null}
                   </li>
                 );
               })}
             </ol>
 
             <label
-              className="field-label mt-6"
+              className="wf-label mt-5"
               htmlFor="telegram-token"
             >
               {authStep === "phone" ? "Номер телефона" : authStep === "code" ? "Код из Telegram" : "Пароль 2FA"}
@@ -360,67 +283,42 @@ export default function ChannelsPage() {
                 else if (authStep === "code") setCode(event.target.value);
                 else setPassword(event.target.value);
               }}
-              className="field text-sm"
+              className="wf-field text-sm"
               placeholder={authStep === "phone" ? "+7 999 000-00-00" : authStep === "code" ? "12345" : "Облачный пароль"}
               disabled={isSubmitting || authStep === "active"}
             />
 
             {formMessage ? (
-              <p className="notice notice-brand mt-4" role="status">
+              <p className="wf-fill mt-4 p-3 text-sm leading-6" role="status">
                 {formMessage}
               </p>
             ) : null}
 
-            {/* Это гарантия безопасности, а не предупреждение: янтарный тон здесь
-                пугал на ровном месте. Действий от пользователя блок не требует. */}
-            <div className="soft-panel mt-4 flex items-start gap-3 p-4">
-              <span
-                className="icon-badge icon-badge-ok shrink-0 border border-ok/20"
-                aria-hidden="true"
-              >
-                <ShieldCheck size={20} />
-              </span>
-              <p className="text-[13px] leading-6 text-muted">
-                Сессия аккаунта шифруется на backend. Код и пароль 2FA не сохраняются.
-              </p>
-            </div>
+            <p className="wf-fill mt-4 p-3 text-sm leading-6">
+              Сессия аккаунта шифруется на backend. Код и пароль 2FA не сохраняются.
+            </p>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn btn-primary mt-5 w-full sm:w-auto"
+              className="wf-btn wf-btn-primary mt-4 w-full sm:w-auto"
             >
-              {isSubmitting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Send size={16} />
-              )}
+              <Send size={18} aria-hidden="true" />
               {authStep === "phone" ? "Отправить код" : authStep === "code" ? "Подтвердить код" : authStep === "password" ? "Подтвердить 2FA" : "Аккаунт подключён"}
             </button>
           </form>
 
-          <aside className="min-w-0 border-t border-line bg-mist p-5 sm:p-6 lg:border-t-0 lg:border-l">
-            <div className="flex items-center gap-3">
-              <span className="icon-badge shrink-0" aria-hidden="true">
-                <ShieldCheck size={20} />
-              </span>
-              <div className="min-w-0">
-                <h3 className="font-display text-base font-extrabold tracking-[-0.02em]">
-                  После подключения
-                </h3>
-                <p className="mt-0.5 text-sm text-muted">Короткая проверка</p>
-              </div>
-            </div>
+          <aside className="min-w-0 border-t border-line bg-surface p-4 sm:p-5 lg:border-t-0 lg:border-l">
+            <h3 className="text-base font-semibold">После подключения</h3>
+            <p className="wf-muted mt-1 text-sm">Короткая проверка</p>
 
-            <ol className="mt-5 space-y-4">
+            <ol className="mt-4 space-y-2">
               {onboardingSteps.slice(1).map((item, index) => (
-                <li key={item} className="flex gap-3">
-                  <span className="num-badge num-badge-xs shrink-0" aria-hidden="true">
-                    {String(index + 1).padStart(2, "0")}
+                <li key={item} className="flex gap-2 text-sm leading-6">
+                  <span className="wf-muted shrink-0 tabular-nums">
+                    {index + 1}.
                   </span>
-                  <span className="min-w-0 pt-1 text-sm leading-6 text-muted">
-                    {item}
-                  </span>
+                  <span className="wf-muted min-w-0">{item}</span>
                 </li>
               ))}
             </ol>
@@ -428,71 +326,69 @@ export default function ChannelsPage() {
         </section>
 
         {/* Требования к подключению: что нужно от пользователя. */}
-        <section className="panel p-5 sm:p-6">
-          <div className="flex items-start gap-4">
-            <span className="icon-badge shrink-0" aria-hidden="true">
-              <Smartphone size={20} />
-            </span>
-            <div className="min-w-0">
-              <p className="section-kicker">Инструкция</p>
-              <h2 className="mt-1.5 font-display text-xl font-extrabold tracking-[-0.04em] text-balance sm:text-2xl">
-                Порядок подключения
-              </h2>
-              <p className="mt-1.5 text-sm leading-6 text-muted">
-                Короткий чек-лист Telegram
-              </p>
-            </div>
-          </div>
+        <section className="wf-box p-4 sm:p-5">
+          <p className="wf-kicker">Инструкция</p>
+          <h2 className="wf-title mt-1.5 text-balance">Порядок подключения</h2>
+          <p className="wf-muted mt-2 text-sm leading-6">
+            Короткий чек-лист Telegram
+          </p>
 
-          <ol className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <ol className="mt-4 space-y-2">
             {onboardingSteps.map((item, index) => (
-              <li
-                key={item}
-                className="card card-hover flex h-full flex-col gap-4 p-5"
-              >
-                <span className="num-badge num-badge-sm shrink-0" aria-hidden="true">
-                  {String(index + 1).padStart(2, "0")}
+              <li key={item} className="flex gap-2 text-sm leading-6">
+                <span className="wf-muted shrink-0 tabular-nums">
+                  {index + 1}.
                 </span>
-                <span className="text-sm leading-6 text-muted">{item}</span>
+                <span className="min-w-0">{item}</span>
               </li>
             ))}
           </ol>
         </section>
 
         {/* Подключённые каналы. */}
-        <section className="panel overflow-hidden">
-          <div className="flex flex-col justify-between gap-4 p-5 sm:p-6 md:flex-row md:items-center">
+        <section>
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
             <div className="min-w-0">
-              <p className="section-kicker">Все подключения</p>
-              <h2 className="mt-1.5 font-display text-xl font-extrabold tracking-[-0.04em] text-balance sm:text-2xl">
+              <p className="wf-kicker">Все подключения</p>
+              <h2 className="wf-title mt-1.5 text-balance">
                 Подключённые каналы
               </h2>
-              <p className="mt-1.5 text-sm leading-6 text-muted">
+              <p className="wf-muted mt-2 text-sm leading-6">
                 Список синхронизируется с рабочим пространством.
               </p>
             </div>
-            <span className="chip chip-blue shrink-0">
+            <span className="wf-tag shrink-0 self-start md:self-auto">
               {channels.length} всего
             </span>
           </div>
 
-          <div className="border-t border-line bg-white">
+          <div className="mt-3">
             {isLoading ? (
-              <div className="p-4 sm:p-6">
-                <StateCard variant="loading" title="Загружаем каналы" rows={3} />
+              <div
+                role="status"
+                aria-label="Загружаем каналы"
+                className="space-y-2"
+              >
+                {skeletonRows.map((row) => (
+                  <div key={row} className="wf-box p-3">
+                    <span className="wf-skeleton block h-3.5 w-40" />
+                    <span className="wf-skeleton mt-2 block h-3 w-24" />
+                    <span className="wf-skeleton mt-3 block h-5 w-20" />
+                  </div>
+                ))}
               </div>
             ) : channels.length > 0 ? (
-              <ul className="divide-y divide-line-soft">
+              <ul className="space-y-2">
                 {channels.map((channel) => {
                   const typeLabel = channelTypeLabel(channel.type);
 
                   return (
                     <li
                       key={channel.id ?? channel.type}
-                      className="grid gap-2 p-4 sm:gap-3 md:grid-cols-[minmax(0,1fr)_140px_190px] md:items-center md:px-6"
+                      className="wf-box grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_140px_190px] md:items-center"
                     >
                       <div className="min-w-0">
-                        <p className="font-display truncate font-extrabold">
+                        <p className="truncate text-sm font-semibold">
                           {channel.name}
                         </p>
                         {/* Показываем человекочитаемый тип; сырой слаг модели
@@ -500,15 +396,15 @@ export default function ChannelsPage() {
                             канала и есть его тип — вторую строку не дублируем. */}
                         {typeLabel === channel.name ? null : (
                           <p
-                            className="truncate text-sm text-muted"
+                            className="wf-muted truncate text-sm"
                             title={channel.type}
                           >
                             {typeLabel}
                           </p>
                         )}
                       </div>
-                      <StatusPill status={channel.status} />
-                      <p className="text-sm text-muted">
+                      <StatusTag status={channel.status} />
+                      <p className="wf-muted text-sm">
                         {channel.updatedAt
                           ? formatDate(channel.updatedAt)
                           : "нет синхронизации"}
@@ -518,14 +414,10 @@ export default function ChannelsPage() {
                 })}
               </ul>
             ) : (
-              <div className="p-4 sm:p-6">
-                <StateCard
-                  align="center"
-                  icon={<Smartphone size={22} />}
-                  title="Каналы ещё не подключены"
-                  description="Авторизуй личный Telegram-аккаунт выше, и канал появится здесь после подтверждения кода."
-                />
-              </div>
+              <StateCard
+                title="Каналы ещё не подключены"
+                description="Авторизуй личный Telegram-аккаунт выше, и канал появится здесь после подтверждения кода."
+              />
             )}
           </div>
         </section>
@@ -534,76 +426,48 @@ export default function ChannelsPage() {
   );
 }
 
-function StatusPill({ status }: { status: ChannelStatus }) {
-  const toneClass =
-    status === "active"
-      ? "chip-green"
-      : status === "error"
-        ? "chip-red"
-        : status === "disabled"
-          ? "chip-amber"
-          : "chip-grey";
-
-  return <span className={`chip w-fit ${toneClass}`}>{statusLabel(status)}</span>;
+function StatusTag({ status }: { status: ChannelStatus }) {
+  return <span className="wf-tag w-fit">{statusLabel(status)}</span>;
 }
 
 function CopyCard({
   title,
   description,
-  icon,
   value,
   copied,
   onCopy,
 }: {
   title: string;
   description: string;
-  icon: React.ReactNode;
   value: string;
   copied: boolean;
   onCopy: () => void;
 }) {
   return (
-    <div className="soft-panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
-      <span className="icon-badge shrink-0" aria-hidden="true">
-        {icon}
-      </span>
+    <div className="wf-fill flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="min-w-0 flex-1">
-        <p className="field-label">{title}</p>
-        <p className="text-[13px] leading-5 text-muted">{description}</p>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="wf-muted text-sm leading-6">{description}</p>
       </div>
-      {/* Паддинг контейнера уменьшен под кнопку 40px — высота строки прежняя. */}
-      <div className="flex min-w-0 items-center gap-2 rounded-md border border-line bg-white px-2 py-1 sm:w-[270px]">
-        <code className="min-w-0 flex-1 truncate pl-1 text-xs text-muted">
+      <div className="flex min-w-0 items-center gap-2 sm:w-[270px]">
+        <code className="wf-box min-w-0 flex-1 truncate px-2 py-1.5 text-xs">
           {value}
         </code>
         <button
           type="button"
           onClick={onCopy}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-line bg-white text-faint transition hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
+          className="wf-btn shrink-0"
           aria-label={`Скопировать ${title}`}
         >
           {copied ? (
-            <ClipboardCheck size={16} className="text-ok" />
+            <ClipboardCheck size={18} className="text-muted" aria-hidden="true" />
           ) : (
-            <Copy size={16} />
+            <Copy size={18} className="text-muted" aria-hidden="true" />
           )}
         </button>
       </div>
     </div>
   );
-}
-
-function chipToneClass(tone: Tone) {
-  switch (tone) {
-    case "ok":
-      return "chip-green";
-    case "error":
-      return "chip-red";
-    case "warn":
-      return "chip-amber";
-    default:
-      return "chip-grey";
-  }
 }
 
 function normalizeChannels(value: ChannelResponse[] | undefined): ChannelRow[] {

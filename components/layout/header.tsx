@@ -1,10 +1,9 @@
 "use client";
 
-import { ArrowRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
   useRef,
@@ -13,65 +12,19 @@ import {
 
 type MarketingLink = {
   href: string;
-  anchor: string;
   label: string;
 };
 
 const marketingLinks: MarketingLink[] = [
-  { href: "/#features", anchor: "features", label: "Возможности" },
-  { href: "/#how", anchor: "how", label: "Как работает" },
-  { href: "/#pricing", anchor: "pricing", label: "Тарифы" },
+  { href: "/#features", label: "Возможности" },
+  { href: "/#how", label: "Как работает" },
+  { href: "/#pricing", label: "Тарифы" },
 ];
 
 export function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Сжатие пилюли при скролле + подсветка активного якоря лендинга.
-  // На страницах без этих секций activeAnchor просто остаётся null.
-  useEffect(() => {
-    let frame = 0;
-
-    const sync = () => {
-      frame = 0;
-      setIsScrolled(window.scrollY > 40);
-
-      const line = window.innerHeight * 0.34;
-      let current: string | null = null;
-
-      for (const link of marketingLinks) {
-        const section = document.getElementById(link.anchor);
-
-        if (section && section.getBoundingClientRect().top <= line) {
-          current = link.anchor;
-        }
-      }
-
-      setActiveAnchor(current);
-    };
-
-    const schedule = () => {
-      if (frame === 0) {
-        frame = window.requestAnimationFrame(sync);
-      }
-    };
-
-    sync();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-
-    return () => {
-      if (frame !== 0) {
-        window.cancelAnimationFrame(frame);
-      }
-
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, []);
 
   // Мобильное меню: фокус внутрь при открытии, Escape — назад на бургер,
   // переход на десктопную ширину закрывает шторку.
@@ -105,33 +58,6 @@ export function Header() {
       desktop.removeEventListener("change", closeOnDesktop);
     };
   }, [isMenuOpen]);
-
-  // Курсорный «прожектор»: CSS читает --nav-x / --nav-y в radial-gradient.
-  const moveSpotlight = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      const inner = event.currentTarget;
-      const rect = inner.getBoundingClientRect();
-
-      if (rect.width === 0 || rect.height === 0) {
-        return;
-      }
-
-      const x = ((event.clientX - rect.left) / rect.width) * 100;
-      const y = ((event.clientY - rect.top) / rect.height) * 100;
-
-      inner.style.setProperty("--nav-x", `${x.toFixed(2)}%`);
-      inner.style.setProperty("--nav-y", `${y.toFixed(2)}%`);
-    },
-    [],
-  );
-
-  const resetSpotlight = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      event.currentTarget.style.setProperty("--nav-x", "50%");
-      event.currentTarget.style.setProperty("--nav-y", "50%");
-    },
-    [],
-  );
 
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
@@ -170,49 +96,34 @@ export function Header() {
   );
 
   return (
-    <header className="pill-nav" data-scrolled={isScrolled ? "true" : "false"}>
-      <div
-        className="pill-nav-inner"
-        onMouseMove={moveSpotlight}
-        onMouseLeave={resetSpotlight}
-      >
-        <Link
-          href="/"
-          className="inline-flex h-11 flex-none items-center gap-2.5 rounded-full px-2.5 transition hover:bg-brand-soft"
-        >
-          <span className="brand-mark size-8" aria-hidden="true" />
-          <span className="font-display text-sm font-extrabold text-ink">
-            Автопилот
-          </span>
+    <header className="border-b border-line bg-white">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <Link href="/" className="flex-none text-base font-semibold text-ink">
+          Автопилот
         </Link>
 
         <nav
           aria-label="Разделы лендинга"
-          className="hidden min-w-0 flex-1 items-center justify-end gap-1 md:flex"
+          className="hidden min-w-0 flex-1 items-center justify-end gap-5 md:flex"
         >
           {marketingLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="pill-link inline-flex items-center"
-              data-active={activeAnchor === link.anchor ? "true" : undefined}
-              aria-current={
-                activeAnchor === link.anchor ? "location" : undefined
-              }
+              className="text-sm text-muted"
             >
-              <span>{link.label}</span>
+              {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex flex-none items-center gap-2">
+        <div className="ml-auto flex flex-none items-center gap-2 md:ml-4">
           <div className="hidden items-center gap-2 sm:flex">
-            <Link href="/login" className="btn btn-ghost btn-sm">
+            <Link href="/login" className="wf-btn">
               Войти
             </Link>
-            <Link href="/register" className="btn btn-primary btn-sm">
+            <Link href="/register" className="wf-btn wf-btn-primary">
               Попробовать
-              <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
 
@@ -223,9 +134,13 @@ export function Header() {
             aria-label={isMenuOpen ? "Закрыть меню" : "Открыть меню"}
             aria-controls="landing-navigation"
             aria-expanded={isMenuOpen}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition hover:border-brand hover:bg-brand-soft hover:text-brand md:hidden"
+            className="wf-btn shrink-0 md:hidden"
           >
-            {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            {isMenuOpen ? (
+              <X size={18} className="text-muted" />
+            ) : (
+              <Menu size={18} className="text-muted" />
+            )}
           </button>
         </div>
       </div>
@@ -235,7 +150,7 @@ export function Header() {
           <div
             aria-hidden="true"
             onClick={closeMenu}
-            className="pointer-events-auto fixed inset-0 -z-10 cursor-default bg-ink/25 backdrop-blur-[2px] md:hidden"
+            className="fixed inset-0 z-40 cursor-default bg-ink/20 md:hidden"
           />
 
           <div
@@ -245,7 +160,7 @@ export function Header() {
             aria-modal="true"
             aria-label="Главное меню"
             onKeyDown={keepFocusInMenu}
-            className="panel pointer-events-auto mx-auto mt-2 w-[calc(100%-40px)] max-w-[980px] p-3 md:hidden"
+            className="relative z-50 border-t border-line bg-white px-4 py-4 sm:px-6 md:hidden"
           >
             <nav aria-label="Разделы лендинга, мобильное меню">
               <ul className="space-y-1">
@@ -254,14 +169,7 @@ export function Header() {
                     <Link
                       href={link.href}
                       onClick={closeMenu}
-                      aria-current={
-                        activeAnchor === link.anchor ? "location" : undefined
-                      }
-                      className={`flex min-h-11 items-center rounded-md border px-3 text-sm font-bold transition ${
-                        activeAnchor === link.anchor
-                          ? "border-brand/25 bg-brand-soft text-brand-dark"
-                          : "border-transparent text-muted hover:bg-surface hover:text-ink"
-                      }`}
+                      className="wf-nav-item"
                     >
                       {link.label}
                     </Link>
@@ -270,21 +178,16 @@ export function Header() {
               </ul>
             </nav>
 
-            <div className="mt-3 grid gap-2 border-t border-line-soft pt-3">
-              <Link
-                href="/login"
-                onClick={closeMenu}
-                className="btn btn-secondary w-full"
-              >
+            <div className="mt-4 grid gap-2 border-t border-line-soft pt-4">
+              <Link href="/login" onClick={closeMenu} className="wf-btn w-full">
                 Войти
               </Link>
               <Link
                 href="/register"
                 onClick={closeMenu}
-                className="btn btn-primary w-full"
+                className="wf-btn wf-btn-primary w-full"
               >
                 Попробовать
-                <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
           </div>

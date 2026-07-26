@@ -45,10 +45,10 @@ export function LogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={isLoggingOut}
-      className="btn btn-secondary btn-sm w-full"
+      className="wf-btn w-full"
       aria-label="Выйти из аккаунта"
     >
-      <LogOut size={16} />
+      <LogOut size={18} className="text-muted" />
       <span>Выйти из аккаунта</span>
     </button>
   );

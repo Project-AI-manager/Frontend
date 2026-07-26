@@ -80,20 +80,20 @@ export function AppShell({
   }, [isMobileNavigationOpen]);
 
   return (
-    <div className="min-h-screen bg-surface text-ink">
+    <div className="min-h-screen bg-white text-ink">
       <a
         href="#main-content"
-        className="fixed left-4 top-4 z-[70] -translate-y-24 rounded-md bg-ink px-4 py-2 text-sm font-bold text-white transition focus:translate-y-0"
+        className="wf-box fixed left-4 top-4 z-[70] -translate-y-24 px-4 py-2 text-sm focus:translate-y-0"
       >
         Перейти к содержимому
       </a>
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-white lg:flex">
-        <div className="flex h-16 flex-none items-center border-b border-line-soft px-5">
+        <div className="flex h-14 flex-none items-center border-b border-line px-4">
           <Brand />
         </div>
 
-        <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-5 pb-8">
+        <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-4 pb-6">
           <Navigation
             pathname={pathname}
             label="Основная навигация"
@@ -111,25 +111,23 @@ export function AppShell({
       </aside>
 
       <div className="min-w-0 lg:pl-60">
-        <header className="sticky top-0 z-30 border-b border-line bg-white/85 shadow-[0_16px_42px_rgba(18,39,76,0.13),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-xl backdrop-saturate-150">
-          <div className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <header className="border-b border-line bg-white">
+          <div className="flex min-h-14 items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <button
               type="button"
               onClick={() => setIsMobileNavigationOpen(true)}
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition hover:border-brand hover:bg-brand-soft hover:text-brand lg:hidden"
+              className="wf-btn shrink-0 lg:hidden"
               aria-label="Открыть меню"
               aria-controls="mobile-navigation"
               aria-expanded={isMobileNavigationOpen}
             >
-              <Menu size={20} />
+              <Menu size={18} className="text-muted" />
             </button>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
               <div className="min-w-0 flex-1 basis-64">
-                <h1 className="font-display truncate text-lg font-extrabold sm:text-xl">
-                  {title}
-                </h1>
-                <p className="mt-0.5 line-clamp-2 max-w-3xl text-sm leading-snug text-muted">
+                <h1 className="truncate text-lg font-semibold">{title}</h1>
+                <p className="wf-muted mt-0.5 line-clamp-2 max-w-3xl text-sm leading-snug">
                   {description}
                 </p>
               </div>
@@ -144,16 +142,16 @@ export function AppShell({
             <Link
               href="/profile"
               aria-label="Открыть профиль"
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-brand transition hover:border-brand hover:bg-brand-soft"
+              className="wf-btn shrink-0"
             >
-              <UserRound size={18} />
+              <UserRound size={18} className="text-muted" />
             </Link>
           </div>
         </header>
 
         <main
           id="main-content"
-          className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+          className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8"
           tabIndex={-1}
         >
           {children}
@@ -164,7 +162,7 @@ export function AppShell({
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-ink/35 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-ink/20"
             onClick={() => setIsMobileNavigationOpen(false)}
           />
           <aside
@@ -172,22 +170,22 @@ export function AppShell({
             role="dialog"
             aria-modal="true"
             aria-label="Меню кабинета"
-            className="relative flex h-full w-[min(19rem,88vw)] flex-col border-r border-line bg-white shadow-deep"
+            className="relative flex h-full w-[min(19rem,88vw)] flex-col border-r border-line bg-white"
           >
-            <div className="flex h-16 flex-none items-center justify-between border-b border-line-soft px-5">
+            <div className="flex h-14 flex-none items-center justify-between gap-3 border-b border-line px-4">
               <Brand />
               <button
                 ref={closeButtonRef}
                 type="button"
                 onClick={() => setIsMobileNavigationOpen(false)}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-surface hover:text-ink"
+                className="wf-btn shrink-0"
                 aria-label="Закрыть меню"
               >
-                <X size={20} />
+                <X size={18} className="text-muted" />
               </button>
             </div>
 
-            <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-5 pb-8">
+            <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-4 pb-6">
               <Navigation
                 pathname={pathname}
                 label="Основная навигация"
@@ -214,11 +212,10 @@ function Brand() {
   return (
     <Link
       href="/inbox"
-      className="inline-flex items-center gap-2.5 rounded-md"
+      className="text-base font-semibold"
       aria-label="Автопилот — диалоги"
     >
-      <span className="brand-mark size-8" aria-hidden="true" />
-      <span className="font-display text-lg font-extrabold">Автопилот</span>
+      Автопилот
     </Link>
   );
 }
@@ -247,23 +244,10 @@ function Navigation({
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 data-active={isActive ? "true" : undefined}
-                className="pill-link group flex min-h-10 items-center gap-3"
+                className="wf-nav-item"
               >
-                <item.icon
-                  size={18}
-                  className={
-                    isActive
-                      ? "relative shrink-0"
-                      : "relative shrink-0 text-faint group-hover:text-brand"
-                  }
-                />
+                <item.icon size={18} className="shrink-0 text-muted" />
                 <span className="truncate">{item.label}</span>
-                {isActive ? (
-                  <span
-                    className="ml-auto size-1.5 shrink-0 rounded-full bg-white"
-                    aria-hidden="true"
-                  />
-                ) : null}
               </Link>
             </li>
           );

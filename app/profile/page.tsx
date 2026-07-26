@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  AlertCircle,
-  Building2,
-  Loader2,
-  Mail,
-  RefreshCw,
-  Send,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
-import { StateCard } from "@/components/ui/state-card";
 import { emailApi } from "@/lib/api/email";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
@@ -133,34 +123,27 @@ export default function ProfilePage() {
       title="Профиль"
       description="Личные данные, рабочее пространство и подтверждение почты."
     >
-      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-5">
         {/* Шапка профиля: аватар-инициалы, роль, компания и действия аккаунта. */}
-        <section className="panel overflow-hidden">
-          <div className="soft-grid flex flex-col gap-5 border-b border-line bg-mist p-5 sm:p-6 lg:flex-row lg:items-center lg:gap-6">
-            <span className="flex size-20 shrink-0 items-center justify-center rounded-full bg-brand-soft font-display text-2xl font-extrabold tracking-[-0.02em] text-brand">
+        <section className="wf-box p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+            <span className="bg-fill flex size-14 shrink-0 items-center justify-center rounded-md text-base font-semibold">
               {initials}
             </span>
 
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="min-w-0 truncate font-display text-2xl font-extrabold tracking-[-0.04em]">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="wf-title min-w-0 truncate">
                   {profile?.full_name || "Пользователь"}
                 </h2>
-                <span className="chip chip-blue">
-                  {profile?.role ?? "роль"}
-                </span>
+                <span className="wf-tag">{profile?.role ?? "роль"}</span>
               </div>
-              <p className="mt-1 truncate text-sm text-muted">
+              <p className="wf-muted mt-1 truncate text-sm">
                 {profile?.email ?? "email не загружен"}
               </p>
-              <p className="mt-3 flex flex-wrap items-center gap-2 text-sm font-semibold">
-                <Building2
-                  size={16}
-                  className="shrink-0 text-brand"
-                  aria-hidden="true"
-                />
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 {workspace?.name ?? "Компания"}
-                <span className="font-normal text-muted">
+                <span className="wf-muted">
                   · {workspace?.slug ?? "workspace"}
                 </span>
               </p>
@@ -170,20 +153,16 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={refreshAll}
-                className="btn btn-secondary btn-sm"
+                className="wf-btn w-full"
               >
-                {isProfileFetching ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-                Обновить
+                <RefreshCw size={18} className="text-muted" />
+                {isProfileFetching ? "Обновляем..." : "Обновить"}
               </button>
               <LogoutButton />
             </div>
           </div>
 
-          <div className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <MetaCell
               label="ID пространства"
               value={profile?.tenant_id ?? workspace?.id ?? "—"}
@@ -193,76 +172,56 @@ export default function ProfilePage() {
         </section>
 
         {isLoading ? (
-          <StateCard
-            variant="loading"
-            title="Загружаем профиль"
+          <LoadingRows
+            label="Загружаем профиль"
             description="Запрашиваем `/users/me` и `/settings/workspace`."
+            rows={3}
           />
         ) : error ? (
-          <StateCard
-            variant="error"
-            icon={<AlertCircle size={22} />}
-            title="Не удалось загрузить профиль"
-            description={getApiErrorMessage(
-              error,
-              "Обнови страницу или войди в аккаунт повторно.",
-            )}
-          />
+          <div role="alert" className="wf-fill p-4">
+            <p className="text-sm font-semibold">Не удалось загрузить профиль</p>
+            <p className="wf-muted mt-1 text-sm leading-6">
+              {getApiErrorMessage(
+                error,
+                "Обнови страницу или войди в аккаунт повторно.",
+              )}
+            </p>
+          </div>
         ) : null}
 
-        {/* Данные пользователя: роль и статусы вынесены в чипы. */}
-        <ProfileSection
-          icon={<UserRound size={22} />}
-          kicker="Аккаунт"
-          title="Контактные данные"
-        >
+        {/* Данные пользователя: роль и статусы вынесены в метки. */}
+        <ProfileSection kicker="Аккаунт" title="Контактные данные">
           <DetailRow label="Имя" value={profile?.full_name || "Не указано"} />
-          <div className="divider" />
+          <div className="wf-divider" />
           <DetailRow label="Email" value={profile?.email || "Не загружен"} />
-          <div className="divider" />
-          <DetailRow
-            label="Роль"
-            value={profile?.role || "—"}
-            chipClass="chip-blue"
-          />
-          <div className="divider" />
-          <DetailRow
-            label="Статус"
-            value={profile?.status || "—"}
-            chipClass="chip-grey"
-          />
-          <div className="divider" />
+          <div className="wf-divider" />
+          <DetailRow label="Роль" value={profile?.role || "—"} asTag />
+          <div className="wf-divider" />
+          <DetailRow label="Статус" value={profile?.status || "—"} asTag />
+          <div className="wf-divider" />
           <DetailRow
             label="Почта"
             value={isEmailVerified ? "Подтверждена" : "Не подтверждена"}
-            chipClass={isEmailVerified ? "chip-green" : "chip-amber"}
+            asTag
           />
 
-          <div className="soft-panel mb-6 mt-5 flex items-start gap-4 p-5 sm:p-6">
-            <span className="icon-badge shrink-0" aria-hidden="true">
-              <ShieldCheck size={22} />
-            </span>
-            <p className="min-w-0 flex-1 text-sm leading-6 text-muted">
-              Сейчас данные доступны только для просмотра. Редактирование имени
-              и пароля появится в одном из следующих обновлений.
-            </p>
-          </div>
+          <p className="wf-fill wf-muted mt-4 p-4 text-sm leading-6">
+            Сейчас данные доступны только для просмотра. Редактирование имени и
+            пароля появится в одном из следующих обновлений.
+          </p>
         </ProfileSection>
 
         {/* Подтверждение почты: состояние, запрос кода и история писем. */}
         <ProfileSection
-          icon={<ShieldCheck size={22} />}
           kicker="Безопасность"
           title="Подтверждение почты"
           description="Запроси письмо с одноразовым кодом и введи его ниже. В тестовом окружении код появится прямо в уведомлении."
-          padded
         >
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-3">
             <StatusTile label="Email" value={profile?.email ?? "—"} />
             <StatusTile
               label="Статус"
               value={isEmailVerified ? "Подтверждена" : "Не подтверждена"}
-              tone={isEmailVerified ? "ok" : "amber"}
             />
             <StatusTile
               label="Доставка"
@@ -271,17 +230,19 @@ export default function ProfilePage() {
                   ? "Настроен"
                   : "Тестовый режим"
               }
-              tone={emailStatusQuery.data?.smtp_configured ? "ok" : "grey"}
             />
           </div>
 
           {emailNotice ? (
-            <p role="status" className="notice notice-brand mt-4 font-semibold">
+            <p
+              role="status"
+              className="wf-fill mt-3 break-words px-3 py-2 text-sm leading-6"
+            >
               {emailNotice}
             </p>
           ) : null}
 
-          <div className="mt-5 flex flex-col gap-3 md:flex-row">
+          <div className="mt-4 flex flex-col gap-2 md:flex-row">
             <button
               type="button"
               onClick={() => requestVerificationMutation.mutate()}
@@ -289,14 +250,11 @@ export default function ProfilePage() {
                 Boolean(profile?.email_verified) ||
                 requestVerificationMutation.isPending
               }
-              className="btn btn-primary shrink-0"
+              className="wf-btn wf-btn-primary shrink-0"
             >
-              {requestVerificationMutation.isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Mail size={16} />
-              )}
-              Запросить подтверждение
+              {requestVerificationMutation.isPending
+                ? "Запрашиваем..."
+                : "Запросить подтверждение"}
             </button>
 
             <form
@@ -308,7 +266,7 @@ export default function ProfilePage() {
                 aria-label="Код из письма"
                 value={verificationToken}
                 onChange={(event) => setVerificationToken(event.target.value)}
-                className="field min-w-0 flex-1 text-sm"
+                className="wf-field min-w-0 flex-1 text-sm"
                 placeholder="Код из письма"
                 disabled={
                   Boolean(profile?.email_verified) ||
@@ -321,7 +279,7 @@ export default function ProfilePage() {
                   Boolean(profile?.email_verified) ||
                   confirmVerificationMutation.isPending
                 }
-                className="btn btn-secondary shrink-0"
+                className="wf-btn shrink-0"
               >
                 Подтвердить
               </button>
@@ -329,21 +287,16 @@ export default function ProfilePage() {
           </div>
 
           {/* Outbox: компактная таблица последних писем. */}
-          <div className="mt-6">
+          <div className="mt-5">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="font-display text-base font-extrabold tracking-[-0.02em]">
-                Последние письма
-              </h3>
+              <h3 className="text-base font-semibold">Последние письма</h3>
               {emailOutboxQuery.isFetching ? (
-                <Loader2 size={16} className="animate-spin text-brand" />
+                <span className="wf-muted text-xs">Обновляем...</span>
               ) : null}
             </div>
 
             {emailOutboxQuery.error ? (
-              <p
-                role="alert"
-                className="notice notice-danger mt-3 font-semibold"
-              >
+              <p role="alert" className="wf-fill mt-3 p-4 text-sm leading-6">
                 {getApiErrorMessage(
                   emailOutboxQuery.error,
                   "Не удалось загрузить историю писем.",
@@ -353,19 +306,19 @@ export default function ProfilePage() {
               <div className="scroll-thin mt-3 overflow-x-auto rounded-md border border-line">
                 <table className="w-full min-w-[36rem] border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-line bg-mist">
-                      <th scope="col" className="micro-label px-4 py-3">
+                    <tr className="bg-fill border-b border-line">
+                      <th scope="col" className="wf-kicker px-3 py-2">
                         Письмо
                       </th>
-                      <th scope="col" className="micro-label px-4 py-3">
+                      <th scope="col" className="wf-kicker px-3 py-2">
                         Тип
                       </th>
-                      <th scope="col" className="micro-label px-4 py-3">
+                      <th scope="col" className="wf-kicker px-3 py-2">
                         Отправлено
                       </th>
                       <th
                         scope="col"
-                        className="micro-label px-4 py-3 text-right"
+                        className="wf-kicker px-3 py-2 text-right"
                       >
                         Статус
                       </th>
@@ -375,33 +328,29 @@ export default function ProfilePage() {
                     {emailOutboxQuery.data.slice(0, 5).map((item) => (
                       <tr
                         key={item.id}
-                        className="border-b border-line align-top last:border-0"
+                        className="border-b border-line-soft align-top last:border-0"
                       >
-                        <td className="min-w-0 px-4 py-3">
-                          <p className="font-display text-sm font-extrabold tracking-[-0.02em]">
+                        <td className="min-w-0 px-3 py-2.5">
+                          <p className="text-sm font-semibold">
                             {item.subject}
                           </p>
-                          <p className="mt-0.5 break-words text-xs text-muted">
+                          <p className="wf-muted mt-0.5 break-words text-xs">
                             {item.to_email}
                           </p>
                           {item.error ? (
-                            <p className="mt-1 break-words text-xs font-semibold text-danger-ink">
+                            <p className="mt-1 break-words text-xs font-medium">
                               {item.error}
                             </p>
                           ) : null}
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-muted">
+                        <td className="wf-muted px-3 py-2.5 text-xs">
                           {item.purpose}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums text-muted">
+                        <td className="wf-muted whitespace-nowrap px-3 py-2.5 text-xs tabular-nums">
                           {formatDateTime(item.created_at)}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <span
-                            className={`chip ${outboxChipClass(item.status)}`}
-                          >
-                            {item.status}
-                          </span>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="wf-tag">{item.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -409,15 +358,10 @@ export default function ProfilePage() {
                 </table>
               </div>
             ) : (
-              <div className="soft-panel mt-3 flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-                <span className="icon-badge shrink-0" aria-hidden="true">
-                  <Send size={22} />
-                </span>
-                <p className="min-w-0 flex-1 text-sm leading-6 text-muted">
-                  Пока писем нет. Запроси подтверждение почты, и запись появится
-                  здесь.
-                </p>
-              </div>
+              <p className="wf-fill wf-muted mt-3 p-4 text-sm leading-6">
+                Пока писем нет. Запроси подтверждение почты, и запись появится
+                здесь.
+              </p>
             )}
           </div>
         </ProfileSection>
@@ -428,68 +372,54 @@ export default function ProfilePage() {
 
 /** Секция профиля: шапка с кикером и заголовком, затем содержимое. */
 function ProfileSection({
-  icon,
   kicker,
   title,
   description,
-  padded = false,
   children,
 }: {
-  icon: ReactNode;
   kicker: string;
   title: string;
   description?: string;
-  padded?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="panel overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-line p-5 sm:p-6 md:flex-row md:items-start md:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
-          <span className="icon-badge shrink-0" aria-hidden="true">
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <span className="section-kicker">{kicker}</span>
-            <h2 className="mt-1.5 text-balance font-display text-xl font-extrabold tracking-[-0.04em] sm:text-2xl">
-              {title}
-            </h2>
-            {description ? (
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
-                {description}
-              </p>
-            ) : null}
-          </div>
-        </div>
+    <section className="wf-box p-4 sm:p-5">
+      <div className="min-w-0">
+        <p className="wf-kicker">{kicker}</p>
+        <h2 className="wf-title mt-1 text-balance">{title}</h2>
+        {description ? (
+          <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
+            {description}
+          </p>
+        ) : null}
       </div>
 
-      {/* Без padded вертикальный ритм задают сами строки (py-4). */}
-      <div className={`px-5 sm:px-6 ${padded ? "py-5 sm:py-6" : ""}`}>
-        {children}
-      </div>
+      <div className="wf-divider my-4" />
+
+      {children}
     </section>
   );
 }
 
-/** Строка данных: подпись слева, значение или статусный чип справа. */
+/** Строка данных: подпись слева, значение или метка состояния справа. */
 function DetailRow({
   label,
   value,
-  chipClass,
+  asTag,
 }: {
   label: string;
   value: string;
-  chipClass?: string;
+  asTag?: boolean;
 }) {
   return (
-    <div className="grid gap-1 py-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-center sm:gap-6">
-      <span className="text-sm font-semibold text-muted">{label}</span>
-      {chipClass ? (
+    <div className="grid gap-1 py-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-center sm:gap-6">
+      <span className="wf-muted text-sm">{label}</span>
+      {asTag ? (
         <span className="min-w-0">
-          <span className={`chip ${chipClass}`}>{value}</span>
+          <span className="wf-tag">{value}</span>
         </span>
       ) : (
-        <span className="min-w-0 break-words font-display text-sm font-extrabold tracking-[-0.02em]">
+        <span className="min-w-0 break-words text-sm font-semibold">
           {value}
         </span>
       )}
@@ -499,11 +429,22 @@ function DetailRow({
 
 function MetaCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 px-5 py-4 sm:px-6">
-      <p className="micro-label">{label}</p>
+    <div className="wf-fill min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
+      <p title={value} className="mt-1 truncate text-sm font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StatusTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="wf-fill min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
       <p
         title={value}
-        className="mt-1 truncate font-display text-sm font-extrabold tracking-[-0.02em]"
+        className="mt-1 min-w-0 truncate text-sm font-semibold"
       >
         {value}
       </p>
@@ -511,50 +452,29 @@ function MetaCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatusTile({
+/** Состояние загрузки: скелетоны для глаз, текст — для скринридера. */
+function LoadingRows({
   label,
-  value,
-  tone,
+  description,
+  rows,
 }: {
   label: string;
-  value: string;
-  tone?: "ok" | "amber" | "grey";
+  description?: string;
+  rows: number;
 }) {
   return (
-    <div className="soft-panel min-w-0 p-5 sm:p-6">
-      <p className="micro-label">{label}</p>
-      <p className="mt-1.5 flex min-w-0 items-center gap-2">
-        {tone ? (
-          <span
-            className="status-dot shrink-0"
-            data-tone={tone === "ok" ? undefined : tone}
-            aria-hidden="true"
-          />
-        ) : null}
+    <div role="status" aria-busy="true" className="space-y-2">
+      <span className="sr-only">{label}</span>
+      {description ? <span className="sr-only">{description}</span> : null}
+      {Array.from({ length: rows }, (_, index) => (
         <span
-          title={value}
-          className="min-w-0 truncate font-display text-sm font-extrabold tracking-[-0.02em]"
-        >
-          {value}
-        </span>
-      </p>
+          key={index}
+          aria-hidden="true"
+          className="wf-skeleton block h-12"
+        />
+      ))}
     </div>
   );
-}
-
-function outboxChipClass(status: string) {
-  switch (status) {
-    case "sent":
-      return "chip-green";
-    case "failed":
-    case "error":
-      return "chip-red";
-    case "pending":
-    case "queued":
-      return "chip-amber";
-    default:
-      return "chip-blue";
-  }
 }
 
 function initialsFromName(value: string) {
