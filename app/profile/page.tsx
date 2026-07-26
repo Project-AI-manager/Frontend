@@ -1,20 +1,11 @@
-﻿"use client";
+"use client";
 
-import {
-  AlertCircle,
-  Building2,
-  Loader2,
-  Mail,
-  RefreshCw,
-  ShieldCheck,
-} from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
-import { InfoRow } from "@/components/ui/info-row";
-import { StateCard } from "@/components/ui/state-card";
 import { emailApi } from "@/lib/api/email";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
@@ -125,258 +116,363 @@ export default function ProfilePage() {
     confirmVerificationMutation.mutate(token);
   }
 
+  const isEmailVerified = Boolean(profile?.email_verified);
+
   return (
     <AppShell
       title="Профиль"
       description="Личные данные, рабочее пространство и подтверждение почты."
     >
-      <div className="mx-auto max-w-5xl space-y-6">
-        <section className="surface-card overflow-hidden">
-          <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-lg bg-[#2463eb] text-2xl font-black text-white">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-5">
+        {/* Шапка профиля: аватар-инициалы, роль, компания и действия аккаунта. */}
+        <section className="wf-box p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+            <span className="bg-fill flex size-14 shrink-0 items-center justify-center rounded-md text-base font-semibold">
               {initials}
-            </div>
+            </span>
+
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="truncate text-2xl font-black">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="wf-title min-w-0 truncate">
                   {profile?.full_name || "Пользователь"}
                 </h2>
-                <span className="rounded-full bg-[#eaf1ff] px-3 py-1 text-xs font-bold text-[#1546ad]">
-                  {profile?.role ?? "роль"}
-                </span>
+                <span className="wf-tag">{profile?.role ?? "роль"}</span>
               </div>
-              <p className="mt-1 truncate text-sm text-[#526071]">
+              <p className="wf-muted mt-1 truncate text-sm">
                 {profile?.email ?? "email не загружен"}
               </p>
-              <p className="mt-3 flex items-center gap-2 text-sm font-semibold">
-                <Building2 size={16} className="text-[#2463eb]" />
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 {workspace?.name ?? "Компания"}
-                <span className="font-normal text-[#526071]">
+                <span className="wf-muted">
                   · {workspace?.slug ?? "workspace"}
                 </span>
               </p>
             </div>
-            <div className="flex shrink-0 flex-col items-stretch gap-2">
+
+            <div className="flex shrink-0 flex-col items-stretch gap-2 lg:w-52">
               <button
                 type="button"
                 onClick={refreshAll}
-                className="secondary-button px-4 py-2.5 text-sm"
+                className="wf-btn w-full"
               >
-                {isProfileFetching ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-                Обновить
+                <RefreshCw size={18} className="text-muted" />
+                {isProfileFetching ? "Обновляем..." : "Обновить"}
               </button>
               <LogoutButton />
             </div>
           </div>
-          <div className="grid border-t border-[#d9e1ec] bg-[#f8fbff] md:grid-cols-2">
-            <div className="border-b border-[#d9e1ec] px-6 py-4 md:border-b-0 md:border-r sm:px-8">
-              <InfoRow
-                label="ID пространства"
-                value={profile?.tenant_id ?? workspace?.id ?? "—"}
-                truncate
-              />
-            </div>
-            <div className="px-6 py-4 sm:px-8">
-              <InfoRow label="Статус" value={workspace?.status ?? "—"} />
-            </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <MetaCell
+              label="ID пространства"
+              value={profile?.tenant_id ?? workspace?.id ?? "—"}
+            />
+            <MetaCell label="Статус" value={workspace?.status ?? "—"} />
           </div>
         </section>
 
-        <section className="space-y-6">
-          {isLoading ? (
-            <StateCard
-              icon={<Loader2 className="animate-spin" size={18} />}
-              title="Загружаем профиль"
-              description="Запрашиваем `/users/me` и `/settings/workspace`."
-            />
-          ) : error ? (
-            <StateCard
-              icon={<AlertCircle size={18} />}
-              title="Не удалось загрузить профиль"
-              description={getApiErrorMessage(
+        {isLoading ? (
+          <LoadingRows
+            label="Загружаем профиль"
+            description="Запрашиваем `/users/me` и `/settings/workspace`."
+            rows={3}
+          />
+        ) : error ? (
+          <div role="alert" className="wf-fill p-4">
+            <p className="text-sm font-semibold">Не удалось загрузить профиль</p>
+            <p className="wf-muted mt-1 text-sm leading-6">
+              {getApiErrorMessage(
                 error,
                 "Обнови страницу или войди в аккаунт повторно.",
               )}
-              tone="error"
+            </p>
+          </div>
+        ) : null}
+
+        {/* Данные пользователя: роль и статусы вынесены в метки. */}
+        <ProfileSection kicker="Аккаунт" title="Контактные данные">
+          <DetailRow label="Имя" value={profile?.full_name || "Не указано"} />
+          <div className="wf-divider" />
+          <DetailRow label="Email" value={profile?.email || "Не загружен"} />
+          <div className="wf-divider" />
+          <DetailRow label="Роль" value={profile?.role || "—"} asTag />
+          <div className="wf-divider" />
+          <DetailRow label="Статус" value={profile?.status || "—"} asTag />
+          <div className="wf-divider" />
+          <DetailRow
+            label="Почта"
+            value={isEmailVerified ? "Подтверждена" : "Не подтверждена"}
+            asTag
+          />
+
+          <p className="wf-fill wf-muted mt-4 p-4 text-sm leading-6">
+            Сейчас данные доступны только для просмотра. Редактирование имени и
+            пароля появится в одном из следующих обновлений.
+          </p>
+        </ProfileSection>
+
+        {/* Подтверждение почты: состояние, запрос кода и история писем. */}
+        <ProfileSection
+          kicker="Безопасность"
+          title="Подтверждение почты"
+          description="Запроси письмо с одноразовым кодом и введи его ниже. В тестовом окружении код появится прямо в уведомлении."
+        >
+          <div className="grid gap-2 sm:grid-cols-3">
+            <StatusTile label="Email" value={profile?.email ?? "—"} />
+            <StatusTile
+              label="Статус"
+              value={isEmailVerified ? "Подтверждена" : "Не подтверждена"}
             />
+            <StatusTile
+              label="Доставка"
+              value={
+                emailStatusQuery.data?.smtp_configured
+                  ? "Настроен"
+                  : "Тестовый режим"
+              }
+            />
+          </div>
+
+          {emailNotice ? (
+            <p
+              role="status"
+              className="wf-fill mt-3 break-words px-3 py-2 text-sm leading-6"
+            >
+              {emailNotice}
+            </p>
           ) : null}
 
-          <article className="surface-card p-6 sm:p-8">
-            <div className="flex items-center gap-3">
-              <Mail size={20} className="text-[#2463eb]" />
-              <h2 className="text-xl font-black">Контактные данные</h2>
-            </div>
-            <div className="mt-5 divide-y divide-[#d9e1ec] border-y border-[#d9e1ec]">
-              <ProfileDetail
-                label="Имя"
-                value={profile?.full_name || "Не указано"}
-              />
-              <ProfileDetail
-                label="Email"
-                value={profile?.email || "Не загружен"}
-              />
-              <ProfileDetail label="Роль" value={profile?.role || "—"} />
-              <ProfileDetail label="Статус" value={profile?.status || "—"} />
-              <ProfileDetail
-                label="Почта"
-                value={
-                  profile?.email_verified ? "Подтверждена" : "Не подтверждена"
-                }
-              />
-            </div>
-            <p className="mt-4 text-sm leading-6 text-neutral-500">
-              Сейчас данные доступны только для просмотра. Редактирование имени
-              и пароля появится в одном из следующих обновлений.
-            </p>
-          </article>
+          <div className="mt-4 flex flex-col gap-2 md:flex-row">
+            <button
+              type="button"
+              onClick={() => requestVerificationMutation.mutate()}
+              disabled={
+                Boolean(profile?.email_verified) ||
+                requestVerificationMutation.isPending
+              }
+              className="wf-btn wf-btn-primary shrink-0"
+            >
+              {requestVerificationMutation.isPending
+                ? "Запрашиваем..."
+                : "Запросить подтверждение"}
+            </button>
 
-          <article className="surface-card p-6 sm:p-8">
-            <div className="flex items-center gap-3">
-              <ShieldCheck size={20} className="text-[#2463eb]" />
-              <h2 className="text-xl font-black">Подтверждение почты</h2>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-neutral-600">
-              Запроси письмо с одноразовым кодом и введи его ниже. В тестовом
-              окружении код появится прямо в уведомлении.
-            </p>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <InfoRow label="Email" value={profile?.email ?? "—"} />
-              <InfoRow
-                label="Статус"
-                value={
-                  profile?.email_verified ? "Подтверждена" : "Не подтверждена"
-                }
-              />
-              <InfoRow
-                label="Доставка"
-                value={
-                  emailStatusQuery.data?.smtp_configured
-                    ? "Настроен"
-                    : "Тестовый режим"
-                }
-              />
-            </div>
-
-            {emailNotice ? (
-              <p className="mt-4 rounded-lg bg-white p-4 text-sm font-semibold text-neutral-700 shadow-sm">
-                {emailNotice}
-              </p>
-            ) : null}
-
-            <div className="mt-5 flex flex-col gap-3 md:flex-row">
-              <button
-                type="button"
-                onClick={() => requestVerificationMutation.mutate()}
+            <form
+              onSubmit={handleVerificationConfirm}
+              className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row"
+            >
+              <input
+                id="profile-verification-token"
+                aria-label="Код из письма"
+                value={verificationToken}
+                onChange={(event) => setVerificationToken(event.target.value)}
+                className="wf-field min-w-0 flex-1 text-sm"
+                placeholder="Код из письма"
                 disabled={
                   Boolean(profile?.email_verified) ||
-                  requestVerificationMutation.isPending
+                  confirmVerificationMutation.isPending
                 }
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2463eb] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              />
+              <button
+                type="submit"
+                disabled={
+                  Boolean(profile?.email_verified) ||
+                  confirmVerificationMutation.isPending
+                }
+                className="wf-btn shrink-0"
               >
-                {requestVerificationMutation.isPending ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Mail size={16} />
-                )}
-                Запросить подтверждение
+                Подтвердить
               </button>
+            </form>
+          </div>
 
-              <form
-                onSubmit={handleVerificationConfirm}
-                className="flex min-w-0 flex-1 gap-2"
-              >
-                <input
-                  value={verificationToken}
-                  onChange={(event) => setVerificationToken(event.target.value)}
-                  className="form-field min-w-0 flex-1 px-4 py-3 text-sm"
-                  placeholder="Код из письма"
-                  disabled={
-                    Boolean(profile?.email_verified) ||
-                    confirmVerificationMutation.isPending
-                  }
-                />
-                <button
-                  type="submit"
-                  disabled={
-                    Boolean(profile?.email_verified) ||
-                    confirmVerificationMutation.isPending
-                  }
-                  className="rounded-lg border border-[#d9e1ec] bg-white px-5 py-3 text-sm font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  Подтвердить
-                </button>
-              </form>
+          {/* Outbox: компактная таблица последних писем. */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-semibold">Последние письма</h3>
+              {emailOutboxQuery.isFetching ? (
+                <span className="wf-muted text-xs">Обновляем...</span>
+              ) : null}
             </div>
 
-            <div className="mt-6 rounded-lg bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-black">Последние письма</h3>
-                {emailOutboxQuery.isFetching ? (
-                  <Loader2 size={16} className="animate-spin text-[#2463eb]" />
-                ) : null}
-              </div>
-
-              {emailOutboxQuery.error ? (
-                <p className="mt-3 text-sm font-semibold text-red-700">
-                  {getApiErrorMessage(
-                    emailOutboxQuery.error,
-                    "Не удалось загрузить историю писем.",
-                  )}
-                </p>
-              ) : emailOutboxQuery.data?.length ? (
-                <div className="mt-3 space-y-3">
-                  {emailOutboxQuery.data.slice(0, 5).map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border border-[#d9e1ec] p-3 text-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-black">{item.subject}</p>
-                          <p className="mt-1 text-neutral-500">
+            {emailOutboxQuery.error ? (
+              <p role="alert" className="wf-fill mt-3 p-4 text-sm leading-6">
+                {getApiErrorMessage(
+                  emailOutboxQuery.error,
+                  "Не удалось загрузить историю писем.",
+                )}
+              </p>
+            ) : emailOutboxQuery.data?.length ? (
+              <div className="scroll-thin mt-3 overflow-x-auto rounded-md border border-line">
+                <table className="w-full min-w-[36rem] border-collapse text-left">
+                  <thead>
+                    <tr className="bg-fill border-b border-line">
+                      <th scope="col" className="wf-kicker px-3 py-2">
+                        Письмо
+                      </th>
+                      <th scope="col" className="wf-kicker px-3 py-2">
+                        Тип
+                      </th>
+                      <th scope="col" className="wf-kicker px-3 py-2">
+                        Отправлено
+                      </th>
+                      <th
+                        scope="col"
+                        className="wf-kicker px-3 py-2 text-right"
+                      >
+                        Статус
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emailOutboxQuery.data.slice(0, 5).map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b border-line-soft align-top last:border-0"
+                      >
+                        <td className="min-w-0 px-3 py-2.5">
+                          <p className="text-sm font-semibold">
+                            {item.subject}
+                          </p>
+                          <p className="wf-muted mt-0.5 break-words text-xs">
                             {item.to_email}
                           </p>
-                        </div>
-                        <span className="rounded-full bg-[#eaf1ff] px-3 py-1 text-xs font-black text-[#1546ad]">
-                          {item.status}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-neutral-500">
-                        <span>{item.purpose}</span>
-                        <span>{formatDateTime(item.created_at)}</span>
-                      </div>
-                      {item.error ? (
-                        <p className="mt-2 text-xs font-semibold text-red-700">
-                          {item.error}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-3 text-sm leading-6 text-neutral-500">
-                  Пока писем нет. Запроси подтверждение почты, и запись появится
-                  здесь.
-                </p>
-              )}
-            </div>
-          </article>
-        </section>
+                          {item.error ? (
+                            <p className="mt-1 break-words text-xs font-medium">
+                              {item.error}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="wf-muted px-3 py-2.5 text-xs">
+                          {item.purpose}
+                        </td>
+                        <td className="wf-muted whitespace-nowrap px-3 py-2.5 text-xs tabular-nums">
+                          {formatDateTime(item.created_at)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="wf-tag">{item.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="wf-fill wf-muted mt-3 p-4 text-sm leading-6">
+                Пока писем нет. Запроси подтверждение почты, и запись появится
+                здесь.
+              </p>
+            )}
+          </div>
+        </ProfileSection>
       </div>
     </AppShell>
   );
 }
 
-function ProfileDetail({ label, value }: { label: string; value: string }) {
+/** Секция профиля: шапка с кикером и заголовком, затем содержимое. */
+function ProfileSection({
+  kicker,
+  title,
+  description,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="grid gap-1 py-3 text-sm sm:grid-cols-[180px_1fr] sm:gap-4">
-      <span className="font-semibold text-[#526071]">{label}</span>
-      <span className="font-bold">{value}</span>
+    <section className="wf-box p-4 sm:p-5">
+      <div className="min-w-0">
+        <p className="wf-kicker">{kicker}</p>
+        <h2 className="wf-title mt-1 text-balance">{title}</h2>
+        {description ? (
+          <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
+            {description}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="wf-divider my-4" />
+
+      {children}
+    </section>
+  );
+}
+
+/** Строка данных: подпись слева, значение или метка состояния справа. */
+function DetailRow({
+  label,
+  value,
+  asTag,
+}: {
+  label: string;
+  value: string;
+  asTag?: boolean;
+}) {
+  return (
+    <div className="grid gap-1 py-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-center sm:gap-6">
+      <span className="wf-muted text-sm">{label}</span>
+      {asTag ? (
+        <span className="min-w-0">
+          <span className="wf-tag">{value}</span>
+        </span>
+      ) : (
+        <span className="min-w-0 break-words text-sm font-semibold">
+          {value}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function MetaCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="wf-fill min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
+      <p title={value} className="mt-1 truncate text-sm font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StatusTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="wf-fill min-w-0 p-3">
+      <p className="wf-kicker">{label}</p>
+      <p
+        title={value}
+        className="mt-1 min-w-0 truncate text-sm font-semibold"
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/** Состояние загрузки: скелетоны для глаз, текст — для скринридера. */
+function LoadingRows({
+  label,
+  description,
+  rows,
+}: {
+  label: string;
+  description?: string;
+  rows: number;
+}) {
+  return (
+    <div role="status" aria-busy="true" className="space-y-2">
+      <span className="sr-only">{label}</span>
+      {description ? <span className="sr-only">{description}</span> : null}
+      {Array.from({ length: rows }, (_, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          className="wf-skeleton block h-12"
+        />
+      ))}
     </div>
   );
 }

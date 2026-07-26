@@ -1,33 +1,68 @@
 import Link from "next/link";
 
+type FooterLink = {
+  href: string;
+  label: string;
+};
+
+const productLinks: FooterLink[] = [
+  { href: "/#features", label: "Возможности" },
+  { href: "/#how", label: "Как работает" },
+  { href: "/#pricing", label: "Тарифы" },
+];
+
+const legalLinks: FooterLink[] = [
+  { href: "/legal/terms", label: "Условия" },
+  { href: "/legal/privacy", label: "Политика конфиденциальности" },
+];
+
 export function Footer() {
   return (
-    <footer className="border-t border-[#d9e1ec] bg-white text-[#101828]">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-10 text-sm lg:grid-cols-[1.2fr_1fr] lg:px-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="brand-mark size-10" />
-            <span className="text-lg font-black">Автопилот</span>
+    <footer className="border-t border-line bg-white text-ink">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr_1fr]">
+          <div className="max-w-md">
+            <p className="text-base font-semibold">Автопилот</p>
+            <p className="wf-muted mt-2 text-sm leading-6">
+              AI-менеджер, который собирает обращения из каналов, ищет ответы в
+              базе знаний и помогает команде отвечать быстрее.
+            </p>
           </div>
-          <p className="mt-4 max-w-md leading-6 text-[#526071]">
-            AI-менеджер, который собирает обращения из каналов, ищет ответы в
-            базе знаний и помогает команде отвечать быстрее.
-          </p>
+
+          <FooterColumn title="Продукт" links={productLinks} />
+          <FooterColumn title="Правовое" links={legalLinks} />
         </div>
 
-        <div className="flex flex-wrap items-start gap-6 text-[#526071] lg:justify-end">
-          <Link
-            href="/legal/privacy"
-            className="transition hover:text-[#2463eb]"
-          >
-            Политика конфиденциальности
-          </Link>
-          <Link href="/legal/terms" className="transition hover:text-[#2463eb]">
-            Условия
-          </Link>
-          <span>© 2026 Автопилот</span>
-        </div>
+        <div className="wf-divider mt-8" />
+
+        <p className="wf-muted mt-6 text-sm">© 2026 Автопилот</p>
       </div>
     </footer>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: FooterLink[];
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="wf-kicker">{title}</p>
+      <ul className="mt-3 space-y-1 text-sm">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              className="wf-muted inline-flex min-h-9 items-center"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

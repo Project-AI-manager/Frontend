@@ -1,32 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-
+/**
+ * Каркасная версия. Раньше здесь жили две вещи оформления: лениво
+ * подключаемая 3D-сцена героя и появление секций при скролле. В каркасе
+ * анимаций нет, поэтому компонент оставлен рабочей заглушкой: это точка
+ * входа для клиентской логики лендинга, когда появится визуальный стиль.
+ */
 export function HomeClient() {
-  useEffect(() => {
-    const elements = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    if (reduced || !("IntersectionObserver" in window)) {
-      elements.forEach((element) => element.classList.add("is-visible"));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 },
-    );
-
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
-
   return null;
 }

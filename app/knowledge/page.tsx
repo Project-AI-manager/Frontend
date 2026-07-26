@@ -1,23 +1,10 @@
-﻿"use client";
+"use client";
 
-import {
-  AlertCircle,
-  Archive,
-  BrainCircuit,
-  CheckCircle2,
-  FileText,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Search,
-  Sparkles,
-  XCircle,
-} from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { Archive, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
   KnowledgeCandidateResponse,
@@ -214,35 +201,49 @@ export default function KnowledgePage() {
     <AppShell
       title="База знаний"
       description="Управляйте знаниями по одному процессу: добавьте материал, проверьте извлечение и подтвердите улучшения."
+      actions={
+        <span className="hidden sm:inline-flex">
+          <a href="#knowledge-add-document" className="wf-btn">
+            <Plus size={18} className="text-muted" />
+            Добавить документ
+          </a>
+        </span>
+      }
     >
-      <section className="glass-card overflow-hidden rounded-lg">
-        <div className="grid divide-y divide-[#d9e1ec] md:grid-cols-3 md:divide-x md:divide-y-0">
-          <ProcessMetric
-            number="01"
-            label="Материалы"
-            value={`${documents.length} документов`}
-          />
-          <ProcessMetric
-            number="02"
-            label="Проверка ответа"
-            value={answer ? "Ответ получен" : "Готов к тесту"}
-          />
-          <ProcessMetric
-            number="03"
-            label="Улучшения"
-            value={`${pendingCandidates.length} на проверке`}
-          />
-        </div>
+      <div className="space-y-5">
+        {/* Полоса счётчиков: три шага процесса — материалы, проверка, улучшения. */}
+        <section className="wf-box p-4 sm:p-5">
+          <p className="wf-kicker">База знаний</p>
 
-        {notice ? (
-          <p
-            role="status"
-            className="border-t border-[#d9e1ec] bg-[#eaf1ff] px-5 py-3 text-sm font-semibold text-[#1546ad] md:px-6"
-          >
-            {notice}
-          </p>
-        ) : null}
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <ProcessMetric
+              number="01"
+              label="Материалы"
+              value={`${documents.length} документов`}
+            />
+            <ProcessMetric
+              number="02"
+              label="Проверка ответа"
+              value={answer ? "Ответ получен" : "Готов к тесту"}
+            />
+            <ProcessMetric
+              number="03"
+              label="Улучшения"
+              value={`${pendingCandidates.length} на проверке`}
+            />
+          </div>
 
+          {notice ? (
+            <p
+              role="status"
+              className="wf-fill mt-3 break-words px-3 py-2 text-sm leading-6"
+            >
+              {notice}
+            </p>
+          ) : null}
+        </section>
+
+        {/* 01 — документы и фрагменты. */}
         <KnowledgeSection
           number="01"
           title="Материалы"
@@ -251,147 +252,155 @@ export default function KnowledgePage() {
             <button
               type="button"
               onClick={() => refetchDocuments()}
-              className="secondary-button px-3 py-2 text-xs"
+              className="wf-btn"
             >
-              {isDocumentsFetching ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <RefreshCw size={14} />
-              )}
-              Обновить
+              <RefreshCw size={18} className="text-muted" />
+              {isDocumentsFetching ? "Обновляем..." : "Обновить"}
             </button>
           }
         >
-          <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-            <form
-              onSubmit={handleCreateDocument}
-              className="border-r-0 border-[#d9e1ec] xl:border-r xl:pr-6"
-            >
-              <h3 className="flex items-center gap-2 text-sm font-black">
-                <Plus size={16} className="text-[#2463eb]" />
-                Новый документ
-              </h3>
-              <label
-                htmlFor="knowledge-title"
-                className="mt-4 block text-xs font-bold text-neutral-500"
-              >
-                Название
-              </label>
-              <input
-                id="knowledge-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="form-field mt-2 px-4 py-3 text-sm"
-                placeholder="Например, FAQ по доставке"
-                disabled={createDocumentMutation.isPending}
-              />
-              <label
-                htmlFor="knowledge-text"
-                className="mt-4 block text-xs font-bold text-neutral-500"
-              >
-                Содержание
-              </label>
-              <textarea
-                id="knowledge-text"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                className="form-field mt-2 min-h-36 resize-y px-4 py-3 text-sm leading-6"
-                placeholder="Условия, ответы и инструкции для ассистента..."
-                disabled={createDocumentMutation.isPending}
-              />
-              <button
-                type="submit"
-                disabled={createDocumentMutation.isPending}
-                className="primary-button mt-4 px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {createDocumentMutation.isPending ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Plus size={15} />
-                )}
-                Добавить в базу
-              </button>
-            </form>
+          <form
+            id="knowledge-add-document"
+            onSubmit={handleCreateDocument}
+            className="wf-box scroll-mt-24 p-4 sm:p-5"
+          >
+            <h3 className="text-base font-semibold">Новый документ</h3>
 
-            <div className="min-w-0">
-              <div className="mb-3 grid grid-cols-[1fr_auto] gap-3 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-neutral-400 sm:grid-cols-[1fr_100px_90px_auto]">
-                <span>Документ</span>
-                <span className="hidden sm:block">Источник</span>
-                <span className="hidden sm:block">Статус</span>
-                <span>Фрагменты</span>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="knowledge-title" className="wf-label">
+                  Название
+                </label>
+                <input
+                  id="knowledge-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="wf-field text-sm"
+                  placeholder="Например, FAQ по доставке"
+                  disabled={createDocumentMutation.isPending}
+                />
               </div>
-              <div className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white">
-                {isDocumentsLoading ? (
-                  <StateCard
-                    icon={<Loader2 className="animate-spin" size={18} />}
-                    title="Загружаем документы"
-                  />
-                ) : documentsError ? (
-                  <StateCard
-                    icon={<AlertCircle size={18} />}
-                    title="Не удалось загрузить документы"
-                    description={getApiErrorMessage(
-                      documentsError,
-                      "Проверь авторизацию и подключение к сервису.",
-                    )}
-                    tone="error"
-                  />
-                ) : documents.length > 0 ? (
-                  documents.map((document) => {
-                    const isActive = document.id === activeDocumentId;
-                    return (
-                      <button
-                        key={document.id}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => setSelectedDocumentId(document.id)}
-                        className={`grid w-full grid-cols-[1fr_auto] gap-3 border-b border-[#d9e1ec] px-4 py-3 text-left transition-colors last:border-0 hover:bg-[#f8fbff] sm:grid-cols-[1fr_100px_90px_auto] sm:items-center ${isActive ? "bg-[#eaf1ff]" : ""}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-3">
-                          <FileText
-                            size={17}
-                            className="shrink-0 text-[#2463eb]"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-black">
-                              {document.title}
-                            </span>
-                            <span className="block font-mono text-[11px] text-neutral-400">
-                              {formatDate(document.updated_at)}
-                            </span>
-                          </span>
-                        </span>
-                        <span className="hidden text-xs font-semibold text-neutral-500 sm:block">
-                          {document.source_type}
-                        </span>
-                        <span className="hidden sm:block">
-                          <StatusPill status={document.status} />
-                        </span>
-                        <span className="font-mono text-xs font-bold text-neutral-500">
-                          {document.chunks_count}
-                        </span>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <StateCard
-                    icon={<FileText size={18} />}
-                    title="Документов пока нет"
-                    description="Добавьте первый материал, чтобы ассистент начал отвечать по вашей базе."
-                  />
-                )}
+
+              <div>
+                <label htmlFor="knowledge-text" className="wf-label">
+                  Содержание
+                </label>
+                <textarea
+                  id="knowledge-text"
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  className="wf-field text-sm"
+                  placeholder="Условия, ответы и инструкции для ассистента..."
+                  disabled={createDocumentMutation.isPending}
+                />
               </div>
             </div>
+
+            <button
+              type="submit"
+              disabled={createDocumentMutation.isPending}
+              className="wf-btn wf-btn-primary mt-4 w-full"
+            >
+              Добавить в базу
+            </button>
+          </form>
+
+          <div className="mt-4">
+            {isDocumentsLoading ? (
+              <LoadingRows label="Загружаем документы" rows={4} />
+            ) : documentsError ? (
+              <div role="alert" className="wf-fill p-4">
+                <p className="text-sm font-semibold">
+                  Не удалось загрузить документы
+                </p>
+                <p className="wf-muted mt-1 text-sm leading-6">
+                  {getApiErrorMessage(
+                    documentsError,
+                    "Проверь авторизацию и подключение к сервису.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => refetchDocuments()}
+                  className="wf-btn mt-3"
+                >
+                  <RotateCcw size={18} className="text-muted" />
+                  Повторить
+                </button>
+              </div>
+            ) : documents.length > 0 ? (
+              <ul className="space-y-2">
+                {documents.map((document) => {
+                  const isActive = document.id === activeDocumentId;
+
+                  return (
+                    <li key={document.id}>
+                      {/* Выбранная строка отличается только заливкой (.wf-fill).
+                          Имя кнопки задаём явно: иначе скринридер склеивает его
+                          из даты, меток и числа фрагментов. */}
+                      <button
+                        type="button"
+                        aria-pressed={isActive}
+                        aria-label={`${document.title}, статус ${statusLabel(
+                          document.status,
+                        )}, фрагментов ${document.chunks_count}`}
+                        onClick={() => setSelectedDocumentId(document.id)}
+                        className={`${
+                          isActive ? "wf-fill" : "wf-box"
+                        } w-full p-3 text-left`}
+                      >
+                        <span
+                          className="block truncate text-sm font-semibold"
+                          aria-hidden="true"
+                        >
+                          {document.title}
+                        </span>
+                        <span
+                          className="mt-2 flex flex-wrap items-center gap-2"
+                          aria-hidden="true"
+                        >
+                          <span className="wf-tag">{document.source_type}</span>
+                          <StatusTag status={document.status} />
+                          <span className="wf-tag">
+                            {document.chunks_count} фрагментов
+                          </span>
+                          <span className="wf-muted text-xs tabular-nums">
+                            {formatDate(document.updated_at)}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="wf-fill p-4">
+                <p className="text-sm font-semibold">Документов пока нет</p>
+                <p className="wf-muted mt-1 text-sm leading-6">
+                  Добавьте первый материал, чтобы ассистент начал отвечать по
+                  вашей базе.
+                </p>
+                <a href="#knowledge-add-document" className="wf-btn mt-3">
+                  <Plus size={18} className="text-muted" />
+                  Добавить документ
+                </a>
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 border-t border-[#d9e1ec] pt-5">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <div>
-                <h3 className="text-sm font-black">Что запомнил ассистент</h3>
-                <p className="mt-1 text-sm text-neutral-500">
+          <div className="wf-divider my-5" />
+
+          <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold">
+                  Что запомнил ассистент
+                </h3>
+                <p className="wf-muted mt-1 text-sm leading-6">
                   Фрагменты выбранного документа, доступные поиску.
                 </p>
               </div>
+
               {activeDocumentId ? (
                 <button
                   type="button"
@@ -399,80 +408,80 @@ export default function KnowledgePage() {
                     archiveDocumentMutation.mutate(activeDocumentId)
                   }
                   disabled={archiveDocumentMutation.isPending}
-                  className="secondary-button self-start px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                  className="wf-btn shrink-0"
                 >
-                  {archiveDocumentMutation.isPending ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Archive size={14} />
-                  )}
-                  Архивировать документ
+                  <Archive size={18} className="text-muted" />
+                  {archiveDocumentMutation.isPending
+                    ? "Архивируем..."
+                    : "Архивировать документ"}
                 </button>
               ) : null}
             </div>
+
             <div className="mt-4">
               {isDetailLoading ? (
-                <StateCard
-                  icon={<Loader2 className="animate-spin" size={18} />}
-                  title="Загружаем фрагменты"
-                />
+                <LoadingRows label="Загружаем фрагменты" rows={3} />
               ) : detailError ? (
-                <StateCard
-                  icon={<AlertCircle size={18} />}
-                  title="Не удалось открыть документ"
-                  description={getApiErrorMessage(
-                    detailError,
-                    "Выбери другой документ или обнови список.",
-                  )}
-                  tone="error"
-                />
+                <div role="alert" className="wf-fill p-4">
+                  <p className="text-sm font-semibold">
+                    Не удалось открыть документ
+                  </p>
+                  <p className="wf-muted mt-1 text-sm leading-6">
+                    {getApiErrorMessage(
+                      detailError,
+                      "Выбери другой документ или обнови список.",
+                    )}
+                  </p>
+                </div>
               ) : documentDetail ? (
                 documentDetail.chunks.length > 0 ? (
-                  <div className="divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-[#f8fbff]">
+                  <ul className="space-y-2">
                     {documentDetail.chunks.map((chunk) => (
-                      <article
-                        key={chunk.id}
-                        className="grid gap-2 px-4 py-4 md:grid-cols-[90px_minmax(0,1fr)_90px]"
-                      >
-                        <p className="font-mono text-xs font-black text-[#2463eb]">
-                          #{chunk.position + 1}
-                        </p>
-                        <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-                          {chunk.text}
-                        </p>
-                        <span className="font-mono text-xs text-neutral-400 md:text-right">
-                          {chunk.token_count} токенов
-                        </span>
-                      </article>
+                      <li key={chunk.id}>
+                        <article className="wf-fill p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="wf-kicker">
+                              #{chunk.position + 1}
+                            </span>
+                            <span className="wf-tag">
+                              {chunk.token_count} токенов
+                            </span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">
+                            {chunk.text}
+                          </p>
+                        </article>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
-                  <StateCard
-                    icon={<FileText size={18} />}
-                    title="Фрагментов нет"
-                    description="Документ ещё обрабатывается или не содержит подходящего текста."
-                  />
+                  <div className="wf-fill p-4">
+                    <p className="text-sm font-semibold">Фрагментов нет</p>
+                    <p className="wf-muted mt-1 text-sm leading-6">
+                      Документ ещё обрабатывается или не содержит подходящего
+                      текста.
+                    </p>
+                  </div>
                 )
               ) : (
-                <StateCard
-                  icon={<FileText size={18} />}
-                  title="Документ не выбран"
-                  description="Выберите материал в таблице, чтобы проверить его фрагменты."
-                />
+                <div className="wf-fill p-4">
+                  <p className="text-sm font-semibold">Документ не выбран</p>
+                  <p className="wf-muted mt-1 text-sm leading-6">
+                    Выберите материал в таблице, чтобы проверить его фрагменты.
+                  </p>
+                </div>
               )}
             </div>
           </div>
         </KnowledgeSection>
 
+        {/* 02 — проверка ответа тем же поиском, что и в рабочих диалогах. */}
         <KnowledgeSection
           number="02"
           title="Проверка ответа"
           description="Задайте реальный вопрос клиента. Режим проверки использует тот же поиск по знаниям, что и рабочие диалоги."
         >
-          <form
-            onSubmit={handleAsk}
-            className="flex flex-col gap-3 sm:flex-row"
-          >
+          <form onSubmit={handleAsk} className="flex flex-col gap-3 sm:flex-row">
             <label htmlFor="knowledge-question" className="sr-only">
               Вопрос клиента
             </label>
@@ -480,54 +489,45 @@ export default function KnowledgePage() {
               id="knowledge-question"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              className="form-field flex-1 px-4 py-3 text-sm"
+              className="wf-field flex-1 text-sm"
               placeholder="Вопрос клиента"
               disabled={askMutation.isPending}
             />
             <button
               type="submit"
               disabled={askMutation.isPending}
-              className="primary-button px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              className="wf-btn wf-btn-primary shrink-0"
             >
-              {askMutation.isPending ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <Search size={15} />
-              )}
-              Проверить ответ
+              {askMutation.isPending ? "Проверяем..." : "Проверить ответ"}
             </button>
           </form>
 
           {answer ? (
-            <div className="mt-5 border-l-2 border-[#2463eb] pl-4 md:pl-5">
-              <div className="flex flex-wrap items-center gap-3 text-sm font-black text-[#1546ad]">
-                <Sparkles size={16} />
-                <span>Ответ AI</span>
-                <span className="font-mono text-xs">
+            <div className="wf-fill mt-4 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold">Ответ AI</h3>
+                <span className="wf-tag">
                   Уверенность {Math.round(answer.confidence * 100)}%
                 </span>
-                <span className="text-xs">{answer.decision}</span>
+                <span className="wf-tag">{answer.decision}</span>
               </div>
-              <p className="mt-3 text-sm leading-7 text-neutral-700">
+
+              <p className="mt-3 break-words text-sm leading-6">
                 {answer.answer}
               </p>
-              <div className="mt-4 divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-white">
+
+              <div className="mt-4 space-y-2">
                 {answer.sources.length > 0 ? (
                   answer.sources.map((source) => (
-                    <article
-                      key={source.id}
-                      className="px-4 py-3 text-xs text-neutral-600"
-                    >
-                      <p className="font-black text-neutral-800">
-                        {source.title}
-                      </p>
-                      <p className="mt-1 line-clamp-3 leading-5">
+                    <article key={source.id} className="wf-box p-3">
+                      <p className="text-sm font-semibold">{source.title}</p>
+                      <p className="wf-muted mt-1 line-clamp-3 text-xs leading-5">
                         {source.text}
                       </p>
                     </article>
                   ))
                 ) : (
-                  <p className="px-4 py-3 text-xs font-semibold text-neutral-500">
+                  <p className="wf-box wf-muted p-3 text-sm leading-6">
                     Источников не найдено. Добавьте документ или уточните
                     вопрос.
                   </p>
@@ -537,83 +537,81 @@ export default function KnowledgePage() {
           ) : null}
         </KnowledgeSection>
 
+        {/* 03 — автообучение: кандидаты из ответов менеджеров. */}
         <KnowledgeSection
           number="03"
           title="Предложения для базы"
           description="Ответы менеджеров становятся кандидатами. Подтверждайте только точные и повторно используемые знания."
           action={
             isCandidatesFetching ? (
-              <Loader2 size={17} className="animate-spin text-neutral-400" />
+              <span className="wf-tag">Обновляем...</span>
             ) : undefined
           }
         >
           {isCandidatesLoading ? (
-            <StateCard
-              icon={<Loader2 className="animate-spin" size={18} />}
-              title="Загружаем кандидатов"
-            />
+            <LoadingRows label="Загружаем кандидатов" rows={3} />
           ) : candidatesError ? (
-            <StateCard
-              icon={<AlertCircle size={18} />}
-              title="Не удалось загрузить кандидатов"
-              description={getApiErrorMessage(
-                candidatesError,
-                "Проверь подключение к сервису.",
-              )}
-              tone="error"
-            />
+            <div role="alert" className="wf-fill p-4">
+              <p className="text-sm font-semibold">
+                Не удалось загрузить кандидатов
+              </p>
+              <p className="wf-muted mt-1 text-sm leading-6">
+                {getApiErrorMessage(
+                  candidatesError,
+                  "Проверь подключение к сервису.",
+                )}
+              </p>
+            </div>
           ) : pendingCandidates.length > 0 ? (
-            <div className="divide-y divide-[#d9e1ec] rounded-lg border border-[#d9e1ec] bg-white">
+            <ul className="space-y-2">
               {pendingCandidates.map((candidate) => (
-                <article
-                  key={candidate.id}
-                  className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-center"
-                >
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#2463eb]">
-                      {candidate.suggested_by}
-                    </p>
-                    <p className="mt-1 text-sm font-black leading-6">
+                <li key={candidate.id}>
+                  <article className="wf-box p-4">
+                    <p className="wf-kicker">{candidate.suggested_by}</p>
+
+                    <p className="mt-3 break-words text-sm font-semibold leading-6">
                       {candidate.question}
                     </p>
-                  </div>
-                  <p className="text-sm leading-6 text-neutral-600">
-                    {candidate.answer}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        approveCandidateMutation.mutate(candidate.id)
-                      }
-                      disabled={isCandidateActionPending}
-                      className="primary-button px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <CheckCircle2 size={13} /> Принять
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        rejectCandidateMutation.mutate(candidate.id)
-                      }
-                      disabled={isCandidateActionPending}
-                      className="secondary-button px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <XCircle size={13} /> Отклонить
-                    </button>
-                  </div>
-                </article>
+                    <p className="wf-muted mt-2 break-words text-sm leading-6">
+                      {candidate.answer}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          approveCandidateMutation.mutate(candidate.id)
+                        }
+                        disabled={isCandidateActionPending}
+                        className="wf-btn"
+                      >
+                        Принять
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          rejectCandidateMutation.mutate(candidate.id)
+                        }
+                        disabled={isCandidateActionPending}
+                        className="wf-btn"
+                      >
+                        Отклонить
+                      </button>
+                    </div>
+                  </article>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <StateCard
-              icon={<BrainCircuit size={18} />}
-              title="Очередь обработана"
-              description="Новые кандидаты появятся после ответов менеджера в диалогах."
-            />
+            <div className="wf-fill p-4">
+              <p className="text-sm font-semibold">Очередь обработана</p>
+              <p className="wf-muted mt-1 text-sm leading-6">
+                Новые кандидаты появятся после ответов менеджера в диалогах.
+              </p>
+            </div>
           )}
         </KnowledgeSection>
-      </section>
+      </div>
     </AppShell>
   );
 }
@@ -628,16 +626,28 @@ function ProcessMetric({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-4 px-5 py-4 md:px-6">
-      <span className="font-mono text-xs font-black text-[#2463eb]">
-        {number}
-      </span>
-      <div>
-        <p className="text-xs font-black uppercase tracking-[0.12em] text-neutral-400">
-          {label}
-        </p>
-        <p className="mt-1 text-sm font-bold">{value}</p>
+    <div className="wf-fill p-3">
+      <div className="flex items-baseline gap-2">
+        <span className="wf-kicker">{number}</span>
+        <span className="wf-kicker">{label}</span>
       </div>
+      <p className="mt-1.5 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+/** Состояние загрузки: скелетоны для глаз, текст — для скринридера. */
+function LoadingRows({ label, rows }: { label: string; rows: number }) {
+  return (
+    <div role="status" aria-busy="true" className="space-y-2">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: rows }, (_, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          className="wf-skeleton block h-12"
+        />
+      ))}
     </div>
   );
 }
@@ -652,44 +662,33 @@ function KnowledgeSection({
   number: string;
   title: string;
   description: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <section className="border-t border-[#d9e1ec] bg-white/75 px-5 py-7 md:px-6 md:py-8">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-        <div className="flex gap-4">
-          <span className="pt-1 font-mono text-xs font-black text-[#2463eb]">
-            {number}
-          </span>
-          <div>
-            <h2 className="text-xl font-black">{title}</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-neutral-500">
-              {description}
-            </p>
-          </div>
+    <section className="wf-box p-4 sm:p-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <p className="wf-kicker">{number}</p>
+          <h2 className="wf-title text-balance mt-1">{title}</h2>
+          <p className="wf-muted mt-1.5 max-w-3xl text-sm leading-6">
+            {description}
+          </p>
         </div>
-        {action}
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className="mt-6">{children}</div>
+
+      <div className="wf-divider my-4" />
+
+      {children}
     </section>
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const className =
-    status === "ready"
-      ? "bg-emerald-100 text-emerald-700"
-      : status === "archived"
-        ? "bg-neutral-200 text-neutral-700"
-        : status === "failed"
-          ? "bg-red-100 text-red-700"
-          : "bg-[#eaf1ff] text-[#1546ad]";
-
+function StatusTag({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-flex w-fit rounded-full px-3 py-1 text-center text-xs font-black ${className}`}
-    >
+    <span className="wf-tag">
+      <span className="wf-dot" />
       {statusLabel(status)}
     </span>
   );

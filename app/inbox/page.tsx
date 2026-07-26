@@ -1,25 +1,15 @@
 "use client";
 
-import {
-  AlertCircle,
-  Bot,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Loader2,
-  MessageCircle,
-  RefreshCw,
-  Send,
-  Sparkles,
-  UserRound,
-} from "lucide-react";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { ArrowUpRight, ChevronRight, RefreshCw, Send } from "lucide-react";
+import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
   ConversationMessageResponse,
+  ConversationMessageResponseAiMeta,
   ConversationReplyRequest,
   ConversationResponse,
   ConversationThreadResponse,
@@ -33,6 +23,7 @@ type ConversationStatus =
   | "closed"
   | "unknown";
 type MessageDirection = "inbound" | "outbound" | "internal" | "unknown";
+type StatusFilter = ConversationStatus | "all";
 type ConversationView = {
   id: string;
   channelId: string;
@@ -47,6 +38,30 @@ type ConversationView = {
 
 const conversationsApi = getConversations();
 
+const statusFilters: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "open", label: statusLabel("open") },
+  { value: "ai_replied", label: statusLabel("ai_replied") },
+  { value: "escalated", label: statusLabel("escalated") },
+  { value: "closed", label: statusLabel("closed") },
+];
+
+const skeletonRows = [0, 1, 2];
+
+/** Подписи типов каналов — те же, что на странице «Каналы». */
+const channelTypeLabels: Record<string, string | undefined> = {
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  viber: "Viber",
+  vk: "ВКонтакте",
+  avito: "Авито",
+  max: "MAX",
+  email: "Почта",
+  sms: "SMS",
+  web: "Веб-чат",
+  widget: "Веб-чат",
+};
+
 export default function InboxPage() {
   const queryClient = useQueryClient();
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -54,6 +69,7 @@ export default function InboxPage() {
   >(null);
   const [replyText, setReplyText] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const {
     data: conversationsData,
@@ -71,6 +87,16 @@ export default function InboxPage() {
   const conversations = useMemo(
     () => normalizeConversations(conversationsData),
     [conversationsData],
+  );
+
+  const visibleConversations = useMemo(
+    () =>
+      statusFilter === "all"
+        ? conversations
+        : conversations.filter(
+            (conversation) => conversation.status === statusFilter,
+          ),
+    [conversations, statusFilter],
   );
 
   const activeConversationId =
@@ -97,6 +123,10 @@ export default function InboxPage() {
 
   const thread = normalizeThread(threadData, selectedConversation);
   const messages = thread?.messages ?? [];
+  // В ответах /conversations и /conversations/{id} есть только channel_id.
+  // Показываем название канала, когда тип читается из идентификатора,
+  // иначе строку не печатаем: внутренний UUID пользователю ничего не говорит.
+  const channelName = channelLabel(thread?.channelId);
 
   const replyMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -173,87 +203,143 @@ export default function InboxPage() {
   }
 
   const isActionPending = replyMutation.isPending || escalateMutation.isPending;
+  const isRefreshing = isConversationsFetching || isThreadFetching;
 
   return (
     <AppShell
       title="Диалоги"
       description="Разбирайте обращения последовательно: выберите диалог, изучите контекст и ответьте клиенту."
     >
-      <section className="glass-card overflow-hidden rounded-lg">
-        <div className="border-b border-[#d9e1ec] bg-white/75 px-5 py-4 md:px-6">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-bold text-[#526071]">
-              <WorkflowStep number="1" label="Выберите обращение" active />
-              <ChevronRight
-                size={15}
-                className="hidden text-neutral-300 sm:block"
-              />
-              <WorkflowStep
-                number="2"
-                label="Проверьте контекст"
-                active={Boolean(thread)}
-              />
-              <ChevronRight
-                size={15}
-                className="hidden text-neutral-300 sm:block"
-              />
-              <WorkflowStep
-                number="3"
-                label="Ответьте клиенту"
-                active={Boolean(thread)}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="secondary-button self-start px-3 py-2 text-xs md:self-auto"
-            >
-              {isConversationsFetching || isThreadFetching ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <RefreshCw size={14} />
-              )}
-              Обновить данные
-            </button>
+      <div className="flex flex-col gap-4">
+        <div className="wf-box flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-6">
+          <div className="scroll-thin -mx-1 flex min-w-0 flex-1 items-center gap-3 overflow-x-auto px-1 py-0.5">
+            <WorkflowStep number="01" label="Выберите обращение" active />
+            <ChevronRight
+              size={16}
+              className="shrink-0 text-faint"
+              aria-hidden="true"
+            />
+            <WorkflowStep
+              number="02"
+              label="Проверьте контекст"
+              active={Boolean(thread)}
+            />
+            <ChevronRight
+              size={16}
+              className="shrink-0 text-faint"
+              aria-hidden="true"
+            />
+            <WorkflowStep
+              number="03"
+              label="Ответьте клиенту"
+              active={Boolean(thread)}
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            aria-busy={isRefreshing}
+            className="wf-btn shrink-0 self-start md:self-auto"
+          >
+            <RefreshCw size={18} className="text-muted" aria-hidden="true" />
+            Обновить данные
+          </button>
         </div>
 
-        <div className="grid min-h-[680px] lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="border-b border-[#d9e1ec] bg-[#f8fbff]/80 lg:border-b-0 lg:border-r">
-            <div className="flex items-end justify-between border-b border-[#d9e1ec] px-5 py-4">
-              <div>
-                <p className="brand-kicker">Очередь</p>
-                <h2 className="mt-1 text-lg font-black">Входящие</h2>
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_260px]">
+          {/* Колонка 1 — список диалогов. */}
+          <section className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <p className="wf-kicker">Очередь</p>
+                <h2 className="wf-title mt-1">Входящие</h2>
               </div>
-              <span className="font-mono text-sm font-bold text-[#526071]">
+              <span className="wf-muted shrink-0 text-sm tabular-nums">
                 {conversations.length}
               </span>
             </div>
 
-            <div className="divide-y divide-[#d9e1ec]">
+            <div
+              role="group"
+              aria-label="Фильтр диалогов по статусу"
+              className="mt-3 flex flex-wrap gap-2"
+            >
+              {statusFilters.map((filter) => {
+                const isSelected = statusFilter === filter.value;
+                const count =
+                  filter.value === "all"
+                    ? conversations.length
+                    : conversations.filter(
+                        (conversation) => conversation.status === filter.value,
+                      ).length;
+
+                // bg-fill! — .wf-btn объявлен вне каскадных слоёв, поэтому
+                // обычная утилита фона его не перебивает.
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={isSelected}
+                    data-active={isSelected ? "true" : undefined}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={`wf-btn ${isSelected ? "bg-fill!" : ""}`}
+                  >
+                    {filter.label}
+                    <span className="wf-muted tabular-nums">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 space-y-2">
               {isConversationsLoading ? (
-                <div className="p-4">
-                  <StateCard
-                    icon={<Loader2 className="animate-spin" size={18} />}
-                    title="Загружаем диалоги"
-                  />
+                <div
+                  role="status"
+                  aria-label="Загружаем диалоги"
+                  className="space-y-2"
+                >
+                  {skeletonRows.map((row) => (
+                    <div key={row} className="wf-box p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="wf-skeleton block h-3.5 w-28" />
+                        <span className="wf-skeleton block h-3 w-10" />
+                      </div>
+                      <span className="wf-skeleton mt-3 block h-3 w-full" />
+                      <span className="wf-skeleton mt-2 block h-3 w-3/5" />
+                      <span className="wf-skeleton mt-3 block h-5 w-20" />
+                    </div>
+                  ))}
                 </div>
               ) : conversationsError ? (
-                <div className="p-4">
-                  <StateCard
-                    icon={<AlertCircle size={18} />}
-                    title="Не удалось загрузить диалоги"
-                    description={getApiErrorMessage(
-                      conversationsError,
-                      "Проверь авторизацию и подключение к сервису.",
-                    )}
-                    tone="error"
-                  />
-                </div>
-              ) : conversations.length > 0 ? (
-                conversations.map((conversation) => {
+                <StateCard
+                  title="Не удалось загрузить диалоги"
+                  description={getApiErrorMessage(
+                    conversationsError,
+                    "Проверь авторизацию и подключение к сервису.",
+                  )}
+                  variant="error"
+                  action={
+                    <button
+                      type="button"
+                      onClick={handleRefresh}
+                      className="wf-btn"
+                    >
+                      <RefreshCw
+                        size={18}
+                        className="text-muted"
+                        aria-hidden="true"
+                      />
+                      Обновить данные
+                    </button>
+                  }
+                />
+              ) : visibleConversations.length > 0 ? (
+                visibleConversations.map((conversation) => {
                   const isActive = conversation.id === activeConversationId;
 
+                  // bg-fill! — .wf-box объявлен вне каскадных слоёв, поэтому
+                  // обычная утилита фона его не перебивает.
                   return (
                     <button
                       key={conversation.id}
@@ -263,29 +349,34 @@ export default function InboxPage() {
                         setSelectedConversationId(conversation.id);
                         setActionMessage(null);
                       }}
-                      className={`relative w-full px-5 py-4 text-left transition-colors hover:bg-white ${
-                        isActive ? "bg-white" : "bg-transparent"
+                      className={`wf-box block w-full p-3 text-left ${
+                        isActive ? "bg-fill!" : ""
                       }`}
                     >
-                      {isActive ? (
-                        <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#2463eb]" />
-                      ) : null}
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="min-w-0 truncate text-sm font-black">
-                          {conversation.customerName}
-                        </h3>
-                        <span className="shrink-0 font-mono text-[11px] text-neutral-400">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {conversation.unreadCount > 0 ? (
+                            <span
+                              className="wf-dot shrink-0"
+                              aria-hidden="true"
+                            />
+                          ) : null}
+                          <h3 className="min-w-0 truncate text-sm font-semibold">
+                            {conversation.customerName}
+                          </h3>
+                        </div>
+                        <span className="wf-muted shrink-0 text-xs tabular-nums">
                           {formatCompactDate(conversation.lastMessageAt)}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-neutral-500">
+                      <p className="wf-muted mt-1.5 line-clamp-2 text-sm break-words">
                         {conversation.lastMessagePreview ||
                           "Сообщений пока нет"}
                       </p>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <StatusPill status={conversation.status} />
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <StatusTag status={conversation.status} />
                         {conversation.unreadCount > 0 ? (
-                          <span className="flex size-6 items-center justify-center rounded-full bg-[#2463eb] text-[11px] font-black text-white">
+                          <span className="wf-muted shrink-0 text-xs tabular-nums">
                             {conversation.unreadCount}
                           </span>
                         ) : null}
@@ -293,157 +384,221 @@ export default function InboxPage() {
                     </button>
                   );
                 })
+              ) : conversations.length > 0 ? (
+                <StateCard
+                  title="Нет диалогов с таким статусом"
+                  description="Смените фильтр очереди, чтобы увидеть остальные обращения."
+                />
               ) : (
-                <div className="p-4">
-                  <StateCard
-                    icon={<MessageCircle size={20} />}
-                    title="Диалогов пока нет"
-                    description="Новое обращение появится здесь сразу после поступления из подключённого канала."
-                  />
-                </div>
+                <StateCard
+                  title="Диалогов пока нет"
+                  description="Новое обращение появится здесь сразу после поступления из подключённого канала."
+                />
               )}
             </div>
-          </aside>
+          </section>
 
-          <div className="flex min-w-0 flex-col bg-white/70">
-            <header className="border-b border-[#d9e1ec] px-5 py-5 md:px-6">
-              {thread ? (
-                <>
-                  <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="truncate text-xl font-black">
-                          {thread.customerName}
-                        </h2>
-                        <StatusPill status={thread.status} />
-                      </div>
-                      <p className="mt-2 text-sm text-neutral-500">
-                        Канал {thread.channelId} · клиент {thread.customerId}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-neutral-500">
-                      <span>{thread.unreadCount} непрочитано</span>
-                      <span>{aiSignal(messages)}</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d9e1ec] pt-3 text-xs text-neutral-500">
-                    <Signal
-                      icon={<CheckCircle2 size={14} />}
-                      title="История синхронизирована"
-                    />
-                    <Signal
-                      icon={<Clock size={14} />}
-                      title={`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <h2 className="text-xl font-black">Выберите диалог</h2>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    История обращения и действия появятся в этой рабочей
-                    области.
-                  </p>
-                </div>
-              )}
-            </header>
+          {/* Колонка 2 — лента переписки и композер. */}
+          <section className="min-w-0">
+            <p className="wf-kicker">Переписка</p>
 
-            <div
-              className="min-h-[380px] flex-1 space-y-4 overflow-y-auto bg-[#f8fbff]/60 p-5 md:p-6"
-              aria-live="polite"
-            >
+            {thread ? (
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h2 className="wf-title min-w-0 truncate">
+                  {thread.customerName}
+                </h2>
+                <StatusTag status={thread.status} />
+                {channelName ? (
+                  <span
+                    className="wf-muted text-sm"
+                    title={thread.channelId || undefined}
+                  >
+                    {channelName}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <h2 className="wf-title mt-1">Выберите диалог</h2>
+                <p className="wf-muted mt-2 text-sm">
+                  История обращения и действия появятся в этой рабочей области.
+                </p>
+              </>
+            )}
+
+            <div className="mt-3 space-y-2" aria-live="polite">
               {isThreadLoading ? (
-                <StateCard
-                  icon={<Loader2 className="animate-spin" size={18} />}
-                  title="Загружаем историю"
-                />
+                <div
+                  role="status"
+                  aria-label="Загружаем историю"
+                  className="space-y-2"
+                >
+                  {skeletonRows.map((row) => (
+                    <div
+                      key={row}
+                      className={
+                        row === 1 ? "flex justify-end" : "flex justify-start"
+                      }
+                    >
+                      <div className="wf-box w-[78%] max-w-md p-3">
+                        <span className="wf-skeleton block h-3 w-24" />
+                        <span className="wf-skeleton mt-3 block h-3 w-full" />
+                        <span className="wf-skeleton mt-2 block h-3 w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : threadError ? (
                 <StateCard
-                  icon={<AlertCircle size={18} />}
                   title="Не удалось загрузить диалог"
                   description={getApiErrorMessage(
                     threadError,
                     "Попробуй обновить данные или выбрать другой диалог.",
                   )}
-                  tone="error"
+                  variant="error"
+                  action={
+                    <button
+                      type="button"
+                      onClick={handleRefresh}
+                      className="wf-btn"
+                    >
+                      <RefreshCw
+                        size={18}
+                        className="text-muted"
+                        aria-hidden="true"
+                      />
+                      Обновить данные
+                    </button>
+                  }
                 />
               ) : !activeConversationId ? (
                 <StateCard
-                  icon={<MessageCircle size={20} />}
                   title="Нет выбранного диалога"
                   description="Список обращений пуст или ещё загружается."
                 />
               ) : messages.length > 0 ? (
                 messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageRow key={message.id} message={message} />
                 ))
               ) : (
                 <StateCard
-                  icon={<MessageCircle size={20} />}
                   title="История пуста"
                   description="В этом диалоге пока нет сообщений."
                 />
               )}
             </div>
 
-            <div className="border-t border-[#d9e1ec] bg-white p-5 md:p-6">
-              <form onSubmit={handleReplySubmit}>
-                <label
-                  htmlFor="conversation-reply"
-                  className="flex items-center gap-2 text-sm font-black"
-                >
-                  <Sparkles size={16} className="text-[#2463eb]" />
-                  Ответ клиенту
-                </label>
-                <textarea
-                  id="conversation-reply"
-                  value={replyText}
-                  onChange={(event) => setReplyText(event.target.value)}
-                  placeholder="Напишите короткий и точный ответ..."
+            <form onSubmit={handleReplySubmit} className="mt-4">
+              <label htmlFor="conversation-reply" className="wf-label">
+                Ответ клиенту
+              </label>
+              <textarea
+                id="conversation-reply"
+                value={replyText}
+                onChange={(event) => setReplyText(event.target.value)}
+                placeholder="Напишите короткий и точный ответ..."
+                disabled={!activeConversationId || isActionPending}
+                className="wf-field scroll-thin text-sm"
+              />
+              {actionMessage ? (
+                <p role="status" className="wf-hint">
+                  {actionMessage}
+                </p>
+              ) : null}
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="submit"
                   disabled={!activeConversationId || isActionPending}
-                  className="form-field mt-3 min-h-24 resize-y px-4 py-3 text-sm leading-6 placeholder:text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
-                />
-                {actionMessage ? (
-                  <p
-                    role="status"
-                    className="mt-3 border-l-2 border-[#2463eb] pl-3 text-sm font-semibold text-neutral-600"
-                  >
-                    {actionMessage}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex flex-col-reverse justify-between gap-3 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => escalateMutation.mutate()}
-                    disabled={!activeConversationId || isActionPending}
-                    className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                  >
-                    {escalateMutation.isPending
-                      ? "Передаём менеджеру..."
-                      : "Передать менеджеру"}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!activeConversationId || isActionPending}
-                    className="primary-button px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-                  >
-                    {replyMutation.isPending ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <Send size={15} />
-                    )}
-                    Отправить ответ
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+                  className="wf-btn wf-btn-primary w-full sm:w-auto"
+                >
+                  <Send size={18} aria-hidden="true" />
+                  {replyMutation.isPending
+                    ? "Отправляем ответ..."
+                    : "Отправить ответ"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Колонка 3 — контекст диалога. */}
+          <section className="min-w-0">
+            <p className="wf-kicker">Контекст</p>
+
+            {thread ? (
+              <>
+                <dl className="mt-2">
+                  {channelName ? (
+                    <>
+                      <div className="flex items-baseline justify-between gap-4 py-2">
+                        <dt className="wf-muted shrink-0 text-sm">Канал</dt>
+                        <dd
+                          className="min-w-0 truncate text-sm"
+                          title={thread.channelId || undefined}
+                        >
+                          {channelName}
+                        </dd>
+                      </div>
+                      <div className="wf-divider" />
+                    </>
+                  ) : null}
+                  <div className="flex items-baseline justify-between gap-4 py-2">
+                    <dt className="wf-muted shrink-0 text-sm">Клиент</dt>
+                    <dd
+                      className="min-w-0 truncate text-sm"
+                      title={thread.customerId || undefined}
+                    >
+                      {thread.customerName}
+                    </dd>
+                  </div>
+                  <div className="wf-divider" />
+                  <div className="flex items-center justify-between gap-4 py-2">
+                    <dt className="wf-muted shrink-0 text-sm">Статус</dt>
+                    <dd className="min-w-0">
+                      <StatusTag status={thread.status} />
+                    </dd>
+                  </div>
+                  <div className="wf-divider" />
+                </dl>
+
+                <ul className="wf-muted mt-3 space-y-1 text-sm">
+                  <li>{aiSignal(messages)}</li>
+                  <li>{`${thread.unreadCount} непрочитано`}</li>
+                  <li>История синхронизирована</li>
+                  <li>
+                    {`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
+                  </li>
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => escalateMutation.mutate()}
+                  disabled={!activeConversationId || isActionPending}
+                  className="wf-btn mt-4 w-full"
+                >
+                  <ArrowUpRight
+                    size={18}
+                    className="text-muted"
+                    aria-hidden="true"
+                  />
+                  {escalateMutation.isPending
+                    ? "Передаём менеджеру..."
+                    : "Передать менеджеру"}
+                </button>
+              </>
+            ) : (
+              <p className="wf-muted mt-2 text-sm">
+                Карточка клиента появится после выбора обращения.
+              </p>
+            )}
+          </section>
         </div>
-      </section>
+      </div>
     </AppShell>
   );
 }
 
+/** Шаг маршрута разбора обращения. Пройденный шаг отличается только тоном
+    текста: цвета в каркасе нет, поэтому неактивный шаг приглушён. */
 function WorkflowStep({
   number,
   label,
@@ -454,45 +609,82 @@ function WorkflowStep({
   active: boolean;
 }) {
   return (
-    <span
-      className={`flex items-center gap-2 ${active ? "text-[#1546ad]" : ""}`}
-    >
-      <span
-        className={`flex size-6 items-center justify-center rounded-full font-mono text-[11px] font-black ${
-          active ? "bg-[#2463eb] text-white" : "bg-neutral-100 text-neutral-400"
-        }`}
-      >
+    <span className="flex shrink-0 items-center gap-2">
+      <span className="wf-muted text-xs tabular-nums" aria-hidden="true">
         {number}
       </span>
-      {label}
+      <span
+        className={`whitespace-nowrap text-[13px] font-medium ${
+          active ? "text-ink" : "text-faint"
+        }`}
+      >
+        {label}
+      </span>
     </span>
   );
 }
 
-function MessageBubble({ message }: { message: ConversationMessageResponse }) {
+function MessageRow({ message }: { message: ConversationMessageResponse }) {
   const direction = normalizeDirection(message.direction, message.sender_type);
   const isOutbound = direction === "outbound";
   const isInternal = direction === "internal";
+  const isAi = isOutbound && message.sender_type === "ai";
+  const sources = messageSources(message.ai_meta);
+  const confidence = confidencePercent(message.confidence);
 
+  if (isInternal) {
+    return (
+      <div className="flex justify-center">
+        <div className="max-w-[86%] text-center">
+          <p className="wf-muted text-xs">
+            {directionLabel(direction, message.sender_type)}
+            <span className="px-1.5">·</span>
+            {formatNullableDate(message.created_at, "нет даты")}
+          </p>
+          <p className="wf-muted mt-1 text-sm break-words">
+            {message.text || "Пустое сообщение"}
+          </p>
+          <p className="wf-muted mt-1 text-xs">
+            {messageStatusLabel(message.status)}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Клиент — слева на сером фоне, AI и менеджер — справа на белом.
   return (
     <div className={isOutbound ? "flex justify-end" : "flex justify-start"}>
-      <div
-        className={
-          isOutbound
-            ? "max-w-[78%] rounded-lg bg-[#2463eb] px-5 py-3 text-sm leading-6 text-white"
-            : isInternal
-              ? "max-w-[78%] rounded-lg bg-[#eaf1ff] px-5 py-3 text-sm leading-6 text-[#1546ad] shadow-sm"
-              : "max-w-[78%] rounded-lg border border-[#d9e1ec] bg-white px-5 py-3 text-sm leading-6 shadow-sm"
-        }
-      >
-        <div className="mb-2 flex items-center gap-2 text-xs font-black opacity-70">
-          {isOutbound ? <Bot size={13} /> : <UserRound size={13} />}
-          {directionLabel(direction, message.sender_type)}
-          <span>·</span>
-          <span>{formatNullableDate(message.created_at, "нет даты")}</span>
+      <div className={`${isOutbound ? "wf-box" : "wf-fill"} max-w-[86%] p-3`}>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="font-semibold">
+            {directionLabel(direction, message.sender_type)}
+          </span>
+          <span className="wf-muted tabular-nums">
+            {formatNullableDate(message.created_at, "нет даты")}
+          </span>
+          {isAi && confidence !== null ? (
+            <span className="wf-muted tabular-nums">
+              Уверенность {confidence}%
+            </span>
+          ) : null}
         </div>
-        <p>{message.text || "Пустое сообщение"}</p>
-        <p className="mt-2 text-xs font-semibold opacity-60">
+        <p className="mt-2 text-sm break-words whitespace-pre-line">
+          {message.text || "Пустое сообщение"}
+        </p>
+        {sources.length > 0 ? (
+          <div className="mt-3">
+            <p className="text-xs font-semibold">Источники ответа</p>
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+              {sources.map((source) => (
+                <li key={source} className="max-w-full">
+                  <span className="wf-tag max-w-full truncate">{source}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <p className="wf-muted mt-2 text-xs">
           {messageStatusLabel(message.status)}
         </p>
       </div>
@@ -500,64 +692,8 @@ function MessageBubble({ message }: { message: ConversationMessageResponse }) {
   );
 }
 
-function Signal({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <span className="flex items-center gap-2 font-semibold">
-      <span className="text-[#2463eb]">{icon}</span>
-      {title}
-    </span>
-  );
-}
-
-function StateCard({
-  icon,
-  title,
-  description,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  tone?: "neutral" | "error";
-}) {
-  return (
-    <div
-      className={`rounded-3xl border p-5 text-center ${
-        tone === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-[#d9e1ec] bg-white text-neutral-600"
-      }`}
-    >
-      <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-white shadow-sm">
-        {icon}
-      </div>
-      <p className="mt-3 font-black">{title}</p>
-      {description ? (
-        <p className="mt-2 text-sm leading-6 opacity-75">{description}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: ConversationStatus }) {
-  const className =
-    status === "open"
-      ? "bg-[#eaf1ff] text-[#1546ad]"
-      : status === "ai_replied"
-        ? "bg-emerald-100 text-emerald-700"
-        : status === "escalated"
-          ? "bg-[#fff5df] text-[#94600b]"
-          : status === "closed"
-            ? "bg-neutral-200 text-neutral-700"
-            : "bg-red-100 text-red-700";
-
-  return (
-    <span
-      className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black ${className}`}
-    >
-      {statusLabel(status)}
-    </span>
-  );
+function StatusTag({ status }: { status: ConversationStatus }) {
+  return <span className="wf-tag">{statusLabel(status)}</span>;
 }
 
 function normalizeConversations(
@@ -664,6 +800,21 @@ function statusLabel(status: ConversationStatus) {
   }
 }
 
+/**
+ * Человекочитаемое название канала из channel_id. Идентификатор вида
+ * `telegram` или `telegram-1` даёт тип канала, непрозрачный UUID — нет:
+ * в этом случае возвращаем null, и строка канала просто не выводится.
+ */
+function channelLabel(channelId: string | null | undefined): string | null {
+  if (typeof channelId !== "string") {
+    return null;
+  }
+
+  const type = channelId.trim().toLowerCase().split(/[-_:.\s]/)[0];
+
+  return channelTypeLabels[type] ?? null;
+}
+
 function directionLabel(direction: MessageDirection, senderType?: string) {
   if (direction === "inbound") {
     return "Клиент";
@@ -693,6 +844,28 @@ function messageStatusLabel(status: string) {
     default:
       return status ? `статус: ${status}` : "статус неизвестен";
   }
+}
+
+function messageSources(
+  aiMeta: ConversationMessageResponseAiMeta | undefined,
+): string[] {
+  const rawSources = aiMeta?.sources;
+
+  if (!Array.isArray(rawSources)) {
+    return [];
+  }
+
+  return rawSources
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => item.length > 0);
+}
+
+function confidencePercent(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.round(value * 100);
 }
 
 function formatNullableDate(

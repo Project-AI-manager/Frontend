@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowRight, Building2, CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -10,6 +9,13 @@ import { getAuth } from "@/lib/api/generated/auth/auth";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
+
+/** Витрина слева: что именно создаётся при регистрации. */
+const showcasePoints = [
+  "Компания + владелец",
+  "Безопасный вход сразу после регистрации",
+  "Переход в onboarding",
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -50,138 +56,119 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="soft-grid min-h-screen px-5 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_24px_70px_rgba(18,39,76,0.12)] lg:grid-cols-[0.9fr_1fr]">
-        <section className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <Link href="/" className="mb-10 flex items-center gap-3 lg:hidden">
-              <span className="brand-mark size-10" />
-              <span className="text-lg font-black">Автопилот</span>
-            </Link>
+    <main className="min-h-screen px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-start">
+        {/* Витрина видна только с lg, как и раньше: на узком экране форма
+            занимает всю ширину и ничем не разбавляется. */}
+        <aside className="hidden flex-col lg:flex">
+          <Link href="/" className="w-fit text-base font-semibold">
+            Автопилот
+          </Link>
 
-            <div className="flex size-12 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]">
-              <Building2 size={22} />
-            </div>
-            <h1 className="mt-6 text-3xl font-black tracking-tight">
-              Создать аккаунт
-            </h1>
-            <p className="mt-2 text-sm text-[#526071]">
+          <div className="mt-10 max-w-md">
+            <span className="wf-tag">Быстрый старт MVP</span>
+
+            <h2 className="mt-4 text-balance text-2xl font-semibold">
+              Создай рабочее пространство и подключай первый канал.
+            </h2>
+
+            <p className="wf-muted mt-4 leading-7">
+              После регистрации откроется onboarding: профиль, Telegram-канал и
+              первая база знаний.
+            </p>
+
+            <ul className="mt-6 space-y-2">
+              {showcasePoints.map((point) => (
+                <li key={point} className="wf-fill p-4 text-sm leading-6">
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="wf-muted mt-10 max-w-md text-xs leading-5">
+            Автопилот — AI-сотрудник в едином окне для продаж и поддержки.
+          </p>
+        </aside>
+
+        <div className="mx-auto w-full max-w-[420px] lg:mx-0">
+          <Link href="/" className="text-base font-semibold lg:hidden">
+            Автопилот
+          </Link>
+
+          <div className="wf-box mt-5 p-5 sm:p-6 lg:mt-0">
+            <h1 className="wf-title">Создать аккаунт</h1>
+            <p className="wf-muted mt-2 text-sm leading-6">
               Регистрация создает компанию и пользователя-владельца, а затем
               переводит в onboarding.
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <label className="block text-sm">
-                <span className="font-bold">Компания</span>
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <label className="block">
+                <span className="wf-label">Компания</span>
                 <input
                   value={companyName}
                   onChange={(event) => setCompanyName(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
+                  className="wf-field"
                   required
                 />
               </label>
 
-              <label className="block text-sm">
-                <span className="font-bold">Имя</span>
+              <label className="block">
+                <span className="wf-label">Имя</span>
                 <input
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
+                  className="wf-field"
                 />
               </label>
 
-              <label className="block text-sm">
-                <span className="font-bold">Email</span>
+              <label className="block">
+                <span className="wf-label">Email</span>
                 <input
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
+                  className="wf-field"
                   type="email"
                   autoComplete="email"
                   required
                 />
               </label>
 
-              <label className="block text-sm">
-                <span className="font-bold">Пароль</span>
+              <label className="block">
+                <span className="wf-label">Пароль</span>
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="form-field mt-2 px-4 py-3"
+                  className="wf-field"
                   type="password"
                   autoComplete="new-password"
                   required
                 />
               </label>
 
-              {error ? (
-                <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-                  {error}
-                </p>
-              ) : null}
+              {error ? <p className="wf-error">{error}</p> : null}
 
               <button
                 disabled={isSubmitting}
-                className="primary-button w-full px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
+                className="wf-btn wf-btn-primary w-full"
                 type="submit"
               >
                 {isSubmitting ? "Создаем..." : "Создать аккаунт"}
-                <ArrowRight size={18} />
               </button>
             </form>
-
-            <p className="mt-6 text-center text-sm text-neutral-600">
-              Уже есть аккаунт?{" "}
-              <Link
-                href="/login"
-                className="font-bold text-[#2463eb] underline decoration-[#9db7f4] underline-offset-4"
-              >
-                Войти
-              </Link>
-            </p>
-          </div>
-        </section>
-
-        <section className="blue-panel relative hidden rounded-none border-0 p-10 text-white lg:block">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-full bg-white/95 text-[#2463eb] shadow-lg shadow-blue-950/10">
-              <span className="brand-mark size-7 shadow-none" />
-            </span>
-            <span className="text-xl font-black">Автопилот</span>
-          </Link>
-
-          <div className="mt-20 max-w-md">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
-              <Sparkles size={16} className="text-[#c9d9ff]" />
-              Быстрый старт MVP
-            </div>
-            <h2 className="mt-6 text-5xl font-black tracking-[-0.055em]">
-              Создай рабочее пространство и подключай первый канал.
-            </h2>
-            <p className="mt-5 text-white/70">
-              После регистрации откроется onboarding: профиль, Telegram-канал и
-              первая база знаний.
-            </p>
           </div>
 
-          <div className="absolute bottom-10 left-10 right-10 grid gap-3">
-            {[
-              "Компания + владелец",
-              "Безопасный вход сразу после регистрации",
-              "Переход в onboarding",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-lg border border-white/15 bg-white/10 p-4"
-              >
-                <div className="flex items-center gap-3 text-sm text-white/75">
-                  <CheckCircle2 size={16} className="text-[#9ee7c3]" />
-                  {item}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+          <p className="wf-muted mt-5 text-center text-sm">
+            Уже есть аккаунт?{" "}
+            <Link
+              href="/login"
+              className="text-ink underline underline-offset-4"
+            >
+              Войти
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );

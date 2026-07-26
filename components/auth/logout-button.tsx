@@ -45,10 +45,10 @@ export function LogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={isLoggingOut}
-      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 transition hover:border-red-300 hover:bg-red-100"
+      className="wf-btn w-full"
       aria-label="Выйти из аккаунта"
     >
-      <LogOut size={16} />
+      <LogOut size={18} className="text-muted" />
       <span>Выйти из аккаунта</span>
     </button>
   );
