@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   uploadDocumentApiV1KnowledgeDocumentsPost: vi.fn(),
   archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost: vi.fn(),
 }));
+const apiClient = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/layout/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -17,6 +18,7 @@ vi.mock("@/components/layout/app-shell", () => ({
 vi.mock("@/lib/api/generated/knowledge/knowledge", () => ({
   getKnowledge: () => api,
 }));
+vi.mock("@/lib/api/client", () => ({ apiClient }));
 
 const documents = [
   {
@@ -53,6 +55,7 @@ describe("KnowledgePage", () => {
     vi.clearAllMocks();
     api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValue(documents);
     api.uploadDocumentApiV1KnowledgeDocumentsPost.mockResolvedValue(documents[0]);
+    apiClient.mockResolvedValue(documents[0]);
     api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost.mockResolvedValue({ document: { ...documents[0], status: "archived" } });
   });
 
@@ -66,7 +69,7 @@ describe("KnowledgePage", () => {
     expect(screen.getByText("В базе")).toBeInTheDocument();
     expect(screen.getByText("Не в базе")).toBeInTheDocument();
     expect(screen.getByText("Перетащите файлы")).toBeInTheDocument();
-    expect(screen.getByText("PDF, DOCX, XLSX, MD, TXT, PNG, JPG")).toBeInTheDocument();
+    expect(screen.getByText("PDF, DOCX, XLSX, MD, TXT")).toBeInTheDocument();
     expect(screen.getByText("Обновить базу знаний")).toBeInTheDocument();
   });
 
@@ -85,7 +88,7 @@ describe("KnowledgePage", () => {
     await waitFor(() => expect(api.listDocumentsApiV1KnowledgeDocumentsGet).toHaveBeenCalledTimes(2));
   });
 
-  it("uploads supported text files through the existing API", async () => {
+  it("uploads files as multipart data through the extraction endpoint", async () => {
     renderPage();
     await screen.findByText("Сроки и оплата.pdf");
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -93,12 +96,12 @@ describe("KnowledgePage", () => {
 
     fireEvent.change(input, { target: { files: [file] } });
 
-    await waitFor(() => expect(api.uploadDocumentApiV1KnowledgeDocumentsPost).toHaveBeenCalledWith({
-      title: "delivery.md",
-      text: "Условия доставки",
-      source_type: "md",
-      tags: { filename: "delivery.md", mime: "text/markdown", size_bytes: String(file.size), extension: "md" },
-    }));
+    await waitFor(() => expect(apiClient).toHaveBeenCalledTimes(1));
+    const request = apiClient.mock.calls[0][0];
+    expect(request.url).toBe("/api/v1/knowledge/documents/upload");
+    expect(request.method).toBe("POST");
+    expect(request.data).toBeInstanceOf(FormData);
+    expect(request.data.get("file")).toBe(file);
   });
 
   it("archives a file from its ellipsis action", async () => {

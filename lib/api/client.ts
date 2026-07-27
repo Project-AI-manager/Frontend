@@ -77,12 +77,16 @@ function clearSessionAndRedirect() {
 }
 
 export async function apiClient<T>(config: AxiosRequestConfig, options?: AxiosRequestConfig): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
   const response = await axiosInstance.request<T>({
     ...config,
     ...options,
     headers: {
       ...config.headers,
       ...options?.headers,
+      ...(isFormData && !config.headers?.["Content-Type"] && !options?.headers?.["Content-Type"]
+        ? { "Content-Type": undefined }
+        : {}),
     },
   });
 

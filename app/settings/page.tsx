@@ -1,13 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, RefreshCw } from "lucide-react";
+import { Loader2, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { TelegramConnectDialog } from "@/components/settings/telegram-connect-dialog";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
+import { integrationsApi, type IntegrationProbeResponse, type IntegrationsHealthResponse } from "@/lib/api/integrations";
 import { settingsApi } from "@/lib/api/settings";
 
 const channelsApi = getChannels();
@@ -34,6 +36,11 @@ export default function SettingsPage() {
     queryKey: ["settings-channels"],
     queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
   });
+  const integrationsQuery = useQuery({
+    queryKey: ["integrations-health"],
+    queryFn: integrationsApi.getHealth,
+    retry: 1,
+  });
 
   const loading = aiQuery.isLoading || billingQuery.isLoading;
   const error = aiQuery.error ?? billingQuery.error;
@@ -45,7 +52,7 @@ export default function SettingsPage() {
       immersive
     >
       <div className="relative h-full min-h-0 overflow-hidden">
-        <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 lg:overflow-hidden lg:px-8 lg:py-7">
+        <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {loading ? (
             <SettingsSkeleton />
           ) : error || !aiQuery.data || !billingQuery.data ? (
@@ -65,6 +72,9 @@ export default function SettingsPage() {
             <SettingsContent
               ai={aiQuery.data}
               channels={channelsQuery.data ?? []}
+              integrations={integrationsQuery.data}
+              integrationsError={integrationsQuery.error}
+              refreshIntegrations={() => integrationsQuery.refetch().then(() => undefined)}
             />
           )}
         </div>
@@ -76,13 +86,20 @@ export default function SettingsPage() {
 function SettingsContent({
   ai,
   channels,
+  integrations,
+  integrationsError,
+  refreshIntegrations,
 }: {
   ai: Awaited<ReturnType<typeof settingsApi.getAiSettings>>;
   channels: ChannelResponse[];
+  integrations?: IntegrationsHealthResponse;
+  integrationsError: Error | null;
+  refreshIntegrations: () => Promise<void>;
 }) {
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(ai.auto_reply_enabled);
   const [threshold, setThreshold] = useState(ai.confidence_threshold);
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
   const save = useMutation({
     mutationFn: (next: {
@@ -175,6 +192,12 @@ function SettingsContent({
         </div>
       </SettingsCard>
 
+      <IntegrationDiagnostics
+        health={integrations}
+        error={integrationsError}
+        onRefresh={refreshIntegrations}
+      />
+
       <SettingsCard title="Оплата">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:gap-8">
           <div className="flex flex-col gap-1">
@@ -237,21 +260,96 @@ function SettingsContent({
                   >
                     <MoreHorizontal size={18} strokeWidth={1.75} />
                   </button>
-                ) : (
-                  <a
-                    href="/settings#channels"
+                ) : item.type === "telegram" ? (
+                  <button
+                    type="button"
+                    onClick={() => setTelegramDialogOpen(true)}
                     className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
                   >
                     Подключить
-                  </a>
+                  </button>
+                ) : (
+                  <span className="ml-auto text-[12px] font-semibold text-[#64717f]">Скоро</span>
                 )}
               </article>
             );
           })}
         </div>
       </SettingsCard>
+      {telegramDialogOpen ? (
+        <TelegramConnectDialog
+          onClose={() => setTelegramDialogOpen(false)}
+          onConnected={async () => {
+            await client.invalidateQueries({ queryKey: ["settings-channels"] });
+            await refreshIntegrations();
+          }}
+        />
+      ) : null}
     </>
   );
+}
+
+function IntegrationDiagnostics({
+  health,
+  error,
+  onRefresh,
+}: {
+  health?: IntegrationsHealthResponse;
+  error: Error | null;
+  onRefresh: () => Promise<void>;
+}) {
+  const client = useQueryClient();
+  const llmProbe = useMutation({
+    mutationFn: integrationsApi.probeLlm,
+    onSuccess: (result) => updateHealth("llm", result),
+  });
+  const embeddingsProbe = useMutation({
+    mutationFn: integrationsApi.probeEmbeddings,
+    onSuccess: (result) => updateHealth("embeddings", result),
+  });
+
+  function updateHealth(key: "llm" | "embeddings", result: IntegrationProbeResponse) {
+    client.setQueryData<IntegrationsHealthResponse>(["integrations-health"], (current) => current ? { ...current, [key]: result } : current);
+  }
+
+  return (
+    <SettingsCard title="Подключения AI">
+      {error ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f]">
+          <span>{getApiErrorMessage(error, "Не удалось проверить подключения.")}</span>
+          <button type="button" onClick={() => void onRefresh()} className="font-semibold underline underline-offset-2">Повторить</button>
+        </div>
+      ) : !health ? (
+        <div role="status" className="flex items-center gap-2 text-sm text-[#526071]"><Loader2 size={17} className="animate-spin" />Проверяем подключения…</div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <IntegrationItem label="Omni Router" value={health.llm} action="Проверить ответ" pending={llmProbe.isPending} onAction={() => llmProbe.mutate()} />
+          <IntegrationItem label="Эмбеддинги" value={health.embeddings} action="Проверить вектор" pending={embeddingsProbe.isPending} onAction={() => embeddingsProbe.mutate()} />
+          <IntegrationItem label="Векторная база" value={health.qdrant} />
+        </div>
+      )}
+      {llmProbe.error || embeddingsProbe.error ? <p role="alert" className="text-sm text-[#a72f2f]">{getApiErrorMessage(llmProbe.error ?? embeddingsProbe.error, "Проверка подключения завершилась ошибкой.")}</p> : null}
+      <p className="text-xs leading-5 text-[#64717f]">Ключи и адреса хранятся только в окружении backend и здесь не отображаются.</p>
+    </SettingsCard>
+  );
+}
+
+function IntegrationItem({ label, value, action, pending, onAction }: { label: string; value: IntegrationProbeResponse; action?: string; pending?: boolean; onAction?: () => void }) {
+  const ok = value.status === "ok";
+  return (
+    <article className="flex min-h-[128px] flex-col rounded-lg border border-[#d9e1ec] bg-[#f8fbff] p-4">
+      <div className="flex items-center justify-between gap-3"><strong className="text-sm">{label}</strong><span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[.06em] ${ok ? "text-[#0c7a4e]" : "text-[#94600b]"}`}><span className={`size-1.5 rounded-full ${ok ? "bg-[#13a66b]" : "bg-[#e89120]"}`} />{integrationStatusLabel(value.status)}</span></div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#526071]">{value.message}</p>
+      {action && onAction ? <button type="button" onClick={onAction} disabled={pending} className="mt-auto inline-flex min-h-9 w-fit items-center gap-2 pt-3 text-[13px] font-semibold text-[#1546ad] disabled:opacity-50">{pending ? <Loader2 size={15} className="animate-spin" /> : null}{action}</button> : null}
+    </article>
+  );
+}
+
+function integrationStatusLabel(status: IntegrationProbeResponse["status"]) {
+  if (status === "ok") return "Работает";
+  if (status === "disabled") return "Отключено";
+  if (status === "not_configured") return "Не настроено";
+  return "Ошибка";
 }
 
 function SettingsCard({
@@ -342,7 +440,12 @@ function findChannel(channels: ChannelResponse[], type: string) {
 }
 
 function isConnected(channel?: ChannelResponse) {
-  return channel?.status === "active" || channel?.status === "connected";
+  const active = channel?.status === "active" || channel?.status === "connected";
+  return Boolean(
+    active &&
+    (channel?.type.toLocaleLowerCase("ru-RU") !== "telegram" ||
+      channel.settings.transport === "mtproto"),
+  );
 }
 
 function SettingsSkeleton() {

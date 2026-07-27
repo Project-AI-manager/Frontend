@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import InboxPage from "@/app/inbox/page";
@@ -131,6 +131,19 @@ describe("InboxPage live actions", () => {
         api.closeApiV1ConversationsConversationIdClosePost,
       ).toHaveBeenCalledWith("conversation-1"),
     );
+  });
+
+  it("polls the conversation list and selected thread", async () => {
+    vi.useFakeTimers();
+    renderPage();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(api.listConversationItemsApiV1ConversationsGet).toHaveBeenCalledTimes(1);
+    expect(api.getConversationApiV1ConversationsConversationIdGet).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(4_000); });
+    expect(api.listConversationItemsApiV1ConversationsGet).toHaveBeenCalledTimes(2);
+    expect(api.getConversationApiV1ConversationsConversationIdGet).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 
   it("renders customer messages on the left and current user replies as plain bubbles on the right", async () => {

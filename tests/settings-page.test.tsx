@@ -8,6 +8,18 @@ const channelsApi = vi.hoisted(() => ({
   listChannelsApiV1ChannelsGet: vi.fn(),
 }));
 
+const integrationsApi = vi.hoisted(() => ({
+  getHealth: vi.fn(),
+  probeLlm: vi.fn(),
+  probeEmbeddings: vi.fn(),
+}));
+
+const telegramApi = vi.hoisted(() => ({
+  startAccount: vi.fn(),
+  confirmCode: vi.fn(),
+  confirmPassword: vi.fn(),
+}));
+
 const settingsApi = vi.hoisted(() => ({
   getAiSettings: vi.fn(),
   updateAiSettings: vi.fn(),
@@ -29,6 +41,8 @@ vi.mock("@/lib/api/generated/channels/channels", () => ({
 }));
 
 vi.mock("@/lib/api/settings", () => ({ settingsApi }));
+vi.mock("@/lib/api/integrations", () => ({ integrationsApi }));
+vi.mock("@/lib/api/telegram", () => ({ telegramApi }));
 
 const aiSettings = {
   auto_reply_enabled: true,
@@ -59,6 +73,14 @@ const telegram = {
   updated_at: "2026-07-27T00:00:00Z",
 };
 
+const integrationsHealth = {
+  llm: { name: "llm", status: "ok", message: "Omni Router готов", details: {} },
+  embeddings: { name: "embeddings", status: "not_configured", message: "Не настроено", details: {} },
+  qdrant: { name: "qdrant", status: "ok", message: "Qdrant готов", details: {} },
+  email: { name: "email", status: "disabled", message: "Отключено", details: {} },
+  telegram: { name: "telegram", status: "ok", message: "Telegram готов", details: {} },
+};
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: {
@@ -80,6 +102,16 @@ describe("SettingsPage", () => {
     settingsApi.getBillingSettings.mockResolvedValue(billingSettings);
     settingsApi.updateAiSettings.mockResolvedValue(aiSettings);
     channelsApi.listChannelsApiV1ChannelsGet.mockResolvedValue([telegram]);
+    integrationsApi.getHealth.mockResolvedValue(integrationsHealth);
+    integrationsApi.probeLlm.mockResolvedValue(integrationsHealth.llm);
+    integrationsApi.probeEmbeddings.mockResolvedValue({
+      ...integrationsHealth.embeddings,
+      status: "ok",
+      message: "Вектор получен",
+    });
+    telegramApi.startAccount.mockResolvedValue({ channel_id: "channel-new", status: "code_required" });
+    telegramApi.confirmCode.mockResolvedValue({ channel_id: "channel-new", status: "password_required", display_name: "" });
+    telegramApi.confirmPassword.mockResolvedValue({ channel_id: "channel-new", status: "active", display_name: "Тимур" });
   });
 
   it("renders the exact normal-state sections in immersive layout", async () => {
@@ -110,9 +142,10 @@ describe("SettingsPage", () => {
     }
     expect(screen.getAllByText("VK")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Меню канала Telegram" })).toBeInTheDocument();
-    expect(screen.getByText("Работает")).toBeInTheDocument();
+    expect(screen.getAllByText("Работает").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Не подключено")).toHaveLength(5);
-    expect(screen.getAllByRole("link", { name: "Подключить" })).toHaveLength(5);
+    expect(screen.queryByRole("link", { name: "Подключить" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("Скоро")).toHaveLength(5);
   });
 
   it("keeps settings visible when channel listing is forbidden", async () => {
@@ -125,7 +158,8 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("Поведение ассистента")).toBeInTheDocument();
     expect(screen.queryByText("Настройки не загрузились")).not.toBeInTheDocument();
     expect(screen.getAllByText("Не подключено")).toHaveLength(6);
-    expect(screen.getAllByRole("link", { name: "Подключить" })).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Подключить" })).toBeInTheDocument();
+    expect(screen.getAllByText("Скоро")).toHaveLength(5);
   });
 
   it("auto-saves toggle and confidence changes without adding a save button", async () => {
@@ -154,5 +188,41 @@ describe("SettingsPage", () => {
       }),
     );
     expect(screen.getByText("64%")).toBeInTheDocument();
+  });
+
+  it("connects a Telegram account through phone, OTP and 2FA", async () => {
+    channelsApi.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Подключить" }));
+    expect(screen.getByRole("dialog", { name: "Подключить Telegram" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Номер телефона"), { target: { value: "+79991234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Получить код" }));
+    await waitFor(() => expect(telegramApi.startAccount).toHaveBeenCalledWith({ phone: "+79991234567" }));
+
+    fireEvent.change(await screen.findByLabelText("Код подтверждения"), { target: { value: "12345" } });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }));
+    await waitFor(() => expect(telegramApi.confirmCode).toHaveBeenCalledWith({ channel_id: "channel-new", code: "12345" }));
+
+    fireEvent.change(await screen.findByLabelText("Облачный пароль"), { target: { value: "secret-password" } });
+    fireEvent.click(screen.getByRole("dialog").querySelector('button[type="submit"]')!);
+    await waitFor(() => expect(telegramApi.confirmPassword).toHaveBeenCalledWith({ channel_id: "channel-new", password: "secret-password" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(channelsApi.listChannelsApiV1ChannelsGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows integration health and runs manual probes", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Подключения AI")).toBeInTheDocument();
+    expect(screen.getByText("Omni Router готов")).toBeInTheDocument();
+    expect(screen.getByText("Ключи и адреса хранятся только в окружении backend и здесь не отображаются.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Проверить ответ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Проверить вектор" }));
+    await waitFor(() => expect(integrationsApi.probeLlm).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(integrationsApi.probeEmbeddings).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Вектор получен")).toBeInTheDocument();
   });
 });

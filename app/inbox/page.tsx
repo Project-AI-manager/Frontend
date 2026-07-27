@@ -22,7 +22,13 @@ export default function InboxPage() {
   const [reply, setReply] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const list = useQuery({ queryKey: ["conversations"], queryFn: () => api.listConversationItemsApiV1ConversationsGet(), retry: 1 });
+  const list = useQuery({
+    queryKey: ["conversations"],
+    queryFn: () => api.listConversationItemsApiV1ConversationsGet(),
+    retry: 1,
+    refetchInterval: 4_000,
+    refetchIntervalInBackground: false,
+  });
   const currentUser = useQuery({ queryKey: ["profile-user"], queryFn: usersApi.meApiV1UsersMeGet, retry: 1 });
   const effectiveSelectedId = selectedId ?? list.data?.[0]?.id ?? null;
   const thread = useQuery({
@@ -30,6 +36,8 @@ export default function InboxPage() {
     queryFn: () => api.getConversationApiV1ConversationsConversationIdGet(effectiveSelectedId!),
     enabled: Boolean(effectiveSelectedId),
     retry: 1,
+    refetchInterval: 4_000,
+    refetchIntervalInBackground: false,
   });
   const send = useMutation({
     mutationFn: (text: string) => api.replyApiV1ConversationsConversationIdReplyPost(effectiveSelectedId!, { text }),

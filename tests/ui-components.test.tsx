@@ -7,14 +7,22 @@ import { InfoRow } from "@/components/ui/info-row";
 import { StateCard } from "@/components/ui/state-card";
 
 const navigationState = vi.hoisted(() => ({ pathname: "/inbox" }));
+const conversationsApi = vi.hoisted(() => ({
+  listConversationItemsApiV1ConversationsGet: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
+vi.mock("@/lib/api/generated/conversations/conversations", () => ({
+  getConversations: () => conversationsApi,
+}));
 
 afterEach(() => {
   navigationState.pathname = "/inbox";
+  localStorage.clear();
+  conversationsApi.listConversationItemsApiV1ConversationsGet.mockReset();
 });
 
 function renderShell(children: React.ReactElement) {
@@ -105,6 +113,23 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Открыть меню" }));
 
     expect(screen.queryByRole("button", { name: "Выйти" })).not.toBeInTheDocument();
+  });
+
+  it("renders the live unread total instead of a hardcoded badge", async () => {
+    localStorage.setItem("ai_manager_access_token", "token");
+    conversationsApi.listConversationItemsApiV1ConversationsGet.mockResolvedValue([
+      { unread_count: 2 },
+      { unread_count: 5 },
+    ]);
+
+    renderShell(
+      <AppShell title="Диалоги" description="Входящие обращения">
+        <p>Содержимое страницы</p>
+      </AppShell>,
+    );
+
+    expect((await screen.findAllByText("7")).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("12")).not.toBeInTheDocument();
   });
 });
 

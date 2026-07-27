@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   BookOpen,
@@ -15,6 +16,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Brand } from "@/components/ui/brand";
 import { AuthBackground } from "@/components/ui/auth-background";
+import { getConversations } from "@/lib/api/generated/conversations/conversations";
+import { getAccessToken } from "@/lib/api/token";
+
+const conversationsApi = getConversations();
 
 type NavigationItem = {
   href: string;
@@ -178,6 +183,19 @@ function Navigation({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const conversations = useQuery({
+    queryKey: ["conversations"],
+    queryFn: () => conversationsApi.listConversationItemsApiV1ConversationsGet(),
+    enabled: Boolean(getAccessToken()),
+    retry: 1,
+    refetchInterval: 4_000,
+    refetchIntervalInBackground: false,
+  });
+  const unreadCount = (conversations.data ?? []).reduce(
+    (total, conversation) => total + Math.max(0, conversation.unread_count),
+    0,
+  );
+
   return (
     <nav className="flex flex-1 flex-col gap-1" aria-label="Основная навигация">
       {navigation.map((item) => {
@@ -202,9 +220,9 @@ function Navigation({
               ) : null}
               <item.icon size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>{item.label}</span>
-              {item.href === "/inbox" ? (
+              {item.href === "/inbox" && unreadCount > 0 ? (
                 <span className="ml-auto rounded-full bg-[#2463eb] px-[7px] py-0.5 text-[11px] font-extrabold tabular-nums text-white">
-                  12
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               ) : null}
             </Link>

@@ -5,12 +5,13 @@ import { ArrowDown, FileText, Loader2, MoreHorizontal, Plus, RefreshCw, Search, 
 import { type ChangeEvent, type DragEvent, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { apiClient } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import type { KnowledgeDocumentCreate, KnowledgeDocumentResponse } from "@/lib/api/generated/ai.schemas";
+import type { KnowledgeDocumentResponse } from "@/lib/api/generated/ai.schemas";
 import { getKnowledge } from "@/lib/api/generated/knowledge/knowledge";
 
 const api = getKnowledge();
-const supportedFormats = ".pdf,.docx,.xlsx,.md,.txt,.png,.jpg,.jpeg";
+const supportedFormats = ".pdf,.docx,.xlsx,.md,.txt";
 
 export default function KnowledgePage() {
   const client = useQueryClient();
@@ -37,7 +38,20 @@ export default function KnowledgePage() {
   );
 
   const upload = useMutation({
-    mutationFn: (payload: KnowledgeDocumentCreate) => api.uploadDocumentApiV1KnowledgeDocumentsPost(payload),
+    mutationFn: (file: File) => {
+      const data = new FormData();
+      data.append("file", file);
+      data.append("tags", JSON.stringify({
+        filename: file.name,
+        mime: file.type || "application/octet-stream",
+        size_bytes: String(file.size),
+      }));
+      return apiClient<KnowledgeDocumentResponse>({
+        url: "/api/v1/knowledge/documents/upload",
+        method: "POST",
+        data,
+      });
+    },
     onSuccess: async () => {
       setError(null);
       setNotice("Файл добавлен в базу знаний.");
@@ -65,18 +79,12 @@ export default function KnowledgePage() {
   async function addFiles(files: FileList | File[]) {
     for (const file of Array.from(files)) {
       const extension = fileExtension(file.name);
-      const text = await file.text().catch(() => "");
-      if (!text.trim()) {
+      if (!supportedFormats.split(",").includes(`.${extension}`)) {
         setNotice(null);
-        setError(`Файл «${file.name}» пока нельзя прочитать. Загрузите текстовый MD или TXT.`);
+        setError(`Формат файла «${file.name}» не поддерживается. Загрузите TXT, MD, PDF, DOCX или XLSX.`);
         continue;
       }
-      upload.mutate({
-        title: file.name,
-        text,
-        source_type: extension === "md" ? "md" : extension === "txt" ? "txt" : "manual",
-        tags: { filename: file.name, mime: file.type || "text/plain", size_bytes: String(file.size), extension },
-      });
+      await upload.mutateAsync(file).catch(() => undefined);
     }
   }
 
@@ -162,7 +170,7 @@ function UploadCard({ onClick, onFiles }: { onClick: () => void; onFiles: (files
   return <button type="button" onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={(event: DragEvent<HTMLButtonElement>) => { event.preventDefault(); void onFiles(event.dataTransfer.files); }} className="flex min-h-[168px] flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-[#c9d6e8] bg-white/75 p-4 text-left transition hover:border-[#2463eb] hover:bg-white">
     <span className="flex size-9 items-center justify-center rounded-lg border border-[#2463eb] text-[#2463eb]"><Plus size={18} strokeWidth={1.85} /></span>
     <strong className="font-heading text-sm font-extrabold tracking-[-0.02em] text-[#1546ad]">Перетащите файлы</strong>
-    <span className="text-[13px] leading-[1.5] text-[#526071]">PDF, DOCX, XLSX, MD, TXT, PNG, JPG</span>
+    <span className="text-[13px] leading-[1.5] text-[#526071]">PDF, DOCX, XLSX, MD, TXT</span>
   </button>;
 }
 
