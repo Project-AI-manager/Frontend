@@ -41,6 +41,7 @@ describe("AppShell", () => {
       "page",
     );
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+    expect(screen.queryByRole("link", { name: "Каналы" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Перейти к содержимому" }),
     ).toHaveAttribute("href", "#main-content");
@@ -78,6 +79,32 @@ describe("AppShell", () => {
 
     expect(screen.queryByText(/Demo Owner/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Mock режим/i)).not.toBeInTheDocument();
+  });
+
+  it("renders one stable background for immersive cabinet pages", () => {
+    const { container } = renderShell(
+      <AppShell title="Аналитика" description="Метрики" immersive>
+        <p>Содержимое страницы</p>
+      </AppShell>,
+    );
+
+    const main = screen.getByRole("main");
+    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+  });
+
+  it("keeps logout out of both sidebar variants", () => {
+    renderShell(
+      <AppShell title="Диалоги" description="Входящие обращения">
+        <p>Содержимое страницы</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Выйти" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Открыть меню" }));
+
+    expect(screen.queryByRole("button", { name: "Выйти" })).not.toBeInTheDocument();
   });
 });
 

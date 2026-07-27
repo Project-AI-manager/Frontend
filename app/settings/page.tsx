@@ -1,63 +1,385 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CreditCard, MessageCircle, Plus, RefreshCw, Wifi } from "lucide-react";
-import { useState } from "react";
+import { MoreHorizontal, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
 import { settingsApi } from "@/lib/api/settings";
 
 const channelsApi = getChannels();
 
+const channelCatalog = [
+  { type: "telegram", mark: "TG", name: "Telegram" },
+  { type: "whatsapp", mark: "WA", name: "WhatsApp" },
+  { type: "avito", mark: "AV", name: "Avito" },
+  { type: "vk", mark: "VK", name: "VK" },
+  { type: "instagram", mark: "IG", name: "Instagram" },
+  { type: "max", mark: "MAX", name: "Max" },
+] as const;
+
 export default function SettingsPage() {
-  const aiQuery = useQuery({ queryKey: ["settings-ai"], queryFn: settingsApi.getAiSettings });
-  const billingQuery = useQuery({ queryKey: ["settings-billing"], queryFn: settingsApi.getBillingSettings });
-  const channelsQuery = useQuery({ queryKey: ["settings-channels"], queryFn: () => channelsApi.listChannelsApiV1ChannelsGet() });
+  const aiQuery = useQuery({
+    queryKey: ["settings-ai"],
+    queryFn: settingsApi.getAiSettings,
+  });
+  const billingQuery = useQuery({
+    queryKey: ["settings-billing"],
+    queryFn: settingsApi.getBillingSettings,
+  });
+  const channelsQuery = useQuery({
+    queryKey: ["settings-channels"],
+    queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
+  });
 
-  const loading = aiQuery.isLoading || billingQuery.isLoading || channelsQuery.isLoading;
-  const error = aiQuery.error ?? billingQuery.error ?? channelsQuery.error;
+  const loading = aiQuery.isLoading || billingQuery.isLoading;
+  const error = aiQuery.error ?? billingQuery.error;
 
-  return <AppShell title="Настройки" description="Поведение ассистента, оплата и каналы связи.">
-    {loading ? <SettingsSkeleton /> : error || !aiQuery.data || !billingQuery.data ? <StateCard title="Настройки не загрузились" text={getApiErrorMessage(error, "Не удалось получить настройки с сервера.")} onRetry={() => { aiQuery.refetch(); billingQuery.refetch(); channelsQuery.refetch(); }} /> : <SettingsContent ai={aiQuery.data} billing={billingQuery.data} channels={channelsQuery.data ?? []} />}
-  </AppShell>;
+  return (
+    <AppShell
+      title="Настройки"
+      description="Поведение ассистента, оплата и каналы связи."
+      immersive
+    >
+      <div className="relative h-full min-h-0 overflow-hidden">
+        <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 lg:overflow-hidden lg:px-8 lg:py-7">
+          {loading ? (
+            <SettingsSkeleton />
+          ) : error || !aiQuery.data || !billingQuery.data ? (
+            <StateCard
+              title="Настройки не загрузились"
+              text={getApiErrorMessage(
+                error,
+                "Не удалось получить настройки с сервера.",
+              )}
+              onRetry={() => {
+                void aiQuery.refetch();
+                void billingQuery.refetch();
+                void channelsQuery.refetch();
+              }}
+            />
+          ) : (
+            <SettingsContent
+              ai={aiQuery.data}
+              channels={channelsQuery.data ?? []}
+            />
+          )}
+        </div>
+      </div>
+    </AppShell>
+  );
 }
 
-function SettingsContent({ ai, billing, channels }: { ai: Awaited<ReturnType<typeof settingsApi.getAiSettings>>; billing: Awaited<ReturnType<typeof settingsApi.getBillingSettings>>; channels: Awaited<ReturnType<typeof channelsApi.listChannelsApiV1ChannelsGet>> }) {
+function SettingsContent({
+  ai,
+  channels,
+}: {
+  ai: Awaited<ReturnType<typeof settingsApi.getAiSettings>>;
+  channels: ChannelResponse[];
+}) {
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(ai.auto_reply_enabled);
   const [threshold, setThreshold] = useState(ai.confidence_threshold);
-  const [saved, setSaved] = useState(false);
+  const saveTimer = useRef<number | null>(null);
   const save = useMutation({
-    mutationFn: () => settingsApi.updateAiSettings({ auto_reply_enabled: enabled, confidence_threshold: threshold }),
-    onSuccess: (data) => { client.setQueryData(["settings-ai"], data); setSaved(true); window.setTimeout(() => setSaved(false), 2200); },
+    mutationFn: (next: {
+      auto_reply_enabled: boolean;
+      confidence_threshold: number;
+    }) => settingsApi.updateAiSettings(next),
+    onSuccess: (data) => client.setQueryData(["settings-ai"], data),
   });
 
-  return <div className="space-y-4">
-      <section className="rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-        <h2 className="text-lg font-extrabold">Поведение ассистента</h2><div className="my-5 h-px bg-[#e5eaf1]" />
-        <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="font-semibold">Отвечать автоматически</p><p className="mt-1 text-sm text-[#64717f]">Ассистент отправит ответ, если достаточно уверен в нём.</p></div><Toggle checked={enabled} onChange={setEnabled} label="Автоматические ответы" /></div>
-        <div className="my-5 h-px bg-[#e5eaf1]" />
-        <div className="flex flex-wrap items-center justify-between gap-4"><label htmlFor="confidence" className="font-semibold">Порог уверенности для передачи человеку</label><output htmlFor="confidence" className="rounded-md bg-[#eaf1ff] px-3 py-1.5 text-sm font-extrabold text-[#1546ad]">{threshold}%</output></div>
-        <input id="confidence" type="range" min="0" max="100" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} className="mt-5 w-full accent-[#2463eb]" />
-        <div className="mt-5 flex items-center justify-end gap-3">{saved && <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0c7a4e]"><Check size={16} /> Сохранено</span>}<button type="button" disabled={save.isPending} onClick={() => save.mutate()} className="min-h-10 rounded-lg bg-[#2463eb] px-5 text-sm font-semibold text-white disabled:opacity-50">{save.isPending ? "Сохраняем…" : "Сохранить"}</button></div>
-        {save.isError && <p role="alert" className="mt-3 text-right text-sm text-[#a72f2f]">{getApiErrorMessage(save.error, "Не удалось сохранить настройки.")}</p>}
-      </section>
+  useEffect(
+    () => () => {
+      if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
-      <section className="rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-        <h2 className="text-lg font-extrabold">Оплата</h2><div className="my-5 h-px bg-[#e5eaf1]" />
-        <div className="grid gap-5 md:grid-cols-[1fr_1fr_auto] md:items-end"><div><p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">Баланс</p><p className="mt-2 text-3xl font-extrabold text-[#2463eb]">7 520 ₽</p><p className="mt-1 text-sm text-[#64717f]">Хватит примерно на {new Intl.NumberFormat("ru-RU").format(billing.ai_replies_used ? Math.max(0, 2900 - billing.ai_replies_used) : 2900)} ответов</p></div><div><p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">Расход за июль</p><p className="mt-2 text-2xl font-extrabold">12 480 ₽</p><p className="mt-1 text-sm text-[#0c7a4e]">−14% к июню · {billing.plan_name}</p></div><button type="button" onClick={() => window.alert("Пополнение станет доступно после подключения платёжного провайдера.")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#2463eb] px-5 text-sm font-semibold text-white"><CreditCard size={17} /> Пополнить</button></div>
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#eaf1ff]"><div className="h-full bg-[#2463eb]" style={{ width: `${billing.dialogs_limit ? Math.min(100, billing.dialogs_used / billing.dialogs_limit * 100) : 0}%` }} /></div>
-      </section>
+  function autoSave(nextEnabled: boolean, nextThreshold: number) {
+    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      save.mutate({
+        auto_reply_enabled: nextEnabled,
+        confidence_threshold: nextThreshold,
+      });
+    }, 300);
+  }
 
-      <section className="rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-extrabold">Каналы связи</h2><a href="/channels" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#2463eb] px-4 text-sm font-semibold text-[#1546ad]"><Plus size={16} /> Подключить</a></div><div className="my-5 h-px bg-[#e5eaf1]" />
-        {channels.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{channels.map((channel) => <article key={channel.id} className="flex items-center gap-3 rounded-lg border border-[#d9e1ec] p-4"><span className="flex size-10 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#2463eb]"><MessageCircle size={19} /></span><div className="min-w-0"><p className="truncate font-semibold">{channel.name}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-[#0c7a4e]"><Wifi size={13} /> {channel.status === "active" ? "Работает" : channel.status}</p></div></article>)}</div> : <div className="py-8 text-center text-sm text-[#64717f]">Каналы пока не подключены.</div>}
-      </section>
-    </div>;
+  function changeEnabled(next: boolean) {
+    setEnabled(next);
+    autoSave(next, threshold);
+  }
+
+  function changeThreshold(next: number) {
+    setThreshold(next);
+    autoSave(enabled, next);
+  }
+
+  return (
+    <>
+      {save.isError ? (
+        <p
+          role="alert"
+          className="rounded-lg border border-[#d84545]/30 bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f]"
+        >
+          {getApiErrorMessage(save.error, "Не удалось сохранить настройки.")}
+        </p>
+      ) : null}
+
+      <SettingsCard title="Поведение ассистента">
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-sm font-semibold">Отвечать автоматически</span>
+          <Toggle
+            checked={enabled}
+            onChange={changeEnabled}
+            label="Автоматические ответы"
+          />
+        </div>
+        <Divider />
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between gap-4">
+            <label htmlFor="confidence" className="text-sm font-semibold">
+              Порог уверенности для передачи человеку
+            </label>
+            <output
+              htmlFor="confidence"
+              className="shrink-0 text-sm font-semibold tabular-nums text-[#1546ad]"
+            >
+              {threshold}%
+            </output>
+          </div>
+          <div className="relative flex h-[26px] items-center">
+            <div className="h-1.5 w-full rounded-full border border-[#e5eaf1] bg-[#f4f7fb]" />
+            <div
+              className="pointer-events-none absolute left-0 h-1.5 rounded-full bg-[#2463eb]"
+              style={{ width: `${threshold}%` }}
+            />
+            <div
+              className="pointer-events-none absolute size-5 -translate-x-1/2 rounded-full border-[1.5px] border-[#2463eb] bg-white shadow-[0_10px_22px_rgba(18,39,76,.07)]"
+              style={{ left: `${threshold}%` }}
+            />
+            <input
+              id="confidence"
+              type="range"
+              min="0"
+              max="100"
+              value={threshold}
+              onChange={(event) => changeThreshold(Number(event.target.value))}
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            />
+          </div>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="Оплата">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:gap-8">
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">
+              Баланс
+            </span>
+            <span className="font-heading text-[30px] font-extrabold tracking-[-.04em] tabular-nums text-[#2463eb]">
+              7 520 ₽
+            </span>
+            <span className="text-[13px] tabular-nums text-[#64717f]">
+              Хватит примерно на 2 900 ответов
+            </span>
+          </div>
+          <div className="hidden h-14 w-px bg-[#e5eaf1] md:block" />
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">
+              Расход за июль
+            </span>
+            <span className="font-heading text-2xl font-extrabold tracking-[-.04em] tabular-nums">
+              12 480 ₽
+            </span>
+            <span className="text-[13px] text-[#0c7a4e]">−14% к июню</span>
+          </div>
+          <TopUpForm />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="Каналы связи" id="channels">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {channelCatalog.map((item) => {
+            const channel = findChannel(channels, item.type);
+            const connected = isConnected(channel);
+
+            return (
+              <article
+                key={item.type}
+                className="flex items-center gap-3 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3.5 transition-[border-color,background] hover:border-[#c9d6e8] hover:bg-[#f8fbff]"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#d9e1ec] font-heading text-xs font-extrabold text-[#526071]">
+                  {item.mark}
+                </span>
+                <span className="flex min-w-0 flex-col gap-[3px]">
+                  <span className="truncate text-sm font-semibold">
+                    {item.name}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.06em] ${connected ? "text-[#0c7a4e]" : "text-[#94600b]"}`}
+                  >
+                    <span
+                      className={`size-1.5 rounded-full ${connected ? "bg-[#13a66b]" : "bg-[#e89120]"}`}
+                    />
+                    {connected ? "Работает" : "Не подключено"}
+                  </span>
+                </span>
+                {connected ? (
+                  <button
+                    type="button"
+                    aria-label={`Меню канала ${item.name}`}
+                    className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-lg border border-transparent bg-transparent text-[#64717f] hover:bg-[#eaf1ff]"
+                  >
+                    <MoreHorizontal size={18} strokeWidth={1.75} />
+                  </button>
+                ) : (
+                  <a
+                    href="/settings#channels"
+                    className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
+                  >
+                    Подключить
+                  </a>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </SettingsCard>
+    </>
+  );
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) { return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className={`flex h-[26px] w-11 items-center rounded-full p-[3px] transition ${checked ? "justify-end bg-[#2463eb]" : "justify-start bg-[#d9e1ec]"}`}><span className="size-5 rounded-full bg-white shadow-sm" /></button>; }
-function SettingsSkeleton() { return <div className="space-y-4 animate-pulse">{[220, 190, 190].map((height) => <div key={height} className="rounded-lg bg-[#e5eaf1]" style={{ height }} />)}</div>; }
-function StateCard({ title, text, onRetry }: { title: string; text: string; onRetry: () => void }) { return <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center"><RefreshCw className="text-[#2463eb]" /><h2 className="mt-4 text-xl font-extrabold">{title}</h2><p className="mt-2 max-w-md text-sm text-[#526071]">{text}</p><button type="button" onClick={onRetry} className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white">Повторить</button></div>; }
+function SettingsCard({
+  title,
+  id,
+  children,
+}: {
+  title: string;
+  id?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="flex scroll-mt-7 flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+      <h2 className="font-heading text-lg font-extrabold tracking-[-.03em]">
+        {title}
+      </h2>
+      <Divider />
+      {children}
+    </section>
+  );
+}
+
+function Divider() {
+  return <div className="h-px shrink-0 bg-[#e5eaf1]" />;
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] ${checked ? "justify-end bg-[#2463eb]" : "justify-start bg-[#d9e1ec]"}`}
+    >
+      <span className="size-5 rounded-full bg-white" />
+    </button>
+  );
+}
+
+function TopUpForm() {
+  const [amount, setAmount] = useState("");
+
+  return (
+    <form
+      className="flex items-center gap-2.5 md:ml-auto"
+      onSubmit={(event) => {
+        event.preventDefault();
+        window.alert(
+          "Пополнение станет доступно после подключения платёжного провайдера.",
+        );
+      }}
+    >
+      <input
+        aria-label="Сумма пополнения"
+        inputMode="numeric"
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+        placeholder="Сумма, ₽"
+        className="min-h-11 w-[132px] rounded-lg border border-[#d9e1ec] bg-[#f8fbff] px-4 text-sm tabular-nums text-[#101828] placeholder:text-[#64717f] focus:border-[#2463eb] focus:outline-none focus:ring-3 focus:ring-[#eaf1ff]"
+      />
+      <button
+        type="submit"
+        className="min-h-11 rounded-lg border border-[#2463eb] bg-[#2463eb] px-5 text-sm font-semibold whitespace-nowrap text-white shadow-[0_11px_25px_rgba(36,99,235,.20)] hover:bg-[#1546ad] active:translate-y-px"
+      >
+        Пополнить
+      </button>
+    </form>
+  );
+}
+
+function findChannel(channels: ChannelResponse[], type: string) {
+  return channels.find(
+    (channel) =>
+      channel.type.toLocaleLowerCase("ru-RU") === type && isConnected(channel),
+  ) ?? channels.find(
+    (channel) => channel.type.toLocaleLowerCase("ru-RU") === type,
+  );
+}
+
+function isConnected(channel?: ChannelResponse) {
+  return channel?.status === "active" || channel?.status === "connected";
+}
+
+function SettingsSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" role="status" aria-label="Загружаем настройки">
+      {[226, 174, 255].map((height) => (
+        <div
+          key={height}
+          className="animate-pulse rounded-lg bg-[#e5eaf1]"
+          style={{ height }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StateCard({
+  title,
+  text,
+  onRetry,
+}: {
+  title: string;
+  text: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center">
+      <RefreshCw className="text-[#2463eb]" />
+      <h2 className="mt-4 text-xl font-extrabold">{title}</h2>
+      <p className="mt-2 max-w-md text-sm text-[#526071]">{text}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white"
+      >
+        Повторить
+      </button>
+    </div>
+  );
+}

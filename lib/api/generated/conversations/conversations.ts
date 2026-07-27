@@ -67,8 +67,20 @@ const escalateApiV1ConversationsConversationIdEscalatePost = (
     },
       options);
     }
-  return {listConversationItemsApiV1ConversationsGet,getConversationApiV1ConversationsConversationIdGet,replyApiV1ConversationsConversationIdReplyPost,escalateApiV1ConversationsConversationIdEscalatePost}};
+  /**
+ * @summary Close
+ */
+const closeApiV1ConversationsConversationIdClosePost = (
+    conversationId: string,
+ options?: SecondParameter<typeof apiClient<ConversationActionResponse>>,) => {
+      return apiClient<ConversationActionResponse>(
+      {url: `/api/v1/conversations/${conversationId}/close`, method: 'POST'
+    },
+      options);
+    }
+  return {listConversationItemsApiV1ConversationsGet,getConversationApiV1ConversationsConversationIdGet,replyApiV1ConversationsConversationIdReplyPost,escalateApiV1ConversationsConversationIdEscalatePost,closeApiV1ConversationsConversationIdClosePost}};
 export type ListConversationItemsApiV1ConversationsGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['listConversationItemsApiV1ConversationsGet']>>>
 export type GetConversationApiV1ConversationsConversationIdGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['getConversationApiV1ConversationsConversationIdGet']>>>
 export type ReplyApiV1ConversationsConversationIdReplyPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['replyApiV1ConversationsConversationIdReplyPost']>>>
 export type EscalateApiV1ConversationsConversationIdEscalatePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['escalateApiV1ConversationsConversationIdEscalatePost']>>>
+export type CloseApiV1ConversationsConversationIdClosePostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getConversations>['closeApiV1ConversationsConversationIdClosePost']>>>

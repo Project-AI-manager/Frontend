@@ -5,7 +5,6 @@ import {
   BookOpen,
   Inbox,
   Menu,
-  Radio,
   Settings,
   UserRound,
   X,
@@ -14,8 +13,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { LogoutButton } from "@/components/auth/logout-button";
 import { Brand } from "@/components/ui/brand";
+import { AuthBackground } from "@/components/ui/auth-background";
 
 type NavigationItem = {
   href: string;
@@ -27,7 +26,6 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { href: "/inbox", label: "Диалоги", icon: Inbox },
   { href: "/knowledge", label: "База знаний", icon: BookOpen },
-  { href: "/channels", label: "Каналы", icon: Radio },
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/settings", label: "Настройки", icon: Settings, separated: true },
   { href: "/profile", label: "Профиль", icon: UserRound },
@@ -38,6 +36,7 @@ type AppShellProps = {
   description: string;
   actions?: ReactNode;
   children: ReactNode;
+  immersive?: boolean;
 };
 
 export function AppShell({
@@ -45,6 +44,7 @@ export function AppShell({
   description,
   actions,
   children,
+  immersive = false,
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -87,7 +87,6 @@ export function AppShell({
           <Brand compact />
         </div>
         <Navigation pathname={pathname} />
-        <LogoutButton className="flex min-h-10 items-center gap-2.5 rounded-[8px] px-3 text-[14px] font-medium text-[#526071] transition hover:bg-[#fdeded] hover:text-[#a72f2f] disabled:opacity-50" />
       </aside>
 
       {mobileOpen ? (
@@ -120,11 +119,10 @@ export function AppShell({
           </button>
         </div>
         <Navigation pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-        <LogoutButton className="flex min-h-10 items-center gap-2.5 rounded-[8px] px-3 text-[14px] font-medium text-[#526071] transition hover:bg-[#fdeded] hover:text-[#a72f2f] disabled:opacity-50" />
       </aside>
 
       <div className="lg:pl-[212px]">
-        <header className="sticky top-0 z-30 border-b border-[#d9e1ec] bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+        <header className={`${immersive ? "lg:hidden" : ""} sticky top-0 z-30 border-b border-[#d9e1ec] bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8`}>
           <div className="mx-auto flex max-w-[1180px] items-center gap-3">
             <button
               type="button"
@@ -159,9 +157,14 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto max-w-[1180px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8"
+          className={immersive ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh" : "mx-auto max-w-[1180px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8"}
         >
-          {children}
+          {immersive ? (
+            <>
+              <AuthBackground waves={false} />
+              <div className="relative h-full min-h-0">{children}</div>
+            </>
+          ) : children}
         </main>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-export function AuthBackground() {
+export function AuthBackground({ waves = true }: { waves?: boolean }) {
   const id = useId().replaceAll(":", "");
   const patternId = `${id}-auth-doodle-pattern`;
   const waveId = `${id}-auth-wave`;
@@ -8,6 +8,7 @@ export function AuthBackground() {
   return (
     <svg
       aria-hidden="true"
+      data-app-background="true"
       className="pointer-events-none absolute inset-0 size-full"
       preserveAspectRatio="xMidYMid slice"
     >
@@ -73,9 +74,11 @@ export function AuthBackground() {
         <path id={waveId} d="M-120-700q20.2 21.8 50 21.67t50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67" />
       </defs>
       <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-      <g fill="none" stroke="#c6d5e9" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="5 8">
-        {Array.from({ length: 14 }, (_, index) => <use key={index} href={`#${waveId}`} y={index * 160} />)}
-      </g>
+      {waves ? (
+        <g fill="none" stroke="#c6d5e9" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="5 8">
+          {Array.from({ length: 14 }, (_, index) => <use key={index} href={`#${waveId}`} y={index * 160} />)}
+        </g>
+      ) : null}
     </svg>
   );
 }

@@ -6,13 +6,8 @@ import KnowledgePage from "@/app/knowledge/page";
 
 const api = vi.hoisted(() => ({
   listDocumentsApiV1KnowledgeDocumentsGet: vi.fn(),
-  getDocumentApiV1KnowledgeDocumentsDocumentIdGet: vi.fn(),
-  listCandidatesApiV1KnowledgeCandidatesGet: vi.fn(),
   uploadDocumentApiV1KnowledgeDocumentsPost: vi.fn(),
   archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost: vi.fn(),
-  askApiV1KnowledgeAskPost: vi.fn(),
-  approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost: vi.fn(),
-  rejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPost: vi.fn(),
 }));
 
 vi.mock("@/components/layout/app-shell", () => ({
@@ -23,97 +18,103 @@ vi.mock("@/lib/api/generated/knowledge/knowledge", () => ({
   getKnowledge: () => api,
 }));
 
-function renderPage() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+const documents = [
+  {
+    id: "document-1",
+    title: "Сроки и оплата.pdf",
+    source_type: "manual",
+    storage_url: null,
+    status: "ready",
+    version: 1,
+    chunks_count: 3,
+    created_at: "2026-07-12T07:12:00Z",
+    updated_at: "2026-07-12T07:12:00Z",
+  },
+  {
+    id: "document-2",
+    title: "Прайс 2026.xlsx",
+    source_type: "manual",
+    storage_url: null,
+    status: "processing",
+    version: 1,
+    chunks_count: 0,
+    created_at: "2026-07-27T08:20:00Z",
+    updated_at: "2026-07-27T08:20:00Z",
+  },
+];
 
-  return render(
-    <QueryClientProvider client={client}>
-      <KnowledgePage />
-    </QueryClientProvider>,
-  );
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}><KnowledgePage /></QueryClientProvider>);
 }
 
-describe("KnowledgePage live actions", () => {
+describe("KnowledgePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValue([]);
-    api.listCandidatesApiV1KnowledgeCandidatesGet.mockResolvedValue([
-      {
-        id: "candidate-1",
-        conversation_id: "conversation-1",
-        question: "Есть доставка?",
-        answer: "Да, по всей России.",
-        suggested_by: "Менеджер",
-        status: "pending",
-        resulting_document_id: null,
-        created_at: "2026-07-21T10:00:00Z",
-        updated_at: "2026-07-21T10:00:00Z",
-      },
-    ]);
-    api.uploadDocumentApiV1KnowledgeDocumentsPost.mockResolvedValue({
-      id: "document-1",
-    });
-    api.askApiV1KnowledgeAskPost.mockResolvedValue({
-      answer: "Подключение занимает один день.",
-      confidence: 0.92,
-      decision: "auto_reply",
-      sources: [],
-    });
-    api.approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost.mockResolvedValue(
-      {},
-    );
-    api.rejectCandidateApiV1KnowledgeCandidatesCandidateIdRejectPost.mockResolvedValue(
-      {},
-    );
+    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValue(documents);
+    api.uploadDocumentApiV1KnowledgeDocumentsPost.mockResolvedValue(documents[0]);
+    api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost.mockResolvedValue({ document: { ...documents[0], status: "archived" } });
   });
 
-  it("creates a document and sends a real verification question", async () => {
+  it("renders the file grid in the reference layout", async () => {
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("Название"), {
-      target: { value: "Доставка" },
-    });
-    fireEvent.change(screen.getByLabelText("Содержание"), {
-      target: { value: "Доставляем по всей России." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Добавить в базу" }));
-
-    await waitFor(() =>
-      expect(
-        api.uploadDocumentApiV1KnowledgeDocumentsPost,
-      ).toHaveBeenCalledWith({
-        title: "Доставка",
-        text: "Доставляем по всей России.",
-        source_type: "manual",
-        tags: { source: "manual-ui" },
-      }),
-    );
-
-    fireEvent.change(screen.getByLabelText("Вопрос клиента"), {
-      target: { value: "Сколько занимает подключение?" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Проверить ответ" }));
-
-    expect(
-      await screen.findByText("Подключение занимает один день."),
-    ).toBeInTheDocument();
-    expect(api.askApiV1KnowledgeAskPost).toHaveBeenCalledWith({
-      message: "Сколько занимает подключение?",
-    });
+    expect(await screen.findByText("Сроки и оплата.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Прайс 2026.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("PDF")).toBeInTheDocument();
+    expect(screen.getByText("XLSX")).toBeInTheDocument();
+    expect(screen.getByText("В базе")).toBeInTheDocument();
+    expect(screen.getByText("Не в базе")).toBeInTheDocument();
+    expect(screen.getByText("Перетащите файлы")).toBeInTheDocument();
+    expect(screen.getByText("PDF, DOCX, XLSX, MD, TXT, PNG, JPG")).toBeInTheDocument();
+    expect(screen.getByText("Обновить базу знаний")).toBeInTheDocument();
   });
 
-  it("approves a pending knowledge candidate", async () => {
+  it("searches, sorts and refreshes live documents", async () => {
+    renderPage();
+    await screen.findByText("Сроки и оплата.pdf");
+
+    fireEvent.change(screen.getByPlaceholderText("Поиск по файлам"), { target: { value: "Прайс" } });
+    expect(screen.getByText("Прайс 2026.xlsx")).toBeInTheDocument();
+    expect(screen.queryByText("Сроки и оплата.pdf")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Сначала новые" }));
+    expect(screen.getByRole("button", { name: "Сначала старые" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Обновить базу знаний" }));
+    await waitFor(() => expect(api.listDocumentsApiV1KnowledgeDocumentsGet).toHaveBeenCalledTimes(2));
+  });
+
+  it("uploads supported text files through the existing API", async () => {
+    renderPage();
+    await screen.findByText("Сроки и оплата.pdf");
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["Условия доставки"], "delivery.md", { type: "text/markdown" });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(api.uploadDocumentApiV1KnowledgeDocumentsPost).toHaveBeenCalledWith({
+      title: "delivery.md",
+      text: "Условия доставки",
+      source_type: "md",
+      tags: { filename: "delivery.md", mime: "text/markdown", size_bytes: String(file.size), extension: "md" },
+    }));
+  });
+
+  it("archives a file from its ellipsis action", async () => {
+    renderPage();
+    await screen.findByText("Сроки и оплата.pdf");
+
+    fireEvent.click(screen.getByRole("button", { name: "Меню файла Сроки и оплата.pdf" }));
+
+    await waitFor(() => expect(api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost).toHaveBeenCalledWith("document-1"));
+  });
+
+  it("shows the reference empty state", async () => {
+    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValueOnce([]);
     renderPage();
 
-    expect(await screen.findByText("Есть доставка?")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Принять" }));
-
-    await waitFor(() =>
-      expect(
-        api.approveCandidateApiV1KnowledgeCandidatesCandidateIdApprovePost,
-      ).toHaveBeenCalledWith("candidate-1"),
-    );
+    expect(await screen.findByText("В базе знаний пока нет файлов")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Загрузить файл" })).toHaveLength(2);
   });
 });

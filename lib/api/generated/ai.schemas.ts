@@ -123,6 +123,7 @@ export interface ConversationMessageResponse {
   id: string;
   direction: string;
   sender_type: string;
+  sender_user_id: string | null;
   text: string;
   status: string;
   confidence: number | null;
@@ -133,6 +134,7 @@ export interface ConversationMessageResponse {
 export interface ConversationThreadResponse {
   id: string;
   channel_id: string;
+  channel_type: string;
   customer_id: string;
   customer_name: string;
   status: string;
@@ -159,6 +161,7 @@ export interface ConversationReplyRequest {
 export interface ConversationResponse {
   id: string;
   channel_id: string;
+  channel_type: string;
   customer_id: string;
   customer_name: string;
   status: string;
