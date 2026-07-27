@@ -18,6 +18,7 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Все");
   const [reply, setReply] = useState("");
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const list = useQuery({ queryKey: ["conversations"], queryFn: () => api.listConversationItemsApiV1ConversationsGet(), retry: 1 });
   const effectiveSelectedId = selectedId ?? list.data?.[0]?.id ?? null;
@@ -31,18 +32,24 @@ export default function InboxPage() {
     mutationFn: (text: string) => api.replyApiV1ConversationsConversationIdReplyPost(effectiveSelectedId!, { text }),
     onSuccess: async () => {
       setReply("");
+      setActionMessage("Ответ отправлен.");
       await Promise.all([client.invalidateQueries({ queryKey: ["conversation", effectiveSelectedId] }), client.invalidateQueries({ queryKey: ["conversations"] })]);
     },
+    onError: (error) => setActionMessage(getApiErrorMessage(error, "Не удалось отправить ответ.")),
   });
   const escalate = useMutation({
     mutationFn: () => api.escalateApiV1ConversationsConversationIdEscalatePost(effectiveSelectedId!),
-    onSuccess: async () => Promise.all([client.invalidateQueries({ queryKey: ["conversation", effectiveSelectedId] }), client.invalidateQueries({ queryKey: ["conversations"] })]),
+    onSuccess: async () => {
+      setActionMessage("Диалог передан менеджеру.");
+      await Promise.all([client.invalidateQueries({ queryKey: ["conversation", effectiveSelectedId] }), client.invalidateQueries({ queryKey: ["conversations"] })]);
+    },
+    onError: (error) => setActionMessage(getApiErrorMessage(error, "Не удалось передать диалог менеджеру.")),
   });
 
   const conversations = useMemo(() => (list.data ?? []).filter((item) => {
     const matchesSearch = `${item.customer_name} ${item.last_message_preview}`.toLowerCase().includes(search.toLowerCase());
     const status = item.status.toLowerCase();
-    const matchesFilter = filter === "Все" || (filter === "Нужен человек" && status.includes("escalat")) || (filter === "Отвечено" && status.includes("answer")) || (filter === "Закрытые" && status.includes("clos"));
+    const matchesFilter = filter === "Все" || (filter === "Нужен человек" && status.includes("escalat")) || (filter === "Отвечено" && (status.includes("answer") || status.includes("replied"))) || (filter === "Закрытые" && status.includes("clos"));
     return matchesSearch && matchesFilter;
   }), [filter, list.data, search]);
 
@@ -61,7 +68,7 @@ export default function InboxPage() {
               {filters.map((item) => <button key={item} type="button" onClick={() => setFilter(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold ${filter === item ? "bg-[#eaf1ff] text-[#1546ad]" : "text-[#526071] hover:bg-[#f4f7fb]"}`}>{item}</button>)}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {list.isLoading ? <ListSkeleton /> : list.error ? <State title="Список диалогов не загрузился" text={getApiErrorMessage(list.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => list.refetch()} /> : conversations.length === 0 ? <State title="У вас ещё нет ни одного чата" /> : conversations.map((item) => <ConversationItem key={item.id} item={item} active={item.id === effectiveSelectedId} onClick={() => setSelectedId(item.id)} />)}
+              {list.isLoading ? <ListSkeleton /> : list.error ? <State title="Список диалогов не загрузился" text={getApiErrorMessage(list.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => list.refetch()} /> : conversations.length === 0 ? <State title="У вас ещё нет ни одного чата" /> : conversations.map((item) => <ConversationItem key={item.id} item={item} active={item.id === effectiveSelectedId} onClick={() => { setSelectedId(item.id); setReply(""); setActionMessage(null); }} />)}
             </div>
           </section>
 
@@ -69,7 +76,7 @@ export default function InboxPage() {
             {!effectiveSelectedId ? <State title="Выберите диалог" text="Переписка откроется здесь." /> : thread.isLoading ? <div className="grid flex-1 place-items-center"><Loader2 className="animate-spin text-[#2463eb]" /></div> : thread.error ? <State title="Диалог не загрузился" text={getApiErrorMessage(thread.error, "Попробуйте ещё раз.")} action="Повторить" onAction={() => thread.refetch()} /> : thread.data ? <>
               <header className="relative flex min-h-[65px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[#d9e1ec] bg-white px-4 py-3 sm:px-6">
                 <div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-full bg-[#eaf1ff] text-xs font-extrabold text-[#1546ad]">{initials(thread.data.customer_name)}</span><div><h2 className="text-sm font-semibold">{thread.data.customer_name}</h2><p className="text-xs text-[#64717f]">{statusLabel(thread.data.status)} · {thread.data.channel_id}</p></div></div>
-                <button type="button" onClick={() => escalate.mutate()} disabled={escalate.isPending} className="min-h-10 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50">{escalate.isPending ? "Передаём…" : "Закрыть диалог"}</button>
+                {isClosed(thread.data.status) ? <span className="rounded-lg bg-[#e5eaf1] px-3.5 py-2.5 text-sm font-semibold text-[#526071]">Диалог закрыт</span> : <button type="button" onClick={() => { setActionMessage(null); escalate.mutate(); }} disabled={escalate.isPending || send.isPending} className="min-h-10 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50">{escalate.isPending ? "Передаём…" : "Передать менеджеру"}</button>}
               </header>
               <div className="relative flex-1 space-y-4 overflow-y-auto p-6 sm:p-8">
                 <p className="text-center text-xs font-semibold text-[#64717f]">Сегодня</p>
@@ -78,13 +85,13 @@ export default function InboxPage() {
                   return <div key={message.id} className={`flex ${outgoing ? "justify-start" : "justify-end"}`}><div className={`max-w-[84%] rounded-lg border px-4 py-3 text-sm leading-relaxed shadow-[0_10px_22px_rgba(18,39,76,.07)] ${outgoing ? "border-[#d9e1ec] bg-white" : "border-[#2463eb] bg-[#2463eb] text-white"}`}><p>{message.text}</p><p className={`mt-1.5 text-right text-[11px] ${outgoing ? "text-[#64717f]" : "text-white/75"}`}>{time(message.created_at)}</p></div></div>;
                 })}
               </div>
-              <form onSubmit={(event) => { event.preventDefault(); if (reply.trim()) send.mutate(reply.trim()); }} className="relative m-4 flex items-end gap-2 rounded-lg border border-[#d9e1ec] bg-white p-2 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:m-6">
-                <button type="button" aria-label="Прикрепить файл" className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#64717f] hover:bg-[#eaf1ff]"><Paperclip size={19} /></button>
-                <textarea value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Введите сообщение" rows={1} className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none" />
-                <button type="submit" aria-label="Отправить" disabled={!reply.trim() || send.isPending} className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#2463eb] hover:bg-[#eaf1ff] disabled:opacity-40">{send.isPending ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}</button>
+              <form onSubmit={(event) => { event.preventDefault(); const text = reply.trim(); if (!text || isClosed(thread.data.status)) return; setActionMessage(null); send.mutate(text); }} className="relative m-4 flex items-end gap-2 rounded-lg border border-[#d9e1ec] bg-white p-2 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:m-6">
+                <button type="button" aria-label="Прикрепить файл" title="Прикрепление файлов скоро появится" disabled className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#64717f] disabled:opacity-40"><Paperclip size={19} /></button>
+                <textarea aria-label="Ответ клиенту" value={reply} onChange={(event) => setReply(event.target.value)} placeholder={isClosed(thread.data.status) ? "Диалог закрыт" : "Введите сообщение"} rows={1} disabled={isClosed(thread.data.status) || send.isPending || escalate.isPending} className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60" />
+                <button type="submit" aria-label="Отправить ответ" disabled={!reply.trim() || isClosed(thread.data.status) || send.isPending || escalate.isPending} className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#2463eb] hover:bg-[#eaf1ff] disabled:opacity-40">{send.isPending ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}</button>
               </form>
             </> : null}
-            {(send.error || escalate.error) && <p className="absolute right-6 bottom-20 rounded-lg bg-[#fdeded] px-3 py-2 text-xs text-[#a72f2f]">{getApiErrorMessage(send.error ?? escalate.error, "Не удалось выполнить действие.")}</p>}
+            {actionMessage && <p role="status" className={`absolute right-6 bottom-20 rounded-lg px-3 py-2 text-xs ${send.error || escalate.error ? "bg-[#fdeded] text-[#a72f2f]" : "bg-[#e8f7ef] text-[#16734a]"}`}>{actionMessage}</p>}
           </section>
         </div>
       </div>
@@ -100,4 +107,5 @@ function ListSkeleton() { return <div className="space-y-3 p-4">{Array.from({ le
 function State({ title, text, action, onAction }: { title: string; text?: string; action?: string; onAction?: () => void }) { return <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center"><h3 className="font-extrabold">{title}</h3>{text && <p className="mt-2 max-w-sm text-sm text-[#526071]">{text}</p>}{action && <button type="button" onClick={onAction} className="mt-4 rounded-lg bg-[#2463eb] px-4 py-2 text-sm font-semibold text-white">{action}</button>}</div>; }
 function initials(name: string) { return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
 function time(value: string | null) { return value ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : ""; }
-function statusLabel(status: string) { const value = status.toLowerCase(); if (value.includes("escalat")) return "Нужен человек"; if (value.includes("clos")) return "Закрыт"; if (value.includes("answer")) return "Отвечено"; return status || "Новый"; }
+function isClosed(status: string) { return status.toLowerCase().includes("clos"); }
+function statusLabel(status: string) { const value = status.toLowerCase(); if (value.includes("escalat")) return "Нужен человек"; if (isClosed(value)) return "Закрыт"; if (value.includes("answer") || value.includes("replied")) return "Отвечено"; if (value === "open") return "Открыт"; return status || "Новый"; }

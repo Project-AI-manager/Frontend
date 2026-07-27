@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { AuthShell } from "@/components/ui/auth-shell";
-import { getAuth } from "@/lib/api/generated/auth/auth";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getAuth } from "@/lib/api/generated/auth/auth";
 import { setAuthTokens } from "@/lib/api/token";
@@ -14,13 +13,6 @@ import { setAuthTokens } from "@/lib/api/token";
 const authApi = getAuth();
 const DEMO_EMAIL = "owner.demo@example.com";
 const DEMO_PASSWORD = "demo-password";
-
-/** Витрина слева: что именно ждёт пользователя после входа. */
-const showcasePoints = [
-  "Безопасная сессия между входами",
-  "Email-регистрация и восстановление пароля",
-  "Интеграции проверяются из настроек",
-];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,19 +22,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResetOpen, setIsResetOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState(DEMO_EMAIL);
-  const [resetToken, setResetToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [resetNotice, setResetNotice] = useState<string | null>(null);
-  const [isResetRequesting, setIsResetRequesting] = useState(false);
-  const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   async function signIn(nextEmail: string, nextPassword: string) {
     setError("");
     setIsSubmitting(true);
     try {
-      const tokens = await authApi.loginApiV1AuthLoginPost({ email, password });
+      const tokens = await authApi.loginApiV1AuthLoginPost({
+        email: nextEmail,
+        password: nextPassword,
+      });
       setAuthTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
       router.push("/inbox");
     } catch (err) {
@@ -59,73 +47,6 @@ export default function LoginPage() {
     setEmail(DEMO_EMAIL);
     setPassword(DEMO_PASSWORD);
     await signIn(DEMO_EMAIL, DEMO_PASSWORD);
-  }
-
-  async function handleResetRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextEmail = resetEmail.trim();
-
-    if (!nextEmail) {
-      setResetNotice("Укажи email для восстановления пароля.");
-      return;
-    }
-
-    setResetNotice(null);
-    setIsResetRequesting(true);
-
-    try {
-      const response = await emailApi.requestPasswordReset(nextEmail);
-      if (response.dev_token) {
-        setResetToken(response.dev_token);
-        setResetNotice(
-          `Письмо записано в dev outbox. Token: ${response.dev_token}`,
-        );
-        return;
-      }
-
-      setResetNotice(
-        response.sent
-          ? "Письмо для восстановления отправлено."
-          : "Если email есть в системе, инструкция будет отправлена.",
-      );
-    } catch (err) {
-      setResetNotice(
-        getApiErrorMessage(
-          err,
-          "Не удалось запросить восстановление пароля.",
-        ),
-      );
-    } finally {
-      setIsResetRequesting(false);
-    }
-  }
-
-  async function handleResetConfirm(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const token = resetToken.trim();
-    const passwordValue = newPassword.trim();
-
-    if (!token || !passwordValue) {
-      setResetNotice("Вставь token и новый пароль.");
-      return;
-    }
-
-    setResetNotice(null);
-    setIsResetConfirming(true);
-
-    try {
-      await emailApi.confirmPasswordReset(token, passwordValue);
-      setPassword(passwordValue);
-      setNewPassword("");
-      setResetToken("");
-      setResetNotice("Пароль обновлен. Теперь можно войти с новым паролем.");
-    } catch (err) {
-      setResetNotice(
-        getApiErrorMessage(err, "Не удалось обновить пароль по token."),
-      );
-    } finally {
-      setIsResetConfirming(false);
-    }
   }
 
   return (
@@ -145,6 +66,7 @@ export default function LoginPage() {
           <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-[#526071]"><input className="peer sr-only" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span className="flex size-[18px] items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]">{remember ? <Check size={12} strokeWidth={3} className="text-white" /> : null}</span>Запомнить</label>
           {error ? <p role="alert" className="rounded-[8px] border border-[#f3cfcf] bg-[#fdeded] p-3 text-[13px] text-[#a72f2f]">{error}</p> : null}
           <button className="ap-primary flex items-center justify-center gap-2" type="submit" disabled={isSubmitting}>{isSubmitting ? <><span className="ap-spinner" />Входим</> : "Войти"}</button>
+          <button className="min-h-11 rounded-[8px] border border-[#d9e1ec] bg-white px-4 text-sm font-semibold text-[#1546ad] hover:bg-[#f4f7fb] disabled:opacity-60" type="button" disabled={isSubmitting} onClick={handleDemoLogin}>Войти в демо без регистрации</button>
         </form>
       </section>
       <p className="m-0 text-[14px] text-[#526071]">Нет аккаунта? <Link href="/register" className="text-[#1546ad] hover:text-[#2463eb]">Зарегистрироваться</Link></p>

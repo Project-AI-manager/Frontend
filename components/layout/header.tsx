@@ -1,4 +1,4 @@
-"use client";
+import Link from "next/link";
 
 const marketingLinks = [
   { href: "/#problem", label: "Проблема" },
@@ -8,99 +8,41 @@ const marketingLinks = [
 ];
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Мобильное меню: фокус внутрь при открытии, Escape — назад на бургер,
-  // переход на десктопную ширину закрывает шторку.
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-
-    menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-        toggleRef.current?.focus();
-      }
-    }
-
-    const desktop = window.matchMedia("(min-width: 768px)");
-
-    function closeOnDesktop() {
-      if (desktop.matches) {
-        setIsMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-    desktop.addEventListener("change", closeOnDesktop);
-
-    return () => {
-      window.removeEventListener("keydown", closeOnEscape);
-      desktop.removeEventListener("change", closeOnDesktop);
-    };
-  }, [isMenuOpen]);
-
-  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
-
-  // Шторка помечена как модальная, поэтому Tab не должен уводить фокус
-  // на фон: замыкаем его между первым и последним элементом меню.
-  const keepFocusInMenu = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusable = menuRef.current?.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled])",
-      );
-
-      if (!focusable || focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-        return;
-      }
-
-      if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    },
-    [],
-  );
-
   return (
     <div className="pointer-events-none sticky top-4 z-40 flex w-full justify-center px-4">
       <header className="pointer-events-auto flex w-full max-w-[860px] items-center justify-between rounded-full border border-[rgba(36,99,235,0.2)] bg-white/85 px-3 py-2 shadow-[0_16px_42px_rgba(18,39,76,0.13),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-xl">
-        <Link href="/" className="group flex items-center gap-3 rounded-full px-3 py-1.5 transition hover:bg-blue-50">
-          <span className="flex size-8 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white shadow-lg shadow-blue-600/20 group-hover:-translate-y-0.5 transition">
+        <Link
+          href="/"
+          className="group flex items-center gap-3 rounded-full px-3 py-1.5 transition hover:bg-blue-50"
+        >
+          <span className="flex size-8 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white shadow-lg shadow-blue-600/20 transition group-hover:-translate-y-0.5">
             А
           </span>
-          <span className="text-sm font-black tracking-tight text-slate-900">Автопилот</span>
+          <span className="text-sm font-black tracking-tight text-slate-900">
+            Автопилот
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-2 text-[14px] font-semibold text-slate-500 md:flex">
+        <nav
+          aria-label="Разделы лендинга"
+          className="hidden items-center gap-2 text-[14px] font-semibold text-slate-500 md:flex"
+        >
           {marketingLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="rounded-full px-4 py-2 transition hover:bg-blue-50 hover:text-blue-600">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-4 py-2 transition hover:bg-blue-50 hover:text-blue-600"
+            >
               {link.label}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-1.5 text-sm font-semibold sm:gap-2">
-          <Link href="/login" className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 sm:px-4">
+          <Link
+            href="/login"
+            className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 sm:px-4"
+          >
             Войти
           </Link>
           <Link

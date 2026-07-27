@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -9,6 +10,7 @@ import { clearAuthTokens, getRefreshToken } from "@/lib/api/token";
 
 export function LogoutButton({ className = "" }: { className?: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
 
   async function logout() {
@@ -26,6 +28,7 @@ export function LogoutButton({ className = "" }: { className?: string }) {
       // Локальную сессию закрываем даже при недоступном API.
     } finally {
       clearAuthTokens();
+      queryClient.clear();
       router.replace("/login");
       router.refresh();
       setPending(false);

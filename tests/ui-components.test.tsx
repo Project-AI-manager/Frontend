@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -9,17 +10,24 @@ const navigationState = vi.hoisted(() => ({ pathname: "/inbox" }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 afterEach(() => {
   navigationState.pathname = "/inbox";
 });
 
+function renderShell(children: React.ReactElement) {
+  return render(
+    <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>,
+  );
+}
+
 describe("AppShell", () => {
   it("renders semantic navigation and marks the current destination", () => {
     navigationState.pathname = "/knowledge/document";
 
-    render(
+    renderShell(
       <AppShell title="База знаний" description="Документы компании">
         <p>Содержимое страницы</p>
       </AppShell>,
@@ -39,7 +47,7 @@ describe("AppShell", () => {
   });
 
   it("opens an accessible mobile menu and closes it with Escape", () => {
-    render(
+    renderShell(
       <AppShell title="Диалоги" description="Входящие обращения">
         <p>Содержимое страницы</p>
       </AppShell>,
@@ -62,7 +70,7 @@ describe("AppShell", () => {
   });
 
   it("does not expose mock account labels in the shared shell", () => {
-    render(
+    renderShell(
       <AppShell title="Аналитика" description="Метрики">
         <p>Содержимое страницы</p>
       </AppShell>,

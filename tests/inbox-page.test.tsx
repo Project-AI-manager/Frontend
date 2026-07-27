@@ -76,7 +76,7 @@ describe("InboxPage live actions", () => {
     renderPage();
 
     expect(
-      await screen.findByText("Когда будет доставка?"),
+      await screen.findByRole("heading", { name: "Анна", level: 2 }),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Ответ клиенту"), {
       target: { value: "Доставим завтра." },
