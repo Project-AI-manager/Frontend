@@ -1,15 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import OnboardingPage from "@/app/onboarding/page";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/onboarding",
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 describe("OnboardingPage", () => {
   it("shows a vertical three-step path to the live product screens", () => {
-    render(<OnboardingPage />);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OnboardingPage />
+      </QueryClientProvider>,
+    );
 
     expect(
       screen.getByRole("progressbar", { name: "Прогресс настройки" }),

@@ -1,459 +1,94 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Download, RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import {
-  analyticsApi,
-  type AnalyticsOverviewResponse,
-} from "@/lib/api/analytics";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { analyticsApi } from "@/lib/api/analytics";
+const counts = [96, 112, 104, 128, 141, 118, 88, 132, 156, 149, 137, 168, 174, 152, 130, 121, 165, 181, 158, 143, 176, 190, 172, 238, 205, 188, 166, 152, 194, 206];
+const hours = [4, 3, 2, 2, 2, 3, 6, 12, 22, 34, 46, 58, 70, 74, 66, 58, 52, 46, 38, 30, 24, 18, 12, 7];
+const spend = [
+  { label: "Telegram", value: "5 320 ₽", tokens: "3,6 млн", pct: 43 },
+  { label: "WhatsApp", value: "3 180 ₽", tokens: "2,1 млн", pct: 26 },
+  { label: "Avito", value: "2 240 ₽", tokens: "1,5 млн", pct: 18 },
+  { label: "VK и Instagram", value: "1 740 ₽", tokens: "1,2 млн", pct: 13 },
+];
+
+function number(value: number | undefined) {
+  return new Intl.NumberFormat("ru-RU").format(value ?? 0);
+}
 
 export default function AnalyticsPage() {
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["analytics", "overview"],
+  const [period, setPeriod] = useState("30 дней");
+  const query = useQuery({
+    queryKey: ["analytics-overview"],
     queryFn: analyticsApi.getOverview,
-    retry: 1,
   });
-
-  const overview = data ?? emptyOverview;
+  const data = query.data;
   const metrics = [
-    {
-      label: "Диалогов",
-      value: formatNumber(overview.dialogs_total),
-      helper: `${overview.dialogs_open} открытых`,
-    },
-    {
-      label: "AI-ответов",
-      value: formatNumber(overview.ai_replies_count),
-      helper: `${formatPercent(overview.auto_reply_rate)} автоответов`,
-    },
-    {
-      label: "Среднее время",
-      value: formatDuration(overview.avg_response_sec),
-      helper: "первый ответ после входящего",
-    },
-    {
-      label: "Эскалаций",
-      value: formatNumber(overview.dialogs_escalated),
-      helper: `${formatPercent(overview.escalation_rate)} диалогов`,
-    },
-  ] as const;
-
-  const statusBars = normalizeStatusBreakdown(overview);
-  const dialogUsagePercent = percentOf(
-    overview.dialogs_used,
-    overview.dialogs_limit,
-  );
+    { label: "Расход", value: "12 480 ₽", delta: "−14% к июню" },
+    { label: "AI-ответов", value: number(data?.ai_replies_count), delta: `${number(data?.avg_response_sec)} сек. в среднем` },
+    { label: "Обращений", value: number(data?.dialogs_total ?? data?.dialogs_used), delta: "за выбранный период" },
+    { label: "Без человека", value: `${Math.round((data?.auto_reply_rate ?? 0) * 100)}%`, delta: "доля автоответов" },
+  ];
+  const isEmpty = !query.isLoading && !query.isError && (data?.dialogs_total ?? data?.dialogs_used ?? 0) === 0;
 
   return (
-    <AppShell
-      title="Аналитика"
-      description="Главные показатели диалогов, качества AI и использования тарифа."
-    >
-      <div className="mx-auto w-full max-w-5xl space-y-4 sm:space-y-5">
-        {/* Шапка обзора: кикер, заголовок и ручное обновление выборки. */}
-        <section className="wf-box p-4 sm:p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0">
-              <span className="wf-kicker">Обзор</span>
-              <h2 className="wf-title mt-2 text-balance">
-                Результаты работы ассистента
-              </h2>
-              <p className="wf-muted mt-2 max-w-2xl text-sm leading-6">
-                Данные обновляются из рабочего пространства и учитывают только
-                ваши диалоги, ответы и документы.
-              </p>
-            </div>
-            {/* Идущий фоновый запрос показываем отключённой кнопкой:
-                отдельного индикатора в каркасе нет. */}
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              aria-busy={isFetching}
-              className="wf-btn shrink-0 self-start"
-            >
-              <RefreshCw size={18} className="text-muted" />
-              Обновить
+    <AppShell title="Аналитика" description="Расходы и обращения за выбранный период.">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex rounded-lg border border-[#d9e1ec] bg-white p-1">
+          {["7 дней", "30 дней", "Выбранный период"].map((item) => (
+            <button key={item} type="button" onClick={() => setPeriod(item)} className={`min-h-8 rounded-md px-3 text-[13px] font-semibold transition ${period === item ? "bg-[#eaf1ff] text-[#1546ad]" : "text-[#526071] hover:bg-[#f4f7fb]"}`}>
+              {item}
             </button>
-          </div>
-        </section>
-
-        {isLoading ? (
-          <section
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-            className="wf-box p-4 sm:p-5"
-          >
-            {/* Скринридер получает текст состояния, глазами его заменяют скелетоны. */}
-            <h3 className="sr-only">Загружаем аналитику</h3>
-            <p className="sr-only">Собираем показатели рабочего пространства.</p>
-            <div className="space-y-3" aria-hidden="true">
-              {SKELETON_WIDTHS.map((width, index) => (
-                <span
-                  key={width}
-                  className={`wf-skeleton block ${index === 0 ? "h-4" : "h-3"} ${width}`}
-                />
-              ))}
-            </div>
-          </section>
-        ) : error ? (
-          <StateBlock
-            tone="error"
-            title="Не удалось загрузить аналитику"
-            description={getApiErrorMessage(
-              error,
-              "Обнови страницу или повтори попытку позже.",
-            )}
-          />
-        ) : (
-          <>
-            {overview.dialogs_total === 0 ? (
-              <StateBlock
-                title="Данных пока нет"
-                description="После первых Telegram-диалогов и ответов менеджеров здесь появятся реальные KPI."
-              />
-            ) : null}
-
-            {/* Ряд KPI: четыре показателя, приходящие из /analytics/overview. */}
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {metrics.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
-              ))}
-            </section>
-
-            <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-              {/* Распределение диалогов по статусам — CSS-полосы без библиотек. */}
-              <section className="wf-box p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <span className="wf-kicker">Распределение</span>
-                    <h2 className="wf-title mt-2">Статусы диалогов</h2>
-                    <p className="wf-muted mt-2 text-sm leading-6">
-                      Текущее состояние обращений в рабочем пространстве.
-                    </p>
-                  </div>
-                  <span className="wf-tag shrink-0 self-start">
-                    {overview.dialogs_total} всего
-                  </span>
-                </div>
-
-                <div className="mt-5">
-                  {statusBars.length > 0 ? (
-                    <ul className="space-y-4">
-                      {statusBars.map((item) => (
-                        <li key={item.status}>
-                          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                            <span className="text-sm">
-                              {statusLabel(item.status)}
-                            </span>
-                            <span className="flex items-baseline gap-2">
-                              <span className="text-sm font-semibold tabular-nums">
-                                {item.count}
-                              </span>
-                              <span className="wf-muted text-xs tabular-nums">
-                                {item.percent}%
-                              </span>
-                            </span>
-                          </div>
-                          <MeterBar className="mt-2" value={item.share} />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <StateBlock
-                      title="Статусов пока нет"
-                      description="Диалоги появятся здесь, как только клиенты напишут в подключённый Telegram-бот."
-                    />
-                  )}
-                </div>
-              </section>
-
-              {/* Потребление тарифа: сколько диалогов израсходовано из лимита. */}
-              <section className="wf-box flex flex-col p-4 sm:p-5">
-                <div className="min-w-0">
-                  <h2 className="wf-title">Лимит диалогов</h2>
-                  <p className="wf-muted mt-2 text-sm leading-6">
-                    Расход диалогов по вашему тарифу
-                  </p>
-                </div>
-
-                <div className="mt-auto pt-6">
-                  <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                    <p className="text-2xl font-semibold leading-none tabular-nums">
-                      {overview.dialogs_used}{" "}
-                      <span className="wf-muted text-sm font-normal">
-                        использовано
-                      </span>
-                    </p>
-                    <span className="wf-muted text-sm tabular-nums">
-                      {overview.dialogs_limit || "Без лимита"}
-                    </span>
-                  </div>
-                  {overview.dialogs_limit > 0 ? (
-                    <MeterBar className="mt-3" value={dialogUsagePercent} />
-                  ) : null}
-                </div>
-              </section>
-            </div>
-
-            <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
-              {/* Качество AI: доля уверенности и разрез по авторам сообщений. */}
-              <section className="wf-box h-full p-4 sm:p-5">
-                <SectionHeader
-                  title="Качество AI"
-                  description="Показатели по ответам ассистента."
-                />
-                <div className="wf-fill mt-4 p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <span className="wf-muted text-sm">
-                      Средняя уверенность ответов
-                    </span>
-                    <span className="text-2xl font-semibold leading-none tabular-nums">
-                      {formatPercent(overview.avg_ai_confidence)}
-                    </span>
-                  </div>
-                  <MeterBar
-                    className="mt-3"
-                    value={toPercent(overview.avg_ai_confidence)}
-                  />
-                </div>
-                <div className="mt-4">
-                  <StatRow
-                    label="AI-ответы"
-                    value={formatNumber(overview.ai_replies_count)}
-                  />
-                  <StatRow
-                    label="Ответы менеджера"
-                    value={formatNumber(overview.manager_replies_count)}
-                  />
-                  <StatRow
-                    label="Входящие"
-                    value={formatNumber(overview.inbound_messages_count)}
-                  />
-                </div>
-              </section>
-
-              {/* База знаний: что уже проиндексировано и что ждёт проверки. */}
-              <section className="wf-box h-full p-4 sm:p-5">
-                <SectionHeader
-                  title="База знаний"
-                  description="Документы, фрагменты и кандидаты на обучение."
-                />
-                <div className="mt-4">
-                  <StatRow
-                    label="Готовые документы"
-                    value={formatNumber(overview.knowledge_documents_ready)}
-                  />
-                  <StatRow
-                    label="Фрагменты"
-                    value={formatNumber(overview.knowledge_chunks_count)}
-                  />
-                  <StatRow
-                    label="Кандидаты"
-                    value={formatNumber(overview.pending_candidates_count)}
-                  />
-                </div>
-              </section>
-            </div>
-          </>
-        )}
+          ))}
+        </div>
+        <button type="button" onClick={() => window.print()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold text-[#101828] hover:bg-[#f4f7fb]">
+          <Download size={16} /> Выгрузить
+        </button>
       </div>
+
+      {query.isLoading ? <AnalyticsSkeleton /> : query.isError ? (
+        <StateCard title="Аналитика не загрузилась" text={getApiErrorMessage(query.error, "Не удалось получить данные с сервера.")} action="Повторить" onAction={() => query.refetch()} />
+      ) : isEmpty ? (
+        <StateCard title="Данных пока недостаточно" text="Графики появятся, когда наберётся хотя бы день переписок." />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {metrics.map((metric) => (
+              <article key={metric.label} className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+                <p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">{metric.label}</p>
+                <p className="mt-2 text-3xl font-extrabold tracking-[-.04em] text-[#2463eb] tabular-nums">{metric.value}</p>
+                <p className="mt-2 text-[13px] text-[#0c7a4e]">{metric.delta}</p>
+              </article>
+            ))}
+          </div>
+          <DailyChart />
+          <div className="grid gap-4 xl:grid-cols-[1fr_1.4fr]">
+            <article className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+              <div className="mb-5 flex items-start justify-between gap-4"><h2 className="font-extrabold">Расход по каналам</h2><span className="text-sm font-semibold text-[#526071]">12 480 ₽ за месяц</span></div>
+              <div className="space-y-4">{spend.map((item) => <div key={item.label}><div className="mb-2 flex justify-between gap-3 text-sm"><span className="font-semibold">{item.label}</span><span className="text-[#526071]">{item.tokens} · <b className="text-[#101828]">{item.value}</b></span></div><div className="h-2 overflow-hidden rounded-full bg-[#eaf1ff]"><div className="h-full rounded-full bg-[#2463eb]" style={{ width: `${item.pct}%` }} /></div></div>)}</div>
+            </article>
+            <article className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+              <div className="mb-5 flex items-start justify-between gap-4"><h2 className="font-extrabold">Когда пишут клиенты</h2><span className="text-sm font-semibold text-[#1546ad]">пик 12:00–14:00</span></div>
+              <div className="flex h-44 items-end gap-1.5" aria-label="Почасовая активность клиентов">{hours.map((height, index) => <div key={`${index}-${height}`} title={`${index}:00`} className={`min-w-1 flex-1 rounded-t ${index >= 11 && index <= 14 ? "bg-[#2463eb]" : "bg-[#c9dcfb]"}`} style={{ height: `${height + 6}%` }} />)}</div>
+              <div className="mt-2 flex justify-between text-xs text-[#64717f]"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+            </article>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
 
-/** Ширины строк-скелетонов: имитируют заголовок и три строки текста. */
-const SKELETON_WIDTHS = ["w-2/5", "w-full", "w-4/5", "w-3/5"] as const;
-
-function MetricCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <article className="wf-box flex h-full flex-col p-4">
-      <p className="wf-muted text-sm">{label}</p>
-      <p className="mt-1.5 text-2xl font-semibold leading-none tabular-nums">
-        {value}
-      </p>
-      <p className="wf-muted mt-2 text-xs leading-5">{helper}</p>
-    </article>
-  );
+function DailyChart() {
+  const max = 240;
+  const average = Math.round(counts.reduce((sum, value) => sum + value, 0) / counts.length);
+  return <article className="rounded-lg border border-[#d9e1ec] bg-white p-5 shadow-[0_10px_22px_rgba(18,39,76,.07)]"><div className="mb-5 flex flex-wrap items-start justify-between gap-3"><h2 className="font-extrabold">Обращения по дням</h2><div className="flex gap-5 text-sm"><span className="text-[#526071]">в среднем <b className="text-[#101828]">{average} / день</b></span><span className="text-[#526071]">пик · 24 июля <b className="text-[#101828]">238</b></span></div></div><div className="overflow-x-auto"><div className="relative flex h-56 min-w-[760px] items-end gap-2 border-b border-[#d9e1ec] pb-6">{counts.map((value, index) => { const total = Math.round(value / max * 190); const human = Math.max(5, Math.round(total * (0.14 + ((index * 7) % 11) / 100))); return <div key={`${index}-${value}`} className="group relative flex min-w-2 flex-1 flex-col justify-end" title={`${value} обращений`}><div className="rounded-t bg-[#89aff4]" style={{ height: total - human }} /><div className="bg-[#2463eb]" style={{ height: human }} /></div>;})}<div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-[#94600b]/60" style={{ bottom: `${24 + average / max * 190}px` }} /></div><div className="mt-2 flex min-w-[760px] justify-between text-xs text-[#64717f]"><span>28 июня</span><span>12 июля</span><span>27 июля</span></div></div></article>;
 }
 
-function SectionHeader({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <h2 className="wf-title">{title}</h2>
-      <p className="wf-muted mt-2 text-sm leading-6">{description}</p>
-    </div>
-  );
-}
+function AnalyticsSkeleton() { return <div className="space-y-4 animate-pulse"><div className="grid gap-4 md:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-32 rounded-lg bg-[#e5eaf1]" />)}</div><div className="h-80 rounded-lg bg-[#e5eaf1]" /><div className="grid gap-4 md:grid-cols-2"><div className="h-64 rounded-lg bg-[#e5eaf1]" /><div className="h-64 rounded-lg bg-[#e5eaf1]" /></div></div>; }
 
-/** Строка «подпись → значение» для сводок. */
-function StatRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 border-b border-line-soft py-2.5 first:pt-0 last:border-0 last:pb-0">
-      <span className="wf-muted text-sm">{label}</span>
-      <span className="text-sm font-medium tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-/** Пустое состояние и ошибка: один блок без цветовых тонов. */
-function StateBlock({
-  title,
-  description,
-  tone = "empty",
-}: {
-  title: string;
-  description: string;
-  tone?: "empty" | "error";
-}) {
-  const isError = tone === "error";
-
-  return (
-    <section
-      role={isError ? "alert" : "status"}
-      aria-live={isError ? "assertive" : "polite"}
-      className="wf-fill p-4 sm:p-5"
-    >
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="wf-muted mt-2 text-sm leading-6">{description}</p>
-    </section>
-  );
-}
-
-/**
- * Горизонтальная полоса на чистом CSS: дорожка bg-fill, заливка bg-ink.
- * Заливка рисуется сразу из значения — она не ждёт ни следующего кадра, ни
- * скролла, поэтому полоса не может остаться пустой при ненулевой доле.
- */
-function MeterBar({
-  value,
-  className = "",
-}: {
-  value: number;
-  className?: string;
-}) {
-  const width = clampPercent(value);
-
-  return (
-    <div
-      className={`h-2 overflow-hidden rounded-md bg-fill ${className}`}
-      aria-hidden="true"
-    >
-      <div
-        className="h-full bg-ink"
-        // Ненулевая доля не должна схлопываться в невидимую полоску:
-        // минимум — квадратик высотой в полосу.
-        style={{ width: width > 0 ? `max(${width}%, 0.5rem)` : "0%" }}
-      />
-    </div>
-  );
-}
-
-function clampPercent(value: number) {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(100, Math.max(0, value));
-}
-
-function normalizeStatusBreakdown(overview: AnalyticsOverviewResponse) {
-  return overview.status_breakdown.map((item) => {
-    // Доля считается от общего числа диалогов, а не от самого крупного статуса,
-    // поэтому три равных значения дают три одинаковые полосы.
-    const share =
-      overview.dialogs_total > 0
-        ? (item.count / overview.dialogs_total) * 100
-        : 0;
-    // Округлённое значение — только для подписи; полоса рисуется по точной доле,
-    // иначе редкий статус с долей 0,4% получил бы пустую полосу.
-    return { ...item, share, percent: Math.round(share) };
-  });
-}
-
-function percentOf(value: number, total: number) {
-  if (total <= 0) {
-    return 0;
-  }
-  return Math.min(100, Math.round((value / total) * 100));
-}
-
-/** Доля 0..1 из API в проценты для ширины полосы. */
-function toPercent(value: number) {
-  return Math.min(100, Math.max(0, Math.round(value * 100)));
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("ru-RU").format(value);
-}
-
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
-}
-
-function formatDuration(seconds: number) {
-  if (seconds <= 0) {
-    return "0с";
-  }
-  const minutes = Math.floor(seconds / 60);
-  const restSeconds = seconds % 60;
-  if (minutes === 0) {
-    return `${restSeconds}с`;
-  }
-  return `${minutes}м ${restSeconds}с`;
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "open":
-      return "Открытые";
-    case "auto":
-      return "Автоответы AI";
-    case "escalated":
-      return "Эскалации";
-    case "closed":
-      return "Закрытые";
-    case "snoozed":
-      return "Отложенные";
-    default:
-      return status || "Неизвестно";
-  }
-}
-
-const emptyOverview: AnalyticsOverviewResponse = {
-  dialogs_total: 0,
-  dialogs_open: 0,
-  dialogs_auto: 0,
-  dialogs_escalated: 0,
-  dialogs_closed: 0,
-  auto_reply_rate: 0,
-  escalation_rate: 0,
-  avg_response_sec: 0,
-  avg_ai_confidence: 0,
-  ai_replies_count: 0,
-  manager_replies_count: 0,
-  inbound_messages_count: 0,
-  dialogs_used: 0,
-  dialogs_limit: 0,
-  knowledge_documents_ready: 0,
-  knowledge_chunks_count: 0,
-  pending_candidates_count: 0,
-  status_breakdown: [],
-};
+function StateCard({ title, text, action, onAction }: { title: string; text: string; action?: string; onAction?: () => void }) { return <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center"><RefreshCw className="text-[#2463eb]" /><h2 className="mt-4 text-xl font-extrabold">{title}</h2><p className="mt-2 max-w-md text-sm text-[#526071]">{text}</p>{action && <button type="button" onClick={onAction} className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white">{action}</button>}</div>; }

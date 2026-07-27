@@ -1,19 +1,22 @@
-import { getEmail } from "./generated/email/email";
+import { apiClient } from "./client";
 
-const emailClient = getEmail();
+export type EmailActionResponse = {
+  ok: boolean;
+  sent: boolean;
+  message: string;
+  dev_token?: string | null;
+};
 
 export const emailApi = {
-  getStatus: () => emailClient.statusApiV1EmailStatusGet(),
   requestVerification: () =>
-    emailClient.requestVerificationApiV1EmailVerificationRequestPost(),
-  confirmVerification: (token: string) =>
-    emailClient.confirmVerificationApiV1EmailVerificationConfirmPost({ token }),
-  requestPasswordReset: (email: string) =>
-    emailClient.requestResetApiV1EmailPasswordResetRequestPost({ email }),
-  confirmPasswordReset: (token: string, newPassword: string) =>
-    emailClient.confirmResetApiV1EmailPasswordResetConfirmPost({
-      token,
-      new_password: newPassword,
+    apiClient<EmailActionResponse>({
+      url: "/api/v1/email/verification/request",
+      method: "POST",
     }),
-  getOutbox: () => emailClient.outboxApiV1EmailOutboxGet(),
+  confirmVerification: (token: string) =>
+    apiClient<EmailActionResponse>({
+      url: "/api/v1/email/verification/confirm",
+      method: "POST",
+      data: { token },
+    }),
 };

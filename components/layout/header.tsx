@@ -1,198 +1,58 @@
-"use client";
-
-import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 
-type MarketingLink = {
-  href: string;
-  label: string;
-};
-
-const marketingLinks: MarketingLink[] = [
-  { href: "/#features", label: "Возможности" },
-  { href: "/#how", label: "Как работает" },
-  { href: "/#pricing", label: "Тарифы" },
+const marketingLinks = [
+  { href: "/#problem", label: "Проблема" },
+  { href: "/#solution", label: "Решение" },
+  { href: "/#model", label: "Тарифы" },
+  { href: "/#traction", label: "Трекшн" },
 ];
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Мобильное меню: фокус внутрь при открытии, Escape — назад на бургер,
-  // переход на десктопную ширину закрывает шторку.
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-
-    menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-        toggleRef.current?.focus();
-      }
-    }
-
-    const desktop = window.matchMedia("(min-width: 768px)");
-
-    function closeOnDesktop() {
-      if (desktop.matches) {
-        setIsMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-    desktop.addEventListener("change", closeOnDesktop);
-
-    return () => {
-      window.removeEventListener("keydown", closeOnEscape);
-      desktop.removeEventListener("change", closeOnDesktop);
-    };
-  }, [isMenuOpen]);
-
-  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
-
-  // Шторка помечена как модальная, поэтому Tab не должен уводить фокус
-  // на фон: замыкаем его между первым и последним элементом меню.
-  const keepFocusInMenu = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusable = menuRef.current?.querySelectorAll<HTMLElement>(
-        "a[href], button:not([disabled])",
-      );
-
-      if (!focusable || focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-        return;
-      }
-
-      if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    },
-    [],
-  );
-
   return (
-    <header className="border-b border-line bg-white">
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex-none text-base font-semibold text-ink">
-          Автопилот
+    <div className="pointer-events-none sticky top-4 z-40 flex w-full justify-center px-4">
+      <header className="pointer-events-auto flex w-full max-w-[860px] items-center justify-between rounded-full border border-[rgba(36,99,235,0.2)] bg-white/85 px-3 py-2 shadow-[0_16px_42px_rgba(18,39,76,0.13),inset_0_1px_0_rgba(255,255,255,0.94)] backdrop-blur-xl">
+        <Link
+          href="/"
+          className="group flex items-center gap-3 rounded-full px-3 py-1.5 transition hover:bg-blue-50"
+        >
+          <span className="flex size-8 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white shadow-lg shadow-blue-600/20 transition group-hover:-translate-y-0.5">
+            А
+          </span>
+          <span className="text-sm font-black tracking-tight text-slate-900">
+            Автопилот
+          </span>
         </Link>
 
         <nav
           aria-label="Разделы лендинга"
-          className="hidden min-w-0 flex-1 items-center justify-end gap-5 md:flex"
+          className="hidden items-center gap-2 text-[14px] font-semibold text-slate-500 md:flex"
         >
           {marketingLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-muted"
+              className="rounded-full px-4 py-2 transition hover:bg-blue-50 hover:text-blue-600"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="ml-auto flex flex-none items-center gap-2 md:ml-4">
-          <div className="hidden items-center gap-2 sm:flex">
-            <Link href="/login" className="wf-btn">
-              Войти
-            </Link>
-            <Link href="/register" className="wf-btn wf-btn-primary">
-              Попробовать
-            </Link>
-          </div>
-
-          <button
-            ref={toggleRef}
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            aria-label={isMenuOpen ? "Закрыть меню" : "Открыть меню"}
-            aria-controls="landing-navigation"
-            aria-expanded={isMenuOpen}
-            className="wf-btn shrink-0 md:hidden"
+        <div className="flex items-center gap-1.5 text-sm font-semibold sm:gap-2">
+          <Link
+            href="/login"
+            className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 sm:px-4"
           >
-            {isMenuOpen ? (
-              <X size={18} className="text-muted" />
-            ) : (
-              <Menu size={18} className="text-muted" />
-            )}
-          </button>
+            Войти
+          </Link>
+          <Link
+            href="/register"
+            className="rounded-full bg-blue-600 px-3 py-2 text-white shadow-[0_11px_25px_rgba(36,99,235,0.2)] transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_15px_30px_rgba(36,99,235,0.28)] sm:px-4"
+          >
+            Регистрация
+          </Link>
         </div>
-      </div>
-
-      {isMenuOpen ? (
-        <>
-          <div
-            aria-hidden="true"
-            onClick={closeMenu}
-            className="fixed inset-0 z-40 cursor-default bg-ink/20 md:hidden"
-          />
-
-          <div
-            ref={menuRef}
-            id="landing-navigation"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Главное меню"
-            onKeyDown={keepFocusInMenu}
-            className="relative z-50 border-t border-line bg-white px-4 py-4 sm:px-6 md:hidden"
-          >
-            <nav aria-label="Разделы лендинга, мобильное меню">
-              <ul className="space-y-1">
-                {marketingLinks.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      onClick={closeMenu}
-                      className="wf-nav-item"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="mt-4 grid gap-2 border-t border-line-soft pt-4">
-              <Link href="/login" onClick={closeMenu} className="wf-btn w-full">
-                Войти
-              </Link>
-              <Link
-                href="/register"
-                onClick={closeMenu}
-                className="wf-btn wf-btn-primary w-full"
-              >
-                Попробовать
-              </Link>
-            </div>
-          </div>
-        </>
-      ) : null}
-    </header>
+      </header>
+    </div>
   );
 }

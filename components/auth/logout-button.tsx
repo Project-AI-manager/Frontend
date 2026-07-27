@@ -1,55 +1,44 @@
-﻿"use client";
+"use client";
 
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import { clearAuthTokens, getRefreshToken } from "@/lib/api/token";
 
-export function LogoutButton() {
+export function LogoutButton({ className = "" }: { className?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [pending, setPending] = useState(false);
 
-  async function handleLogout() {
-    if (isLoggingOut) {
-      return;
-    }
-
-    setIsLoggingOut(true);
+  async function logout() {
+    setPending(true);
     const refreshToken = getRefreshToken();
-
     try {
       if (refreshToken) {
-        await apiClient<{ revoked: boolean }>({
+        await apiClient({
           url: "/api/v1/auth/logout",
           method: "POST",
           data: { refresh_token: refreshToken },
         });
       }
     } catch {
-      // Local cleanup must still happen if the network or backend is unavailable.
+      // Локальную сессию закрываем даже при недоступном API.
     } finally {
       clearAuthTokens();
       queryClient.clear();
       router.replace("/login");
       router.refresh();
-      setIsLoggingOut(false);
+      setPending(false);
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleLogout}
-      disabled={isLoggingOut}
-      className="wf-btn w-full"
-      aria-label="Выйти из аккаунта"
-    >
-      <LogOut size={18} className="text-muted" />
-      <span>Выйти из аккаунта</span>
+    <button type="button" onClick={logout} disabled={pending} className={className}>
+      <LogOut size={17} aria-hidden="true" />
+      {pending ? "Выходим…" : "Выйти"}
     </button>
   );
 }

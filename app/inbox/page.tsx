@@ -1,595 +1,97 @@
 "use client";
 
-import { ArrowUpRight, ChevronRight, RefreshCw, Send } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Paperclip, Search, Send } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import type {
-  ConversationMessageResponse,
-  ConversationMessageResponseAiMeta,
-  ConversationReplyRequest,
-  ConversationResponse,
-  ConversationThreadResponse,
-} from "@/lib/api/generated/ai.schemas";
+import type { ConversationResponse } from "@/lib/api/generated/ai.schemas";
 import { getConversations } from "@/lib/api/generated/conversations/conversations";
 
-type ConversationStatus =
-  | "open"
-  | "ai_replied"
-  | "escalated"
-  | "closed"
-  | "unknown";
-type MessageDirection = "inbound" | "outbound" | "internal" | "unknown";
-type StatusFilter = ConversationStatus | "all";
-type ConversationView = {
-  id: string;
-  channelId: string;
-  customerId: string;
-  customerName: string;
-  status: ConversationStatus;
-  lastMessageAt: string | null;
-  lastMessagePreview: string;
-  unreadCount: number;
-  messages: ConversationMessageResponse[];
-};
-
-const conversationsApi = getConversations();
-
-const statusFilters: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "Все" },
-  { value: "open", label: statusLabel("open") },
-  { value: "ai_replied", label: statusLabel("ai_replied") },
-  { value: "escalated", label: statusLabel("escalated") },
-  { value: "closed", label: statusLabel("closed") },
-];
-
-const skeletonRows = [0, 1, 2];
-
-/** Подписи типов каналов — те же, что на странице «Каналы». */
-const channelTypeLabels: Record<string, string | undefined> = {
-  telegram: "Telegram",
-  whatsapp: "WhatsApp",
-  viber: "Viber",
-  vk: "ВКонтакте",
-  avito: "Авито",
-  max: "MAX",
-  email: "Почта",
-  sms: "SMS",
-  web: "Веб-чат",
-  widget: "Веб-чат",
-};
+const api = getConversations();
+const filters = ["Все", "Нужен человек", "Отвечено", "Закрытые"];
 
 export default function InboxPage() {
-  const queryClient = useQueryClient();
-  const [selectedConversationId, setSelectedConversationId] = useState<
-    string | null
-  >(null);
-  const [replyText, setReplyText] = useState("");
+  const client = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("Все");
+  const [reply, setReply] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const {
-    data: conversationsData,
-    isLoading: isConversationsLoading,
-    isFetching: isConversationsFetching,
-    error: conversationsError,
-    refetch: refetchConversations,
-  } = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () =>
-      conversationsApi.listConversationItemsApiV1ConversationsGet(),
+  const list = useQuery({ queryKey: ["conversations"], queryFn: () => api.listConversationItemsApiV1ConversationsGet(), retry: 1 });
+  const effectiveSelectedId = selectedId ?? list.data?.[0]?.id ?? null;
+  const thread = useQuery({
+    queryKey: ["conversation", effectiveSelectedId],
+    queryFn: () => api.getConversationApiV1ConversationsConversationIdGet(effectiveSelectedId!),
+    enabled: Boolean(effectiveSelectedId),
     retry: 1,
   });
-
-  const conversations = useMemo(
-    () => normalizeConversations(conversationsData),
-    [conversationsData],
-  );
-
-  const visibleConversations = useMemo(
-    () =>
-      statusFilter === "all"
-        ? conversations
-        : conversations.filter(
-            (conversation) => conversation.status === statusFilter,
-          ),
-    [conversations, statusFilter],
-  );
-
-  const activeConversationId =
-    selectedConversationId ?? conversations[0]?.id ?? null;
-  const selectedConversation = conversations.find(
-    (conversation) => conversation.id === activeConversationId,
-  );
-
-  const {
-    data: threadData,
-    isLoading: isThreadLoading,
-    isFetching: isThreadFetching,
-    error: threadError,
-    refetch: refetchThread,
-  } = useQuery({
-    queryKey: ["conversation", activeConversationId],
-    queryFn: () =>
-      conversationsApi.getConversationApiV1ConversationsConversationIdGet(
-        activeConversationId ?? "",
-      ),
-    enabled: Boolean(activeConversationId),
-    retry: 1,
-  });
-
-  const thread = normalizeThread(threadData, selectedConversation);
-  const messages = thread?.messages ?? [];
-  // В ответах /conversations и /conversations/{id} есть только channel_id.
-  // Показываем название канала, когда тип читается из идентификатора,
-  // иначе строку не печатаем: внутренний UUID пользователю ничего не говорит.
-  const channelName = channelLabel(thread?.channelId);
-
-  const replyMutation = useMutation({
-    mutationFn: async (text: string) => {
-      if (!activeConversationId) {
-        throw new Error("Диалог не выбран");
-      }
-
-      const payload: ConversationReplyRequest = { text };
-
-      return conversationsApi.replyApiV1ConversationsConversationIdReplyPost(
-        activeConversationId,
-        payload,
-      );
-    },
+  const send = useMutation({
+    mutationFn: (text: string) => api.replyApiV1ConversationsConversationIdReplyPost(effectiveSelectedId!, { text }),
     onSuccess: async () => {
-      setReplyText("");
-      setActionMessage("Ответ отправлен. Диалог обновлён.");
-      await refetchAfterAction(queryClient, activeConversationId);
+      setReply("");
+      setActionMessage("Ответ отправлен.");
+      await Promise.all([client.invalidateQueries({ queryKey: ["conversation", effectiveSelectedId] }), client.invalidateQueries({ queryKey: ["conversations"] })]);
     },
-    onError: (error) => {
-      setActionMessage(
-        getApiErrorMessage(
-          error,
-          "Не удалось отправить ответ. Проверь подключение к сервису.",
-        ),
-      );
-    },
+    onError: (error) => setActionMessage(getApiErrorMessage(error, "Не удалось отправить ответ.")),
   });
-
-  const escalateMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeConversationId) {
-        throw new Error("Диалог не выбран");
-      }
-
-      return conversationsApi.escalateApiV1ConversationsConversationIdEscalatePost(
-        activeConversationId,
-      );
-    },
+  const escalate = useMutation({
+    mutationFn: () => api.escalateApiV1ConversationsConversationIdEscalatePost(effectiveSelectedId!),
     onSuccess: async () => {
-      setActionMessage("Диалог передан менеджеру и обновлён.");
-      await refetchAfterAction(queryClient, activeConversationId);
+      setActionMessage("Диалог передан менеджеру.");
+      await Promise.all([client.invalidateQueries({ queryKey: ["conversation", effectiveSelectedId] }), client.invalidateQueries({ queryKey: ["conversations"] })]);
     },
-    onError: (error) => {
-      setActionMessage(
-        getApiErrorMessage(
-          error,
-          "Не удалось эскалировать диалог. Попробуй ещё раз.",
-        ),
-      );
-    },
+    onError: (error) => setActionMessage(getApiErrorMessage(error, "Не удалось передать диалог менеджеру.")),
   });
 
-  async function handleReplySubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setActionMessage(null);
-
-    const trimmedText = replyText.trim();
-
-    if (!trimmedText) {
-      setActionMessage("Напиши текст ответа перед отправкой.");
-      return;
-    }
-
-    replyMutation.mutate(trimmedText);
-  }
-
-  async function handleRefresh() {
-    setActionMessage(null);
-    await Promise.all([
-      refetchConversations(),
-      activeConversationId ? refetchThread() : Promise.resolve(),
-    ]);
-  }
-
-  const isActionPending = replyMutation.isPending || escalateMutation.isPending;
-  const isRefreshing = isConversationsFetching || isThreadFetching;
+  const conversations = useMemo(() => (list.data ?? []).filter((item) => {
+    const matchesSearch = `${item.customer_name} ${item.last_message_preview}`.toLowerCase().includes(search.toLowerCase());
+    const status = item.status.toLowerCase();
+    const matchesFilter = filter === "Все" || (filter === "Нужен человек" && status.includes("escalat")) || (filter === "Отвечено" && (status.includes("answer") || status.includes("replied"))) || (filter === "Закрытые" && status.includes("clos"));
+    return matchesSearch && matchesFilter;
+  }), [filter, list.data, search]);
 
   return (
-    <AppShell
-      title="Диалоги"
-      description="Разбирайте обращения последовательно: выберите диалог, изучите контекст и ответьте клиенту."
-    >
-      <div className="flex flex-col gap-4">
-        <div className="wf-box flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-6">
-          <div className="scroll-thin -mx-1 flex min-w-0 flex-1 items-center gap-3 overflow-x-auto px-1 py-0.5">
-            <WorkflowStep number="01" label="Выберите обращение" active />
-            <ChevronRight
-              size={16}
-              className="shrink-0 text-faint"
-              aria-hidden="true"
-            />
-            <WorkflowStep
-              number="02"
-              label="Проверьте контекст"
-              active={Boolean(thread)}
-            />
-            <ChevronRight
-              size={16}
-              className="shrink-0 text-faint"
-              aria-hidden="true"
-            />
-            <WorkflowStep
-              number="03"
-              label="Ответьте клиенту"
-              active={Boolean(thread)}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRefresh}
-            aria-busy={isRefreshing}
-            className="wf-btn shrink-0 self-start md:self-auto"
-          >
-            <RefreshCw size={18} className="text-muted" aria-hidden="true" />
-            Обновить данные
-          </button>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_260px]">
-          {/* Колонка 1 — список диалогов. */}
-          <section className="min-w-0">
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="min-w-0">
-                <p className="wf-kicker">Очередь</p>
-                <h2 className="wf-title mt-1">Входящие</h2>
-              </div>
-              <span className="wf-muted shrink-0 text-sm tabular-nums">
-                {conversations.length}
-              </span>
-            </div>
-
-            <div
-              role="group"
-              aria-label="Фильтр диалогов по статусу"
-              className="mt-3 flex flex-wrap gap-2"
-            >
-              {statusFilters.map((filter) => {
-                const isSelected = statusFilter === filter.value;
-                const count =
-                  filter.value === "all"
-                    ? conversations.length
-                    : conversations.filter(
-                        (conversation) => conversation.status === filter.value,
-                      ).length;
-
-                // bg-fill! — .wf-btn объявлен вне каскадных слоёв, поэтому
-                // обычная утилита фона его не перебивает.
-                return (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    aria-pressed={isSelected}
-                    data-active={isSelected ? "true" : undefined}
-                    onClick={() => setStatusFilter(filter.value)}
-                    className={`wf-btn ${isSelected ? "bg-fill!" : ""}`}
-                  >
-                    {filter.label}
-                    <span className="wf-muted tabular-nums">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {isConversationsLoading ? (
-                <div
-                  role="status"
-                  aria-label="Загружаем диалоги"
-                  className="space-y-2"
-                >
-                  {skeletonRows.map((row) => (
-                    <div key={row} className="wf-box p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="wf-skeleton block h-3.5 w-28" />
-                        <span className="wf-skeleton block h-3 w-10" />
-                      </div>
-                      <span className="wf-skeleton mt-3 block h-3 w-full" />
-                      <span className="wf-skeleton mt-2 block h-3 w-3/5" />
-                      <span className="wf-skeleton mt-3 block h-5 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : conversationsError ? (
-                <StateCard
-                  title="Не удалось загрузить диалоги"
-                  description={getApiErrorMessage(
-                    conversationsError,
-                    "Проверь авторизацию и подключение к сервису.",
-                  )}
-                  variant="error"
-                  action={
-                    <button
-                      type="button"
-                      onClick={handleRefresh}
-                      className="wf-btn"
-                    >
-                      <RefreshCw
-                        size={18}
-                        className="text-muted"
-                        aria-hidden="true"
-                      />
-                      Обновить данные
-                    </button>
-                  }
-                />
-              ) : visibleConversations.length > 0 ? (
-                visibleConversations.map((conversation) => {
-                  const isActive = conversation.id === activeConversationId;
-
-                  // bg-fill! — .wf-box объявлен вне каскадных слоёв, поэтому
-                  // обычная утилита фона его не перебивает.
-                  return (
-                    <button
-                      key={conversation.id}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => {
-                        setSelectedConversationId(conversation.id);
-                        setActionMessage(null);
-                      }}
-                      className={`wf-box block w-full p-3 text-left ${
-                        isActive ? "bg-fill!" : ""
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          {conversation.unreadCount > 0 ? (
-                            <span
-                              className="wf-dot shrink-0"
-                              aria-hidden="true"
-                            />
-                          ) : null}
-                          <h3 className="min-w-0 truncate text-sm font-semibold">
-                            {conversation.customerName}
-                          </h3>
-                        </div>
-                        <span className="wf-muted shrink-0 text-xs tabular-nums">
-                          {formatCompactDate(conversation.lastMessageAt)}
-                        </span>
-                      </div>
-                      <p className="wf-muted mt-1.5 line-clamp-2 text-sm break-words">
-                        {conversation.lastMessagePreview ||
-                          "Сообщений пока нет"}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <StatusTag status={conversation.status} />
-                        {conversation.unreadCount > 0 ? (
-                          <span className="wf-muted shrink-0 text-xs tabular-nums">
-                            {conversation.unreadCount}
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
-                  );
-                })
-              ) : conversations.length > 0 ? (
-                <StateCard
-                  title="Нет диалогов с таким статусом"
-                  description="Смените фильтр очереди, чтобы увидеть остальные обращения."
-                />
-              ) : (
-                <StateCard
-                  title="Диалогов пока нет"
-                  description="Новое обращение появится здесь сразу после поступления из подключённого канала."
-                />
-              )}
-            </div>
-          </section>
-
-          {/* Колонка 2 — лента переписки и композер. */}
-          <section className="min-w-0">
-            <p className="wf-kicker">Переписка</p>
-
-            {thread ? (
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h2 className="wf-title min-w-0 truncate">
-                  {thread.customerName}
-                </h2>
-                <StatusTag status={thread.status} />
-                {channelName ? (
-                  <span
-                    className="wf-muted text-sm"
-                    title={thread.channelId || undefined}
-                  >
-                    {channelName}
-                  </span>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <h2 className="wf-title mt-1">Выберите диалог</h2>
-                <p className="wf-muted mt-2 text-sm">
-                  История обращения и действия появятся в этой рабочей области.
-                </p>
-              </>
-            )}
-
-            <div className="mt-3 space-y-2" aria-live="polite">
-              {isThreadLoading ? (
-                <div
-                  role="status"
-                  aria-label="Загружаем историю"
-                  className="space-y-2"
-                >
-                  {skeletonRows.map((row) => (
-                    <div
-                      key={row}
-                      className={
-                        row === 1 ? "flex justify-end" : "flex justify-start"
-                      }
-                    >
-                      <div className="wf-box w-[78%] max-w-md p-3">
-                        <span className="wf-skeleton block h-3 w-24" />
-                        <span className="wf-skeleton mt-3 block h-3 w-full" />
-                        <span className="wf-skeleton mt-2 block h-3 w-2/3" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : threadError ? (
-                <StateCard
-                  title="Не удалось загрузить диалог"
-                  description={getApiErrorMessage(
-                    threadError,
-                    "Попробуй обновить данные или выбрать другой диалог.",
-                  )}
-                  variant="error"
-                  action={
-                    <button
-                      type="button"
-                      onClick={handleRefresh}
-                      className="wf-btn"
-                    >
-                      <RefreshCw
-                        size={18}
-                        className="text-muted"
-                        aria-hidden="true"
-                      />
-                      Обновить данные
-                    </button>
-                  }
-                />
-              ) : !activeConversationId ? (
-                <StateCard
-                  title="Нет выбранного диалога"
-                  description="Список обращений пуст или ещё загружается."
-                />
-              ) : messages.length > 0 ? (
-                messages.map((message) => (
-                  <MessageRow key={message.id} message={message} />
-                ))
-              ) : (
-                <StateCard
-                  title="История пуста"
-                  description="В этом диалоге пока нет сообщений."
-                />
-              )}
-            </div>
-
-            <form onSubmit={handleReplySubmit} className="mt-4">
-              <label htmlFor="conversation-reply" className="wf-label">
-                Ответ клиенту
+    <AppShell title="Диалоги" description="Все обращения клиентов в одном окне.">
+      <div className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_18px_42px_rgba(18,39,76,.09)] xl:h-[760px]">
+        <div className="grid min-h-[720px] xl:h-full xl:grid-cols-[392px_minmax(0,1fr)]">
+          <section className="flex min-h-0 flex-col border-b border-[#d9e1ec] bg-white xl:border-r xl:border-b-0">
+            <div className="flex h-[65px] shrink-0 items-center border-b border-[#d9e1ec] px-4">
+              <label className="flex min-h-10 flex-1 items-center gap-2.5 rounded-full border border-[#d9e1ec] bg-[#f8fbff] px-4 focus-within:border-[#2463eb] focus-within:ring-3 focus-within:ring-[#eaf1ff]">
+                <Search size={16} className="text-[#64717f]" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по диалогам" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
               </label>
-              <textarea
-                id="conversation-reply"
-                value={replyText}
-                onChange={(event) => setReplyText(event.target.value)}
-                placeholder="Напишите короткий и точный ответ..."
-                disabled={!activeConversationId || isActionPending}
-                className="wf-field scroll-thin text-sm"
-              />
-              {actionMessage ? (
-                <p role="status" className="wf-hint">
-                  {actionMessage}
-                </p>
-              ) : null}
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={!activeConversationId || isActionPending}
-                  className="wf-btn wf-btn-primary w-full sm:w-auto"
-                >
-                  <Send size={18} aria-hidden="true" />
-                  {replyMutation.isPending
-                    ? "Отправляем ответ..."
-                    : "Отправить ответ"}
-                </button>
-              </div>
-            </form>
+            </div>
+            <div className="flex gap-1 overflow-x-auto border-b border-[#e5eaf1] px-4 py-2.5">
+              {filters.map((item) => <button key={item} type="button" onClick={() => setFilter(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold ${filter === item ? "bg-[#eaf1ff] text-[#1546ad]" : "text-[#526071] hover:bg-[#f4f7fb]"}`}>{item}</button>)}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {list.isLoading ? <ListSkeleton /> : list.error ? <State title="Список диалогов не загрузился" text={getApiErrorMessage(list.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => list.refetch()} /> : conversations.length === 0 ? <State title="У вас ещё нет ни одного чата" /> : conversations.map((item) => <ConversationItem key={item.id} item={item} active={item.id === effectiveSelectedId} onClick={() => { setSelectedId(item.id); setReply(""); setActionMessage(null); }} />)}
+            </div>
           </section>
 
-          {/* Колонка 3 — контекст диалога. */}
-          <section className="min-w-0">
-            <p className="wf-kicker">Контекст</p>
-
-            {thread ? (
-              <>
-                <dl className="mt-2">
-                  {channelName ? (
-                    <>
-                      <div className="flex items-baseline justify-between gap-4 py-2">
-                        <dt className="wf-muted shrink-0 text-sm">Канал</dt>
-                        <dd
-                          className="min-w-0 truncate text-sm"
-                          title={thread.channelId || undefined}
-                        >
-                          {channelName}
-                        </dd>
-                      </div>
-                      <div className="wf-divider" />
-                    </>
-                  ) : null}
-                  <div className="flex items-baseline justify-between gap-4 py-2">
-                    <dt className="wf-muted shrink-0 text-sm">Клиент</dt>
-                    <dd
-                      className="min-w-0 truncate text-sm"
-                      title={thread.customerId || undefined}
-                    >
-                      {thread.customerName}
-                    </dd>
-                  </div>
-                  <div className="wf-divider" />
-                  <div className="flex items-center justify-between gap-4 py-2">
-                    <dt className="wf-muted shrink-0 text-sm">Статус</dt>
-                    <dd className="min-w-0">
-                      <StatusTag status={thread.status} />
-                    </dd>
-                  </div>
-                  <div className="wf-divider" />
-                </dl>
-
-                <ul className="wf-muted mt-3 space-y-1 text-sm">
-                  <li>{aiSignal(messages)}</li>
-                  <li>{`${thread.unreadCount} непрочитано`}</li>
-                  <li>История синхронизирована</li>
-                  <li>
-                    {`Обновлено ${formatNullableDate(thread.lastMessageAt, "нет даты")}`}
-                  </li>
-                </ul>
-
-                <button
-                  type="button"
-                  onClick={() => escalateMutation.mutate()}
-                  disabled={!activeConversationId || isActionPending}
-                  className="wf-btn mt-4 w-full"
-                >
-                  <ArrowUpRight
-                    size={18}
-                    className="text-muted"
-                    aria-hidden="true"
-                  />
-                  {escalateMutation.isPending
-                    ? "Передаём менеджеру..."
-                    : "Передать менеджеру"}
-                </button>
-              </>
-            ) : (
-              <p className="wf-muted mt-2 text-sm">
-                Карточка клиента появится после выбора обращения.
-              </p>
-            )}
+          <section className="relative flex min-h-[620px] min-w-0 flex-col bg-[#f4f7fb] soft-grid">
+            {!effectiveSelectedId ? <State title="Выберите диалог" text="Переписка откроется здесь." /> : thread.isLoading ? <div className="grid flex-1 place-items-center"><Loader2 className="animate-spin text-[#2463eb]" /></div> : thread.error ? <State title="Диалог не загрузился" text={getApiErrorMessage(thread.error, "Попробуйте ещё раз.")} action="Повторить" onAction={() => thread.refetch()} /> : thread.data ? <>
+              <header className="relative flex min-h-[65px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[#d9e1ec] bg-white px-4 py-3 sm:px-6">
+                <div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-full bg-[#eaf1ff] text-xs font-extrabold text-[#1546ad]">{initials(thread.data.customer_name)}</span><div><h2 className="text-sm font-semibold">{thread.data.customer_name}</h2><p className="text-xs text-[#64717f]">{statusLabel(thread.data.status)} · {thread.data.channel_id}</p></div></div>
+                {isClosed(thread.data.status) ? <span className="rounded-lg bg-[#e5eaf1] px-3.5 py-2.5 text-sm font-semibold text-[#526071]">Диалог закрыт</span> : <button type="button" onClick={() => { setActionMessage(null); escalate.mutate(); }} disabled={escalate.isPending || send.isPending} className="min-h-10 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50">{escalate.isPending ? "Передаём…" : "Передать менеджеру"}</button>}
+              </header>
+              <div className="relative flex-1 space-y-4 overflow-y-auto p-6 sm:p-8">
+                <p className="text-center text-xs font-semibold text-[#64717f]">Сегодня</p>
+                {thread.data.messages.map((message) => {
+                  const outgoing = message.direction === "outbound" || message.sender_type === "manager" || message.sender_type === "ai";
+                  return <div key={message.id} className={`flex ${outgoing ? "justify-start" : "justify-end"}`}><div className={`max-w-[84%] rounded-lg border px-4 py-3 text-sm leading-relaxed shadow-[0_10px_22px_rgba(18,39,76,.07)] ${outgoing ? "border-[#d9e1ec] bg-white" : "border-[#2463eb] bg-[#2463eb] text-white"}`}><p>{message.text}</p><p className={`mt-1.5 text-right text-[11px] ${outgoing ? "text-[#64717f]" : "text-white/75"}`}>{time(message.created_at)}</p></div></div>;
+                })}
+              </div>
+              <form onSubmit={(event) => { event.preventDefault(); const text = reply.trim(); if (!text || isClosed(thread.data.status)) return; setActionMessage(null); send.mutate(text); }} className="relative m-4 flex items-end gap-2 rounded-lg border border-[#d9e1ec] bg-white p-2 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:m-6">
+                <button type="button" aria-label="Прикрепить файл" title="Прикрепление файлов скоро появится" disabled className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#64717f] disabled:opacity-40"><Paperclip size={19} /></button>
+                <textarea aria-label="Ответ клиенту" value={reply} onChange={(event) => setReply(event.target.value)} placeholder={isClosed(thread.data.status) ? "Диалог закрыт" : "Введите сообщение"} rows={1} disabled={isClosed(thread.data.status) || send.isPending || escalate.isPending} className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60" />
+                <button type="submit" aria-label="Отправить ответ" disabled={!reply.trim() || isClosed(thread.data.status) || send.isPending || escalate.isPending} className="flex size-10 shrink-0 items-center justify-center rounded-full text-[#2463eb] hover:bg-[#eaf1ff] disabled:opacity-40">{send.isPending ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}</button>
+              </form>
+            </> : null}
+            {actionMessage && <p role="status" className={`absolute right-6 bottom-20 rounded-lg px-3 py-2 text-xs ${send.error || escalate.error ? "bg-[#fdeded] text-[#a72f2f]" : "bg-[#e8f7ef] text-[#16734a]"}`}>{actionMessage}</p>}
           </section>
         </div>
       </div>
@@ -597,356 +99,13 @@ export default function InboxPage() {
   );
 }
 
-/** Шаг маршрута разбора обращения. Пройденный шаг отличается только тоном
-    текста: цвета в каркасе нет, поэтому неактивный шаг приглушён. */
-function WorkflowStep({
-  number,
-  label,
-  active,
-}: {
-  number: string;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <span className="flex shrink-0 items-center gap-2">
-      <span className="wf-muted text-xs tabular-nums" aria-hidden="true">
-        {number}
-      </span>
-      <span
-        className={`whitespace-nowrap text-[13px] font-medium ${
-          active ? "text-ink" : "text-faint"
-        }`}
-      >
-        {label}
-      </span>
-    </span>
-  );
+function ConversationItem({ item, active, onClick }: { item: ConversationResponse; active: boolean; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`block w-full border-b border-[#e5eaf1] px-4 py-3.5 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : ""}`}><div className="flex items-center gap-2"><span className={`size-2 shrink-0 rounded-full ${item.unread_count ? "bg-[#2463eb]" : "bg-[#13a66b]"}`} /><span className="min-w-0 truncate text-sm font-semibold">{item.customer_name}</span><span className="ml-auto shrink-0 text-xs tabular-nums text-[#64717f]">{time(item.last_message_at)}</span></div><p className="mt-1.5 truncate text-[13px] text-[#526071]">{item.last_message_preview || "Новый диалог"}</p><div className="mt-1.5 flex gap-1.5"><span className="rounded-[5px] bg-[#fff2df] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#b86500]">{statusLabel(item.status)}</span><span className="rounded-[5px] bg-[#f4f7fb] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#526071]">Канал</span></div></button>;
 }
 
-function MessageRow({ message }: { message: ConversationMessageResponse }) {
-  const direction = normalizeDirection(message.direction, message.sender_type);
-  const isOutbound = direction === "outbound";
-  const isInternal = direction === "internal";
-  const isAi = isOutbound && message.sender_type === "ai";
-  const sources = messageSources(message.ai_meta);
-  const confidence = confidencePercent(message.confidence);
-
-  if (isInternal) {
-    return (
-      <div className="flex justify-center">
-        <div className="max-w-[86%] text-center">
-          <p className="wf-muted text-xs">
-            {directionLabel(direction, message.sender_type)}
-            <span className="px-1.5">·</span>
-            {formatNullableDate(message.created_at, "нет даты")}
-          </p>
-          <p className="wf-muted mt-1 text-sm break-words">
-            {message.text || "Пустое сообщение"}
-          </p>
-          <p className="wf-muted mt-1 text-xs">
-            {messageStatusLabel(message.status)}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Клиент — слева на сером фоне, AI и менеджер — справа на белом.
-  return (
-    <div className={isOutbound ? "flex justify-end" : "flex justify-start"}>
-      <div className={`${isOutbound ? "wf-box" : "wf-fill"} max-w-[86%] p-3`}>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span className="font-semibold">
-            {directionLabel(direction, message.sender_type)}
-          </span>
-          <span className="wf-muted tabular-nums">
-            {formatNullableDate(message.created_at, "нет даты")}
-          </span>
-          {isAi && confidence !== null ? (
-            <span className="wf-muted tabular-nums">
-              Уверенность {confidence}%
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-2 text-sm break-words whitespace-pre-line">
-          {message.text || "Пустое сообщение"}
-        </p>
-        {sources.length > 0 ? (
-          <div className="mt-3">
-            <p className="text-xs font-semibold">Источники ответа</p>
-            <ul className="mt-1.5 flex flex-wrap gap-1.5">
-              {sources.map((source) => (
-                <li key={source} className="max-w-full">
-                  <span className="wf-tag max-w-full truncate">{source}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <p className="wf-muted mt-2 text-xs">
-          {messageStatusLabel(message.status)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function StatusTag({ status }: { status: ConversationStatus }) {
-  return <span className="wf-tag">{statusLabel(status)}</span>;
-}
-
-function normalizeConversations(
-  value: ConversationResponse[] | undefined,
-): ConversationView[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.map((conversation) => ({
-    id: conversation.id,
-    channelId: conversation.channel_id,
-    customerId: conversation.customer_id,
-    customerName: safeText(conversation.customer_name, "Клиент без имени"),
-    status: normalizeStatus(conversation.status),
-    lastMessageAt: conversation.last_message_at,
-    lastMessagePreview: safeText(conversation.last_message_preview, ""),
-    unreadCount: Number.isFinite(conversation.unread_count)
-      ? conversation.unread_count
-      : 0,
-    messages: [],
-  }));
-}
-
-function normalizeThread(
-  value: ConversationThreadResponse | undefined,
-  fallback?: ConversationView,
-): ConversationView | null {
-  if (!value && fallback) {
-    return fallback;
-  }
-
-  const thread = value;
-
-  if (!thread) {
-    return null;
-  }
-
-  return {
-    id: thread.id,
-    channelId: thread.channel_id,
-    customerId: thread.customer_id,
-    customerName: safeText(thread.customer_name, "Клиент без имени"),
-    status: normalizeStatus(thread.status),
-    lastMessageAt: thread.last_message_at,
-    lastMessagePreview: safeText(thread.last_message_preview, ""),
-    unreadCount: Number.isFinite(thread.unread_count) ? thread.unread_count : 0,
-    messages: Array.isArray(thread.messages) ? thread.messages : [],
-  };
-}
-
-function normalizeStatus(value: unknown): ConversationStatus {
-  if (
-    value === "open" ||
-    value === "ai_replied" ||
-    value === "escalated" ||
-    value === "closed"
-  ) {
-    return value;
-  }
-
-  return "unknown";
-}
-
-function normalizeDirection(
-  direction: unknown,
-  senderType?: string,
-): MessageDirection {
-  if (
-    direction === "inbound" ||
-    direction === "outbound" ||
-    direction === "internal"
-  ) {
-    return direction;
-  }
-
-  if (senderType === "customer") {
-    return "inbound";
-  }
-
-  if (senderType === "manager" || senderType === "ai") {
-    return "outbound";
-  }
-
-  if (senderType === "system") {
-    return "internal";
-  }
-
-  return "unknown";
-}
-
-function statusLabel(status: ConversationStatus) {
-  switch (status) {
-    case "open":
-      return "Открыт";
-    case "ai_replied":
-      return "AI ответил";
-    case "escalated":
-      return "Эскалация";
-    case "closed":
-      return "Закрыт";
-    default:
-      return "Неизвестно";
-  }
-}
-
-/**
- * Человекочитаемое название канала из channel_id. Идентификатор вида
- * `telegram` или `telegram-1` даёт тип канала, непрозрачный UUID — нет:
- * в этом случае возвращаем null, и строка канала просто не выводится.
- */
-function channelLabel(channelId: string | null | undefined): string | null {
-  if (typeof channelId !== "string") {
-    return null;
-  }
-
-  const type = channelId.trim().toLowerCase().split(/[-_:.\s]/)[0];
-
-  return channelTypeLabels[type] ?? null;
-}
-
-function directionLabel(direction: MessageDirection, senderType?: string) {
-  if (direction === "inbound") {
-    return "Клиент";
-  }
-
-  if (direction === "outbound") {
-    return senderType === "ai" ? "AI" : "Менеджер";
-  }
-
-  if (direction === "internal") {
-    return "Система";
-  }
-
-  return "Неизвестный отправитель";
-}
-
-function messageStatusLabel(status: string) {
-  switch (status) {
-    case "sent":
-      return "отправлено";
-    case "delivered":
-      return "доставлено";
-    case "failed":
-      return "ошибка отправки";
-    case "draft":
-      return "черновик";
-    default:
-      return status ? `статус: ${status}` : "статус неизвестен";
-  }
-}
-
-function messageSources(
-  aiMeta: ConversationMessageResponseAiMeta | undefined,
-): string[] {
-  const rawSources = aiMeta?.sources;
-
-  if (!Array.isArray(rawSources)) {
-    return [];
-  }
-
-  return rawSources
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter((item) => item.length > 0);
-}
-
-function confidencePercent(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return null;
-  }
-
-  return Math.round(value * 100);
-}
-
-function formatNullableDate(
-  value: string | null | undefined,
-  fallback: string,
-) {
-  if (!value) {
-    return fallback;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return fallback;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatCompactDate(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  const today = new Date();
-  const isToday = date.toDateString() === today.toDateString();
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    ...(isToday
-      ? { hour: "2-digit", minute: "2-digit" }
-      : { day: "2-digit", month: "2-digit" }),
-  }).format(date);
-}
-
-function safeText(value: unknown, fallback: string) {
-  return typeof value === "string" && value.trim() ? value : fallback;
-}
-
-function aiSignal(messages: ConversationMessageResponse[]) {
-  const aiMessages = messages.filter((message) => message.sender_type === "ai");
-  const confidenceValues = aiMessages
-    .map((message) => message.confidence)
-    .filter(
-      (value): value is number =>
-        typeof value === "number" && Number.isFinite(value),
-    );
-
-  if (confidenceValues.length === 0) {
-    return aiMessages.length > 0
-      ? "AI уже участвовал в диалоге"
-      : "AI ещё не отвечал";
-  }
-
-  const average =
-    confidenceValues.reduce((sum, value) => sum + value, 0) /
-    confidenceValues.length;
-  return `Средняя уверенность AI: ${Math.round(average * 100)}%`;
-}
-
-async function refetchAfterAction(
-  queryClient: ReturnType<typeof useQueryClient>,
-  conversationId: string | null,
-) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["conversations"] }),
-    conversationId
-      ? queryClient.invalidateQueries({
-          queryKey: ["conversation", conversationId],
-        })
-      : Promise.resolve(),
-  ]);
-}
+function ListSkeleton() { return <div className="space-y-3 p-4">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-[#e5eaf1]" />)}</div>; }
+function State({ title, text, action, onAction }: { title: string; text?: string; action?: string; onAction?: () => void }) { return <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center"><h3 className="font-extrabold">{title}</h3>{text && <p className="mt-2 max-w-sm text-sm text-[#526071]">{text}</p>}{action && <button type="button" onClick={onAction} className="mt-4 rounded-lg bg-[#2463eb] px-4 py-2 text-sm font-semibold text-white">{action}</button>}</div>; }
+function initials(name: string) { return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
+function time(value: string | null) { return value ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : ""; }
+function isClosed(status: string) { return status.toLowerCase().includes("clos"); }
+function statusLabel(status: string) { const value = status.toLowerCase(); if (value.includes("escalat")) return "Нужен человек"; if (isClosed(value)) return "Закрыт"; if (value.includes("answer") || value.includes("replied")) return "Отвечено"; if (value === "open") return "Открыт"; return status || "Новый"; }

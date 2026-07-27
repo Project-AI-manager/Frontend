@@ -1,555 +1,583 @@
 "use client";
 
-import { Check, ClipboardCheck, Copy, RefreshCw, Send } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  MessageCircle,
+  RadioTower,
+  RefreshCw,
+  Send,
+  Store,
+  UsersRound,
+} from "lucide-react";
+import { type FormEvent, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { StateCard } from "@/components/ui/state-card";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import { axiosInstance } from "@/lib/api/client";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
 
-type ChannelStatus = "active" | "disabled" | "error" | "unknown";
+type AuthStep = "phone" | "code" | "password" | "active";
 
-type ChannelRow = {
-  id?: string;
-  type: string;
-  name: string;
-  status: ChannelStatus;
-  updatedAt?: string;
-};
-
-type StepState = "done" | "current" | "next";
-
-const channelsApi = getChannels();
-
-const UNKNOWN_TYPE_LABEL = "Тип не определён";
-
-const skeletonRows = [0, 1, 2];
-
-const onboardingSteps = [
-  "Ввести номер личного Telegram-аккаунта.",
-  "Подтвердить одноразовый код из Telegram.",
-  "При необходимости ввести пароль облачной 2FA.",
-  "Проверить входящее тестовое сообщение и убедиться, что диалог появился в inbox.",
-];
-
-/** Подписи шагов авторизации совпадают с подписью активного поля формы. */
-const authSteps = [
-  { key: "phone", label: "Номер телефона" },
-  { key: "code", label: "Код из Telegram" },
-  { key: "password", label: "Пароль 2FA" },
+const api = getChannels();
+const catalog = [
+  {
+    id: "telegram-account",
+    name: "Telegram",
+    account: "Личный аккаунт",
+    mark: "TG",
+    icon: MessageCircle,
+  },
+  {
+    id: "telegram-bot",
+    name: "Telegram Bot",
+    account: "Бот для обращений",
+    mark: "BOT",
+    icon: Send,
+  },
+  {
+    id: "vk",
+    name: "VK",
+    account: "Сообщения сообщества",
+    mark: "VK",
+    icon: UsersRound,
+  },
+  {
+    id: "max",
+    name: "MAX",
+    account: "Диалоги в MAX",
+    mark: "MAX",
+    icon: RadioTower,
+  },
+  {
+    id: "avito",
+    name: "Avito",
+    account: "Сообщения объявлений",
+    mark: "A",
+    icon: Store,
+  },
+  {
+    id: "web",
+    name: "Веб-чат",
+    account: "Чат на сайте",
+    mark: "WEB",
+    icon: MessageCircle,
+  },
 ] as const;
 
 export default function ChannelsPage() {
+  const queryClient = useQueryClient();
+  const [editingBot, setEditingBot] = useState(false);
+  const [botToken, setBotToken] = useState("");
+  const [botUsername, setBotUsername] = useState("");
+  const [botMessage, setBotMessage] = useState<string | null>(null);
+
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [authChannelId, setAuthChannelId] = useState<string | null>(null);
-  const [authStep, setAuthStep] = useState<"phone" | "code" | "password" | "active">("phone");
-  const [formMessage, setFormMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [authStep, setAuthStep] = useState<AuthStep>("phone");
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const channels = useQuery({
     queryKey: ["channels"],
-    queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
+    queryFn: () => api.listChannelsApiV1ChannelsGet(),
     retry: 1,
   });
 
-  const channels = useMemo(() => normalizeChannels(data), [data]);
-  const telegramChannel = channels.find(
-    (channel) => channel.type === "telegram",
-  );
-  const hasTelegram = Boolean(telegramChannel);
-
-  const syncCards = [
-    {
-      label: "Связь с сервисом",
-      value: error ? "Ошибка запроса" : isLoading ? "Проверяем" : "Доступен",
+  const connectBot = useMutation({
+    mutationFn: () =>
+      api.connectChannelApiV1ChannelsPost({
+        type: "telegram",
+        bot_token: botToken.trim(),
+        bot_username: botUsername.trim() || undefined,
+        name: "Telegram Bot",
+      }),
+    onSuccess: async () => {
+      setBotMessage("Telegram Bot подключён.");
+      setBotToken("");
+      setBotUsername("");
+      setEditingBot(false);
+      await queryClient.invalidateQueries({ queryKey: ["channels"] });
     },
-    {
-      label: "Telegram",
-      value: hasTelegram
-        ? statusLabel(telegramChannel?.status)
-        : "Не подключён",
-    },
-    {
-      label: "Последняя синхронизация",
-      value: telegramChannel?.updatedAt
-        ? formatDate(telegramChannel.updatedAt)
-        : "ещё не запускалась",
-    },
-  ] as const;
+    onError: (error) =>
+      setBotMessage(
+        getApiErrorMessage(error, "Не удалось подключить Telegram Bot."),
+      ),
+  });
 
-  const activeStepIndex =
-    authStep === "phone"
-      ? 0
-      : authStep === "code"
-        ? 1
-        : authStep === "password"
-          ? 2
-          : 3;
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submitPersonalAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFormMessage(null);
+    setAuthMessage(null);
+    setAuthError(false);
 
-    setIsSubmitting(true);
+    if (authStep === "phone" && phone.trim().length < 8) {
+      setAuthError(true);
+      setAuthMessage("Введите номер телефона в международном формате.");
+      return;
+    }
+    if (authStep === "code" && code.trim().length < 3) {
+      setAuthError(true);
+      setAuthMessage("Введите код из Telegram.");
+      return;
+    }
+    if (authStep === "password" && !password) {
+      setAuthError(true);
+      setAuthMessage("Введите пароль облачной 2FA.");
+      return;
+    }
+
+    setIsAuthorizing(true);
 
     try {
       if (authStep === "phone") {
-        const { data } = await axiosInstance.post<{ channel_id: string }>(
-          "/api/v1/channels/telegram/account/start",
-          { phone: phone.trim() },
-        );
-        setAuthChannelId(data.channel_id);
-        setAuthStep("code");
-        setFormMessage("Код отправлен в Telegram. Введи его ниже.");
-      } else if (authStep === "code" && authChannelId) {
-        const { data } = await axiosInstance.post<{ status: string; display_name?: string }>(
-          "/api/v1/channels/telegram/account/confirm",
-          { channel_id: authChannelId, code: code.trim() },
-        );
-        if (data.status === "password_required") {
-          setAuthStep("password");
-          setFormMessage("Аккаунт защищён 2FA. Введи облачный пароль.");
+        const response = await axiosInstance.post<{
+          channel_id: string;
+          status: "code_required" | "active";
+        }>("/api/v1/channels/telegram/account/start", {
+          phone: phone.trim(),
+        });
+
+        setAuthChannelId(response.data.channel_id);
+        if (response.data.status === "active") {
+          await completePersonalAccount();
         } else {
-          setAuthStep("active");
-          setFormMessage(`Telegram подключён${data.display_name ? `: ${data.display_name}` : "."}`);
-          await refetch();
+          setAuthStep("code");
+          setAuthMessage("Код отправлен в Telegram. Введи его ниже.");
+        }
+      } else if (authStep === "code" && authChannelId) {
+        const response = await axiosInstance.post<{
+          status: "password_required" | "active";
+          display_name?: string;
+        }>("/api/v1/channels/telegram/account/confirm", {
+          channel_id: authChannelId,
+          code: code.trim(),
+        });
+
+        if (response.data.status === "password_required") {
+          setAuthStep("password");
+          setAuthMessage("Аккаунт защищён 2FA. Введи облачный пароль.");
+        } else {
+          await completePersonalAccount(response.data.display_name);
         }
       } else if (authStep === "password" && authChannelId) {
-        const { data } = await axiosInstance.post<{ display_name?: string }>(
+        const response = await axiosInstance.post<{ display_name?: string }>(
           "/api/v1/channels/telegram/account/password",
           { channel_id: authChannelId, password },
         );
         setPassword("");
-        setAuthStep("active");
-        setFormMessage(`Telegram подключён${data.display_name ? `: ${data.display_name}` : "."}`);
-        await refetch();
+        await completePersonalAccount(response.data.display_name);
       }
-    } catch (submitError) {
-      setFormMessage(
+    } catch (error) {
+      setAuthError(true);
+      setAuthMessage(
         getApiErrorMessage(
-          submitError,
-          "Не удалось подключить Telegram. Проверь данные и повтори попытку.",
+          error,
+          "Не удалось подключить Telegram. Проверьте данные и повторите попытку.",
         ),
       );
     } finally {
-      setIsSubmitting(false);
+      setIsAuthorizing(false);
     }
   }
 
-  async function copyToClipboard(value: string, key: string) {
-    await navigator.clipboard.writeText(value);
-    setCopied(key);
-    window.setTimeout(() => setCopied(null), 1600);
+  async function completePersonalAccount(displayName?: string) {
+    setAuthStep("active");
+    setAuthMessage(
+      `Telegram подключён${displayName ? `: ${displayName}` : "."}`,
+    );
+    await queryClient.invalidateQueries({ queryKey: ["channels"] });
+  }
+
+  function submitBot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (botToken.trim().length < 10) {
+      setBotMessage("Введите корректный токен Telegram-бота.");
+      return;
+    }
+    setBotMessage(null);
+    connectBot.mutate();
+  }
+
+  function restartPersonalAccount() {
+    setPhone("");
+    setCode("");
+    setPassword("");
+    setAuthChannelId(null);
+    setAuthStep("phone");
+    setAuthMessage(null);
+    setAuthError(false);
   }
 
   return (
     <AppShell
       title="Каналы"
-      description="Подключение Telegram и контроль состояния рабочего канала."
+      description="Подключения, через которые клиенты пишут ассистенту."
     >
-      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
-        {/* Карточка канала: статус, диагностика, технические детали. */}
-        <section className="wf-box p-4 sm:p-5">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-            <div className="min-w-0">
-              <p className="wf-kicker">Состояние подключения</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h2 className="wf-title">Telegram</h2>
-                <span className="wf-dot shrink-0" aria-hidden="true" />
-                <span className="wf-tag shrink-0">
-                  {hasTelegram
-                    ? statusLabel(telegramChannel?.status)
-                    : "Не подключён"}
-                </span>
-              </div>
-              <p className="wf-muted mt-2 max-w-2xl text-sm leading-6 text-balance">
-                Авторизуй личный аккаунт и отправь ему тестовое сообщение —
-                оно появится в общей ленте диалогов.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="wf-btn shrink-0 self-start"
-            >
-              <RefreshCw size={18} className="text-muted" aria-hidden="true" />
-              Обновить статус
-            </button>
-          </div>
-
-          {/* Диагностика: строки «параметр → значение». */}
-          <dl className="wf-fill mt-4">
-            {syncCards.map((item) => (
-              <div
-                key={item.label}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2.5 last:border-b-0"
-              >
-                <dt className="wf-muted text-sm">{item.label}</dt>
-                <dd className="min-w-0 text-sm">{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className="mt-4">
-            <CopyCard
-              title="Режим подключения"
-              description={
-                hasTelegram
-                  ? "Личный аккаунт подключён через постоянную MTProto-сессию."
-                  : "Webhook и Telegram-бот для этого режима не требуются."
-              }
-              value="MTProto · локальный listener"
-              copied={copied === "webhook"}
-              onCopy={() => copyToClipboard("MTProto · локальный listener", "webhook")}
-            />
-          </div>
-
-          {error ? (
-            <StateCard
-              className="mt-4"
-              title="Не удалось получить список каналов"
-              description={getApiErrorMessage(
-                error,
-                "Обнови страницу или повтори попытку позже.",
-              )}
-              variant="error"
-            />
-          ) : null}
-        </section>
-
-        {/* Пошаговый поток авторизации личного аккаунта. */}
-        <section className="wf-box grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px]">
-          <form onSubmit={handleSubmit} className="min-w-0 p-4 sm:p-5">
-            <p className="wf-kicker">Авторизация</p>
-            <h2 className="wf-title mt-1.5 text-balance">
-              Подключение личного Telegram
-            </h2>
-            <p className="wf-muted mt-2 text-sm leading-6">
-              Данные передаются и хранятся в защищённом виде.
+      <div className="relative min-h-[660px] overflow-hidden rounded-lg border border-[#d9e1ec] bg-[#f4f7fb] p-5 shadow-[0_18px_42px_rgba(18,39,76,.09)] soft-grid sm:p-7">
+        <div className="relative mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#64717f]">
+              Интеграции
             </p>
-
-            <ol className="mt-4 space-y-1.5">
-              {authSteps.map((step, index) => {
-                const state: StepState =
-                  index < activeStepIndex
-                    ? "done"
-                    : index === activeStepIndex
-                      ? "current"
-                      : "next";
-
-                return (
-                  <li
-                    key={step.key}
-                    aria-current={state === "current" ? "step" : undefined}
-                    className={`flex items-center gap-2 text-sm leading-6 ${
-                      state === "current" ? "font-semibold" : "wf-muted"
-                    }`}
-                  >
-                    <span className="shrink-0 tabular-nums">{index + 1}.</span>
-                    <span className="min-w-0">{step.label}</span>
-                    {state === "done" ? (
-                      <Check
-                        size={18}
-                        className="shrink-0 text-muted"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
-
-            <label
-              className="wf-label mt-5"
-              htmlFor="telegram-token"
-            >
-              {authStep === "phone" ? "Номер телефона" : authStep === "code" ? "Код из Telegram" : "Пароль 2FA"}
-            </label>
-            <input
-              id="telegram-token"
-              type={authStep === "password" ? "password" : "text"}
-              value={authStep === "phone" ? phone : authStep === "code" ? code : password}
-              onChange={(event) => {
-                if (authStep === "phone") setPhone(event.target.value);
-                else if (authStep === "code") setCode(event.target.value);
-                else setPassword(event.target.value);
-              }}
-              className="wf-field text-sm"
-              placeholder={authStep === "phone" ? "+7 999 000-00-00" : authStep === "code" ? "12345" : "Облачный пароль"}
-              disabled={isSubmitting || authStep === "active"}
+            <p className="mt-1 text-sm text-[#526071]">
+              Личный Telegram работает через защищённую MTProto-сессию.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => channels.refetch()}
+            disabled={channels.isFetching}
+            className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold hover:bg-[#f8fafc] disabled:opacity-60 sm:self-auto"
+          >
+            <RefreshCw
+              size={16}
+              className={channels.isFetching ? "animate-spin" : ""}
             />
+            Обновить статус
+          </button>
+        </div>
 
-            {formMessage ? (
-              <p className="wf-fill mt-4 p-3 text-sm leading-6" role="status">
-                {formMessage}
-              </p>
+        <>
+          {channels.isLoading ? <Skeleton /> : null}
+            {channels.error ? (
+              <StateCard
+                className="relative mb-4"
+                title="Статусы каналов недоступны"
+                description={getApiErrorMessage(
+                  channels.error,
+                  "Ошибка запроса. Формы подключения по-прежнему доступны.",
+                )}
+                variant="error"
+                action={
+                  <button
+                    type="button"
+                    className="wf-btn"
+                    onClick={() => channels.refetch()}
+                  >
+                    Повторить
+                  </button>
+                }
+              />
             ) : null}
 
-            <p className="wf-fill mt-4 p-3 text-sm leading-6">
-              Сессия аккаунта шифруется на backend. Код и пароль 2FA не сохраняются.
-            </p>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="wf-btn wf-btn-primary mt-4 w-full sm:w-auto"
+            <div
+              className={`relative grid gap-4 lg:grid-cols-2 ${
+                channels.isLoading ? "mt-4" : ""
+              }`}
             >
-              <Send size={18} aria-hidden="true" />
-              {authStep === "phone" ? "Отправить код" : authStep === "code" ? "Подтвердить код" : authStep === "password" ? "Подтвердить 2FA" : "Аккаунт подключён"}
-            </button>
-          </form>
+              {catalog.map((item) => {
+                const actual = findChannel(channels.data, item.id);
+                const connected = isConnected(actual);
+                const Icon = item.icon;
 
-          <aside className="min-w-0 border-t border-line bg-surface p-4 sm:p-5 lg:border-t-0 lg:border-l">
-            <h3 className="text-base font-semibold">После подключения</h3>
-            <p className="wf-muted mt-1 text-sm">Короткая проверка</p>
-
-            <ol className="mt-4 space-y-2">
-              {onboardingSteps.slice(1).map((item, index) => (
-                <li key={item} className="flex gap-2 text-sm leading-6">
-                  <span className="wf-muted shrink-0 tabular-nums">
-                    {index + 1}.
-                  </span>
-                  <span className="wf-muted min-w-0">{item}</span>
-                </li>
-              ))}
-            </ol>
-          </aside>
-        </section>
-
-        {/* Требования к подключению: что нужно от пользователя. */}
-        <section className="wf-box p-4 sm:p-5">
-          <p className="wf-kicker">Инструкция</p>
-          <h2 className="wf-title mt-1.5 text-balance">Порядок подключения</h2>
-          <p className="wf-muted mt-2 text-sm leading-6">
-            Короткий чек-лист Telegram
-          </p>
-
-          <ol className="mt-4 space-y-2">
-            {onboardingSteps.map((item, index) => (
-              <li key={item} className="flex gap-2 text-sm leading-6">
-                <span className="wf-muted shrink-0 tabular-nums">
-                  {index + 1}.
-                </span>
-                <span className="min-w-0">{item}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Подключённые каналы. */}
-        <section>
-          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-            <div className="min-w-0">
-              <p className="wf-kicker">Все подключения</p>
-              <h2 className="wf-title mt-1.5 text-balance">
-                Подключённые каналы
-              </h2>
-              <p className="wf-muted mt-2 text-sm leading-6">
-                Список синхронизируется с рабочим пространством.
-              </p>
-            </div>
-            <span className="wf-tag shrink-0 self-start md:self-auto">
-              {channels.length} всего
-            </span>
-          </div>
-
-          <div className="mt-3">
-            {isLoading ? (
-              <div
-                role="status"
-                aria-label="Загружаем каналы"
-                className="space-y-2"
-              >
-                {skeletonRows.map((row) => (
-                  <div key={row} className="wf-box p-3">
-                    <span className="wf-skeleton block h-3.5 w-40" />
-                    <span className="wf-skeleton mt-2 block h-3 w-24" />
-                    <span className="wf-skeleton mt-3 block h-5 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : channels.length > 0 ? (
-              <ul className="space-y-2">
-                {channels.map((channel) => {
-                  const typeLabel = channelTypeLabel(channel.type);
-
-                  return (
-                    <li
-                      key={channel.id ?? channel.type}
-                      className="wf-box grid gap-2 p-3 md:grid-cols-[minmax(0,1fr)_140px_190px] md:items-center"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {channel.name}
+                return (
+                  <article
+                    key={item.id}
+                    className="rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-[0_10px_22px_rgba(18,39,76,.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(18,39,76,.09)] sm:p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-[#d9e1ec] text-xs font-extrabold text-[#526071]">
+                        <Icon size={20} className="sm:hidden" />
+                        <span className="hidden sm:inline">{item.mark}</span>
+                      </span>
+                      <div className="min-w-[130px] flex-1">
+                        <h2 className="font-extrabold">
+                          {actual?.name || item.name}
+                        </h2>
+                        <p className="mt-0.5 truncate text-[13px] text-[#64717f]">
+                          {channelAccount(actual) || item.account}
                         </p>
-                        {/* Показываем человекочитаемый тип; сырой слаг модели
-                            данных остаётся только в подсказке title. Если имя
-                            канала и есть его тип — вторую строку не дублируем. */}
-                        {typeLabel === channel.name ? null : (
-                          <p
-                            className="wf-muted truncate text-sm"
-                            title={channel.type}
-                          >
-                            {typeLabel}
-                          </p>
-                        )}
                       </div>
-                      <StatusTag status={channel.status} />
-                      <p className="wf-muted text-sm">
-                        {channel.updatedAt
-                          ? formatDate(channel.updatedAt)
-                          : "нет синхронизации"}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <StateCard
-                title="Каналы ещё не подключены"
-                description="Авторизуй личный Telegram-аккаунт выше, и канал появится здесь после подтверждения кода."
-              />
-            )}
-          </div>
-        </section>
+                      <Status connected={connected} />
+                      {item.id === "telegram-bot" ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditingBot((value) => !value)}
+                          className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${
+                            connected
+                              ? "border border-[#d9e1ec] bg-white hover:bg-[#f4f7fb]"
+                              : "bg-[#2463eb] text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad]"
+                          }`}
+                        >
+                          {connected ? "Настроить" : "Подключить"}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {item.id === "telegram-account" ? (
+                      <PersonalAccountForm
+                        step={authStep}
+                        phone={phone}
+                        code={code}
+                        password={password}
+                        message={authMessage}
+                        hasError={authError}
+                        isSubmitting={isAuthorizing}
+                        onPhoneChange={setPhone}
+                        onCodeChange={setCode}
+                        onPasswordChange={setPassword}
+                        onSubmit={submitPersonalAccount}
+                        onRestart={restartPersonalAccount}
+                      />
+                    ) : null}
+
+                    {item.id === "telegram-bot" && editingBot ? (
+                      <form
+                        onSubmit={submitBot}
+                        className="mt-4 grid gap-3 border-t border-[#e5eaf1] pt-4 sm:grid-cols-2"
+                      >
+                        <label className="sm:col-span-2">
+                          <span className="mb-1 block text-xs font-semibold">
+                            Токен Telegram Bot
+                          </span>
+                          <input
+                            type="password"
+                            value={botToken}
+                            onChange={(event) => setBotToken(event.target.value)}
+                            placeholder="123456:ABC…"
+                            autoComplete="off"
+                            className="min-h-11 w-full rounded-lg border border-[#d9e1ec] px-3 text-sm outline-none focus:border-[#2463eb] focus:ring-3 focus:ring-[#eaf1ff]"
+                          />
+                        </label>
+                        <label>
+                          <span className="mb-1 block text-xs font-semibold">
+                            Username
+                          </span>
+                          <input
+                            value={botUsername}
+                            onChange={(event) =>
+                              setBotUsername(event.target.value)
+                            }
+                            placeholder="@autopilot_bot"
+                            className="min-h-11 w-full rounded-lg border border-[#d9e1ec] px-3 text-sm outline-none focus:border-[#2463eb] focus:ring-3 focus:ring-[#eaf1ff]"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={connectBot.isPending}
+                          className="mt-auto min-h-11 rounded-lg bg-[#2463eb] px-4 text-sm font-semibold text-white hover:bg-[#1546ad] disabled:opacity-60"
+                        >
+                          {connectBot.isPending ? "Подключаем…" : "Сохранить"}
+                        </button>
+                        {botMessage ? (
+                          <p
+                            role="status"
+                            className={`text-sm sm:col-span-2 ${
+                              connectBot.error
+                                ? "text-[#a72f2f]"
+                                : "text-[#08724b]"
+                            }`}
+                          >
+                            {botMessage}
+                          </p>
+                        ) : null}
+                      </form>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+        </>
       </div>
     </AppShell>
   );
 }
 
-function StatusTag({ status }: { status: ChannelStatus }) {
-  return <span className="wf-tag w-fit">{statusLabel(status)}</span>;
-}
-
-function CopyCard({
-  title,
-  description,
-  value,
-  copied,
-  onCopy,
+function PersonalAccountForm({
+  step,
+  phone,
+  code,
+  password,
+  message,
+  hasError,
+  isSubmitting,
+  onPhoneChange,
+  onCodeChange,
+  onPasswordChange,
+  onSubmit,
+  onRestart,
 }: {
-  title: string;
-  description: string;
-  value: string;
-  copied: boolean;
-  onCopy: () => void;
+  step: AuthStep;
+  phone: string;
+  code: string;
+  password: string;
+  message: string | null;
+  hasError: boolean;
+  isSubmitting: boolean;
+  onPhoneChange: (value: string) => void;
+  onCodeChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onRestart: () => void;
 }) {
-  return (
-    <div className="wf-fill flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-4">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{title}</p>
-        <p className="wf-muted text-sm leading-6">{description}</p>
-      </div>
-      <div className="flex min-w-0 items-center gap-2 sm:w-[270px]">
-        <code className="wf-box min-w-0 flex-1 truncate px-2 py-1.5 text-xs">
-          {value}
-        </code>
+  if (step === "active") {
+    return (
+      <div className="mt-4 border-t border-[#e5eaf1] pt-4">
+        {message ? (
+          <p
+            role="status"
+            className="rounded-lg bg-[#e8f7f0] p-3 text-sm font-semibold text-[#08724b]"
+          >
+            {message}
+          </p>
+        ) : null}
         <button
           type="button"
-          onClick={onCopy}
-          className="wf-btn shrink-0"
-          aria-label={`Скопировать ${title}`}
+          onClick={onRestart}
+          className="mt-3 min-h-11 rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold hover:bg-[#f4f7fb]"
         >
-          {copied ? (
-            <ClipboardCheck size={18} className="text-muted" aria-hidden="true" />
-          ) : (
-            <Copy size={18} className="text-muted" aria-hidden="true" />
-          )}
+          Подключить другой аккаунт
         </button>
       </div>
-    </div>
+    );
+  }
+
+  const label =
+    step === "phone"
+      ? "Номер телефона"
+      : step === "code"
+        ? "Код из Telegram"
+        : "Пароль 2FA";
+  const value = step === "phone" ? phone : step === "code" ? code : password;
+  const placeholder =
+    step === "phone"
+      ? "+7 999 000-00-00"
+      : step === "code"
+        ? "12345"
+        : "Облачный пароль";
+  const buttonLabel =
+    step === "phone"
+      ? "Отправить код"
+      : step === "code"
+        ? "Подтвердить код"
+        : "Подтвердить 2FA";
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 grid gap-3 border-t border-[#e5eaf1] pt-4"
+    >
+      <label>
+        <span className="mb-1 block text-xs font-semibold">{label}</span>
+        <input
+          type={step === "password" ? "password" : "text"}
+          inputMode={step === "password" ? undefined : "tel"}
+          autoComplete={step === "phone" ? "tel" : "one-time-code"}
+          value={value}
+          onChange={(event) => {
+            if (step === "phone") onPhoneChange(event.target.value);
+            else if (step === "code") onCodeChange(event.target.value);
+            else onPasswordChange(event.target.value);
+          }}
+          placeholder={placeholder}
+          disabled={isSubmitting}
+          className="min-h-11 w-full rounded-lg border border-[#d9e1ec] px-3 text-sm outline-none focus:border-[#2463eb] focus:ring-3 focus:ring-[#eaf1ff] disabled:bg-[#f4f7fb]"
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="min-h-11 rounded-lg bg-[#2463eb] px-4 text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60"
+        >
+          {isSubmitting ? "Проверяем…" : buttonLabel}
+        </button>
+        {step !== "phone" ? (
+          <button
+            type="button"
+            onClick={onRestart}
+            disabled={isSubmitting}
+            className="min-h-11 rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-60"
+          >
+            Начать заново
+          </button>
+        ) : null}
+      </div>
+      {message ? (
+        <p
+          role={hasError ? "alert" : "status"}
+          className={`rounded-lg p-3 text-sm font-semibold ${
+            hasError
+              ? "bg-[#fff1f1] text-[#a72f2f]"
+              : "bg-[#eaf1ff] text-[#1546ad]"
+          }`}
+        >
+          {message}
+        </p>
+      ) : null}
+      <p className="text-xs leading-5 text-[#64717f]">
+        Сессия шифруется на backend. Код и пароль 2FA не сохраняются.
+      </p>
+    </form>
   );
 }
 
-function normalizeChannels(value: ChannelResponse[] | undefined): ChannelRow[] {
-  if (!Array.isArray(value)) {
-    return [];
+function findChannel(channels: ChannelResponse[] | undefined, id: string) {
+  if (id === "telegram-account") {
+    return channels?.find(
+      (channel) =>
+        channel.type === "telegram" && channel.settings.transport === "mtproto",
+    );
   }
-
-  return value.map((item, index) => {
-    const type = item.type || "unknown";
-    const name =
-      typeof item.name === "string" && item.name.trim()
-        ? item.name
-        : channelName(type);
-    const status = normalizeStatus(item.status);
-    const updatedAt = item.updated_at;
-    const id = item.id || `${type}-${index}`;
-    return { id, type, name, status, updatedAt };
-  });
+  if (id === "telegram-bot") {
+    return channels?.find(
+      (channel) =>
+        channel.type === "telegram" && channel.settings.transport !== "mtproto",
+    );
+  }
+  return channels?.find((channel) => channel.type === id);
 }
 
-function normalizeStatus(value: unknown): ChannelStatus {
-  if (value === "active" || value === "disabled" || value === "error") {
-    return value;
-  }
-
-  return "unknown";
+function isConnected(channel?: ChannelResponse) {
+  return channel?.status === "active" || channel?.status === "connected";
 }
 
-function statusLabel(status?: ChannelStatus) {
-  switch (status) {
-    case "active":
-      return "Активен";
-    case "disabled":
-      return "Выключен";
-    case "error":
-      return "Ошибка";
-    default:
-      return "Неизвестно";
-  }
+function channelAccount(channel?: ChannelResponse) {
+  if (!channel) return "";
+  const username = channel.settings.username ?? channel.settings.bot_username;
+  return typeof username === "string" && username
+    ? username.startsWith("@")
+      ? username
+      : `@${username}`
+    : "";
 }
 
-/**
- * Человекочитаемое название типа канала. Сырой слаг модели данных
- * (`telegram`, `web`, `whatsapp_business`) в интерфейс не выносим —
- * он остаётся максимум в атрибуте `title`.
- */
-function channelTypeLabel(type: string) {
-  if (type === "telegram") {
-    return "Telegram";
-  }
-
-  if (type === "web") {
-    return "Веб-чат";
-  }
-
-  const readable = type.replace(/[_-]+/g, " ").trim();
-
-  if (!readable || readable === "unknown") {
-    return UNKNOWN_TYPE_LABEL;
-  }
-
-  return readable.charAt(0).toUpperCase() + readable.slice(1);
+function Status({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.08em] ${
+        connected
+          ? "bg-[#e8f7f0] text-[#08724b]"
+          : "bg-[#f4f7fb] text-[#526071]"
+      }`}
+    >
+      <span
+        className={`size-1.5 rounded-full ${
+          connected ? "bg-[#13a66b]" : "bg-[#98a2b3]"
+        }`}
+      />
+      {connected ? "Подключено" : "Не подключено"}
+    </span>
+  );
 }
 
-function channelName(type: string) {
-  const label = channelTypeLabel(type);
-
-  return label === UNKNOWN_TYPE_LABEL ? "Канал без названия" : label;
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+function Skeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Загружаем каналы"
+      className="relative grid gap-4 lg:grid-cols-2"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-24 animate-pulse rounded-lg bg-[#e5eaf1]"
+        />
+      ))}
+    </div>
+  );
 }

@@ -27,10 +27,6 @@ export type WorkspaceSettingsResponse = {
   status: string;
 };
 
-export type WorkspaceSettingsUpdate = {
-  name: string;
-};
-
 export type BillingSettingsResponse = {
   plan: string;
   plan_name: string;
@@ -43,30 +39,13 @@ export type BillingSettingsResponse = {
 
 export const settingsApi = {
   getAiSettings: () =>
-    apiClient<AISettingsResponse>({
-      url: "/api/v1/settings/ai",
-      method: "GET",
-    }),
+    apiClient<AISettingsResponse>({ url: "/api/v1/settings/ai", method: "GET" }),
   updateAiSettings: (data: AISettingsUpdate) =>
-    apiClient<AISettingsResponse>({
-      url: "/api/v1/settings/ai",
-      method: "PUT",
-      data,
-    }),
+    apiClient<AISettingsResponse>({ url: "/api/v1/settings/ai", method: "PUT", data }),
   getWorkspaceSettings: () =>
-    apiClient<WorkspaceSettingsResponse>({
-      url: "/api/v1/settings/workspace",
-      method: "GET",
-    }),
-  updateWorkspaceSettings: (data: WorkspaceSettingsUpdate) =>
-    apiClient<WorkspaceSettingsResponse>({
-      url: "/api/v1/settings/workspace",
-      method: "PUT",
-      data,
-    }),
+    apiClient<WorkspaceSettingsResponse>({ url: "/api/v1/settings/workspace", method: "GET" }),
+  updateWorkspaceSettings: (data: { name: string }) =>
+    apiClient<WorkspaceSettingsResponse>({ url: "/api/v1/settings/workspace", method: "PUT", data }),
   getBillingSettings: () =>
-    apiClient<BillingSettingsResponse>({
-      url: "/api/v1/settings/billing",
-      method: "GET",
-    }),
+    apiClient<BillingSettingsResponse>({ url: "/api/v1/settings/billing", method: "GET" }),
 };
