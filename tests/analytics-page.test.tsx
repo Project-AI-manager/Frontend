@@ -17,6 +17,8 @@ vi.mock("@/lib/api/analytics", () => ({
 }));
 
 const overview = {
+  date_from: "2026-06-28",
+  date_to: "2026-07-27",
   dialogs_total: 4812,
   dialogs_open: 100,
   dialogs_auto: 3753,
@@ -35,6 +37,13 @@ const overview = {
   knowledge_chunks_count: 180,
   pending_candidates_count: 3,
   status_breakdown: [],
+  daily_series: Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 5, 28 + index));
+    return {
+      date: date.toISOString().slice(0, 10),
+      dialogs: 100 + index,
+    };
+  }),
 };
 
 function renderPage() {
@@ -58,21 +67,27 @@ describe("AnalyticsPage", () => {
   it("renders the normal reference analytics layout with live values", async () => {
     renderPage();
 
-    expect(await screen.findByText("4 812")).toBeInTheDocument();
-    expect(screen.getByText("28 июня — 27 июля")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Выгрузить" })).toBeInTheDocument();
-    expect(screen.getByText("Токенов")).toBeInTheDocument();
-    expect(screen.getByText("8,4 млн")).toBeInTheDocument();
+    expect((await screen.findAllByText("4 812")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Другой период" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Выгрузить подробно" })).toBeInTheDocument();
+    expect(screen.getByText("Средний ответ")).toBeInTheDocument();
+    expect(screen.getByText("12 сек")).toBeInTheDocument();
     expect(screen.getByText("78%")).toBeInTheDocument();
+    expect(screen.getByText("С ответом автопилота")).toBeInTheDocument();
+    expect(screen.getByText("Автопилот ответил в 3 753 диалогах")).toBeInTheDocument();
+    expect(screen.queryByText(/п\.п\./i)).not.toBeInTheDocument();
     expect(screen.getByText("Обращения по дням")).toBeInTheDocument();
-    expect(screen.getByText("155 / день")).toBeInTheDocument();
-    expect(screen.getByText("Расход по каналам")).toBeInTheDocument();
-    expect(screen.getByText("Когда пишут клиенты")).toBeInTheDocument();
+    expect(screen.getByText("115 / день")).toBeInTheDocument();
+    expect(screen.getByText("28.06")).toBeInTheDocument();
+    expect(screen.getByText("27.07")).toBeInTheDocument();
+    expect(screen.getByLabelText("27.07: 129 обращений")).toBeInTheDocument();
+    expect(screen.getByText("Распределение диалогов")).toBeInTheDocument();
+    expect(screen.getByText("Ответы и сообщения")).toBeInTheDocument();
   });
 
   it("switches the segmented period control", async () => {
     renderPage();
-    await screen.findByText("4 812");
+    await screen.findAllByText("4 812");
 
     const sevenDays = screen.getByRole("button", { name: "7 дней" });
     const thirtyDays = screen.getByRole("button", { name: "30 дней" });
@@ -82,6 +97,43 @@ describe("AnalyticsPage", () => {
 
     expect(sevenDays).toHaveAttribute("aria-pressed", "true");
     expect(thirtyDays).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() => expect(api.getOverview).toHaveBeenCalledTimes(2));
+    const firstPeriod = api.getOverview.mock.calls[0][0];
+    const secondPeriod = api.getOverview.mock.calls[1][0];
+    expect(firstPeriod).toEqual(expect.objectContaining({ from: expect.any(String), to: expect.any(String) }));
+    expect(secondPeriod.to).toBe(firstPeriod.to);
+    expect(secondPeriod.from).not.toBe(firstPeriod.from);
+  });
+
+  it("applies a custom period", async () => {
+    renderPage();
+    await screen.findAllByText("4 812");
+
+    fireEvent.click(screen.getByRole("button", { name: "Другой период" }));
+    fireEvent.change(screen.getByLabelText("Начало периода"), { target: { value: "2026-07-01" } });
+    fireEvent.change(screen.getByLabelText("Конец периода"), { target: { value: "2026-07-15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Применить" }));
+
+    await waitFor(() => expect(api.getOverview).toHaveBeenCalledTimes(2));
+    expect(api.getOverview).toHaveBeenLastCalledWith({ from: "2026-07-01", to: "2026-07-15" });
+    expect(screen.getByRole("button", { name: "Другой период" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("downloads the detailed report as CSV", async () => {
+    const createObjectURL = vi.fn(() => "blob:analytics");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    renderPage();
+    await screen.findAllByText("4 812");
+
+    fireEvent.click(screen.getByRole("button", { name: "Выгрузить подробно" }));
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:analytics");
+    click.mockRestore();
   });
 
   it("shows the reference empty state", async () => {
@@ -110,6 +162,6 @@ describe("AnalyticsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
 
     await waitFor(() => expect(api.getOverview).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("4 812")).toBeInTheDocument();
+    expect((await screen.findAllByText("4 812")).length).toBeGreaterThan(0);
   });
 });

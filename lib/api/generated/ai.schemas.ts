@@ -30,7 +30,17 @@ export interface AnalyticsStatusBreakdownItem {
   count: number;
 }
 
+export interface AnalyticsDailySeriesItem {
+  /** @format date */
+  date: string;
+  dialogs: number;
+}
+
 export interface AnalyticsOverviewResponse {
+  /** @format date */
+  date_from: string;
+  /** @format date */
+  date_to: string;
   dialogs_total: number;
   dialogs_open: number;
   dialogs_auto: number;
@@ -49,6 +59,7 @@ export interface AnalyticsOverviewResponse {
   knowledge_chunks_count: number;
   pending_candidates_count: number;
   status_breakdown: AnalyticsStatusBreakdownItem[];
+  daily_series: AnalyticsDailySeriesItem[];
 }
 
 export interface BillingSettingsResponse {

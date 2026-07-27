@@ -5,7 +5,14 @@ export type AnalyticsStatusBreakdownItem = {
   count: number;
 };
 
+export type AnalyticsDailyItem = {
+  date: string;
+  dialogs: number;
+};
+
 export type AnalyticsOverviewResponse = {
+  date_from: string;
+  date_to: string;
   dialogs_total: number;
   dialogs_open: number;
   dialogs_auto: number;
@@ -24,12 +31,19 @@ export type AnalyticsOverviewResponse = {
   knowledge_chunks_count: number;
   pending_candidates_count: number;
   status_breakdown: AnalyticsStatusBreakdownItem[];
+  daily_series: AnalyticsDailyItem[];
+};
+
+export type AnalyticsPeriod = {
+  from: string;
+  to: string;
 };
 
 export const analyticsApi = {
-  getOverview: () =>
+  getOverview: (period: AnalyticsPeriod) =>
     apiClient<AnalyticsOverviewResponse>({
       url: "/api/v1/analytics/overview",
       method: "GET",
+      params: period,
     }),
 };
