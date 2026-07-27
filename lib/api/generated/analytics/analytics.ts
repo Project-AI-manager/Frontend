@@ -5,7 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  OverviewApiV1AnalyticsOverviewGet200
+  AnalyticsOverviewResponse
 } from '../ai.schemas';
 
 import { apiClient } from '../../client';
@@ -20,8 +20,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 const overviewApiV1AnalyticsOverviewGet = (
 
- options?: SecondParameter<typeof apiClient<OverviewApiV1AnalyticsOverviewGet200>>,) => {
-      return apiClient<OverviewApiV1AnalyticsOverviewGet200>(
+ options?: SecondParameter<typeof apiClient<AnalyticsOverviewResponse>>,) => {
+      return apiClient<AnalyticsOverviewResponse>(
       {url: `/api/v1/analytics/overview`, method: 'GET'
     },
       options);

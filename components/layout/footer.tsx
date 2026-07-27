@@ -1,5 +1,21 @@
 import Link from "next/link";
 
+type FooterLink = {
+  href: string;
+  label: string;
+};
+
+const productLinks: FooterLink[] = [
+  { href: "/#features", label: "Возможности" },
+  { href: "/#how", label: "Как работает" },
+  { href: "/#pricing", label: "Тарифы" },
+];
+
+const legalLinks: FooterLink[] = [
+  { href: "/legal/terms", label: "Условия" },
+  { href: "/legal/privacy", label: "Политика конфиденциальности" },
+];
+
 export function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-[#f4f7fb] text-slate-900 pb-8 pt-16">
@@ -28,5 +44,31 @@ export function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: FooterLink[];
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="wf-kicker">{title}</p>
+      <ul className="mt-3 space-y-1 text-sm">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              className="wf-muted inline-flex min-h-9 items-center"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

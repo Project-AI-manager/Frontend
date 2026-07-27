@@ -5,7 +5,9 @@ import { MessageCircle, RadioTower, Send, Store, UsersRound } from "lucide-react
 import { FormEvent, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { StateCard } from "@/components/ui/state-card";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { axiosInstance } from "@/lib/api/client";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
 
@@ -18,6 +20,13 @@ const catalog = [
   { id: "avito", name: "Avito", account: "Сообщения объявлений", mark: "A", icon: Store },
   { id: "web", name: "Веб-чат", account: "Чат на сайте", mark: "WEB", icon: MessageCircle },
 ];
+
+/** Подписи шагов авторизации совпадают с подписью активного поля формы. */
+const authSteps = [
+  { key: "phone", label: "Номер телефона" },
+  { key: "code", label: "Код из Telegram" },
+  { key: "password", label: "Пароль 2FA" },
+] as const;
 
 export default function ChannelsPage() {
   const client = useQueryClient();

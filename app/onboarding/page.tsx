@@ -1,78 +1,103 @@
-import { ArrowRight, BrainCircuit, Building2, Send } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
 
 const steps = [
   {
-    icon: Building2,
-    title: "Проверь профиль компании",
-    text: "Название, роль владельца и базовые настройки пространства.",
-    action: "Профиль готов",
+    title: "Проверь рабочее пространство",
+    text: "Убедись, что название компании и данные владельца указаны верно.",
+    href: "/profile",
+    action: "Открыть профиль",
+    state: "done" as const,
   },
   {
-    icon: Send,
     title: "Подключи Telegram",
-    text: "В MVP подключаем только Telegram-бота и синхронизацию чатов.",
-    action: "Перейти к каналам",
+    text: "Добавь токен бота и проверь, что канал появился в списке подключённых.",
+    href: "/channels",
+    action: "Настроить канал",
+    state: "current" as const,
   },
   {
-    icon: BrainCircuit,
-    title: "Добавь базу знаний",
-    text: "Загрузи первый manual-документ, чтобы AI мог показывать источники.",
-    action: "Добавить документ",
+    title: "Подготовь базу знаний",
+    text: "Создай первый документ и задай тестовый вопрос ассистенту.",
+    href: "/knowledge",
+    action: "Перейти к знаниям",
+    state: "next" as const,
   },
 ];
 
 export default function OnboardingPage() {
   return (
     <AppShell
-      title="Онбординг"
-      description="Три шага, чтобы превратить пустой кабинет в рабочее демо."
+      title="Начало работы"
+      description="Короткий маршрут от пустого кабинета до первого диалога с AI."
     >
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <section className="space-y-4">
-          {steps.map((step, index) => (
-            <article key={step.title} className="glass-card rounded-[1.75rem] p-6">
-              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-                <div className="flex gap-4">
-                  <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-black text-white">
-                    <step.icon size={22} />
-                  </span>
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-[0.2em] text-orange-600">
-                      Шаг {index + 1}
-                    </p>
-                    <h2 className="mt-1 text-2xl font-black">{step.title}</h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">{step.text}</p>
-                  </div>
-                </div>
-                <button className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-bold">
-                  {step.action}
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            </article>
-          ))}
+      <div className="mx-auto max-w-3xl space-y-5">
+        <section className="wf-box p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="wf-kicker">Настройка кабинета</p>
+              <h2 className="wf-title mt-2">Осталось два шага</h2>
+              <p className="wf-muted mt-2 text-sm leading-6">
+                Двигайся сверху вниз. Каждый пункт ведёт на существующий рабочий
+                экран и не создаёт дополнительных настроек.
+              </p>
+            </div>
+            <span className="wf-tag shrink-0">1 из 3</span>
+          </div>
+
+          <div
+            className="wf-fill mt-5 h-2 overflow-hidden"
+            role="progressbar"
+            aria-label="Прогресс настройки"
+            aria-valuemin={0}
+            aria-valuemax={3}
+            aria-valuenow={1}
+          >
+            <div className="h-full w-1/3 bg-ink" />
+          </div>
         </section>
 
-        <aside className="rounded-[1.75rem] bg-black p-6 text-white">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-300">Прогресс</p>
-          <h2 className="mt-4 text-3xl font-black">1 из 3</h2>
-          <div className="mt-5 h-3 rounded-full bg-white/10">
-            <div className="h-3 w-1/3 rounded-full bg-orange-400" />
-          </div>
-          <p className="mt-5 text-sm leading-6 text-white/60">
-            Сейчас можно проверить auth и базу знаний. Следующий большой кусок — Telegram-канал и
-            реальные диалоги.
+        <ol aria-label="Шаги настройки" className="space-y-4">
+          {steps.map((step, index) => (
+            <li key={step.title} className="wf-box p-5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="wf-muted text-sm">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="text-base font-semibold">{step.title}</h3>
+                {step.state === "current" ? (
+                  <span className="wf-tag">
+                    <span className="wf-dot" />
+                    Следующий шаг
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="wf-muted mt-2 text-sm leading-6">{step.text}</p>
+
+              <div className="mt-4">
+                <Link
+                  href={step.href}
+                  className={
+                    step.state === "current"
+                      ? "wf-btn wf-btn-primary"
+                      : "wf-btn"
+                  }
+                >
+                  {step.action}
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <section className="wf-fill p-5">
+          <p className="wf-muted text-sm leading-6">
+            После настройки Telegram отправь тестовое сообщение боту — новый
+            диалог появится во входящих.
           </p>
-          <Link
-            href="/channels"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 font-black text-black"
-          >
-            Продолжить
-          </Link>
-        </aside>
+        </section>
       </div>
     </AppShell>
   );

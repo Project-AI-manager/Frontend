@@ -73,6 +73,106 @@ export function AppShell({ title, description, children }: { title: string; desc
         </header>
         <main className="mx-auto max-w-[1180px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">{children}</main>
       </div>
+
+      {isMobileNavigationOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-ink/20"
+            onClick={() => setIsMobileNavigationOpen(false)}
+          />
+          <aside
+            id="mobile-navigation"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Меню кабинета"
+            className="relative flex h-full w-[min(19rem,88vw)] flex-col border-r border-line bg-white"
+          >
+            <div className="flex h-14 flex-none items-center justify-between gap-3 border-b border-line px-4">
+              <Brand />
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={() => setIsMobileNavigationOpen(false)}
+                className="wf-btn shrink-0"
+                aria-label="Закрыть меню"
+              >
+                <X size={18} className="text-muted" />
+              </button>
+            </div>
+
+            <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-4 pb-6">
+              <Navigation
+                pathname={pathname}
+                label="Основная навигация"
+                items={primaryNavigation}
+                onNavigate={() => setIsMobileNavigationOpen(false)}
+              />
+              <div className="mt-auto border-t border-line-soft pt-4">
+                <Navigation
+                  pathname={pathname}
+                  label="Рабочее пространство"
+                  items={workspaceNavigation}
+                  onNavigate={() => setIsMobileNavigationOpen(false)}
+                />
+              </div>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function Brand() {
+  return (
+    <Link
+      href="/inbox"
+      className="text-base font-semibold"
+      aria-label="Автопилот — диалоги"
+    >
+      Автопилот
+    </Link>
+  );
+}
+
+function Navigation({
+  pathname,
+  label,
+  items,
+  onNavigate,
+}: {
+  pathname: string;
+  label: string;
+  items: NavigationItem[];
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav aria-label={label}>
+      <ul className="space-y-1">
+        {items.map((item) => {
+          const isActive = isNavigationItemActive(pathname, item.href);
+
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={isActive ? "page" : undefined}
+                data-active={isActive ? "true" : undefined}
+                className="wf-nav-item"
+              >
+                <item.icon size={18} className="shrink-0 text-muted" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+function isNavigationItemActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

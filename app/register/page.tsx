@@ -13,6 +13,13 @@ import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
 
+/** Витрина слева: что именно создаётся при регистрации. */
+const showcasePoints = [
+  "Компания + владелец",
+  "Безопасный вход сразу после регистрации",
+  "Переход в onboarding",
+];
+
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
