@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { AuthShell } from "@/components/ui/auth-shell";
 import { getAuth } from "@/lib/api/generated/auth/auth";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { setAuthTokens } from "@/lib/api/token";
@@ -13,8 +14,10 @@ const authApi = getAuth();
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("owner@example.com");
-  const [password, setPassword] = useState("demo-password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,122 +25,35 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     setIsSubmitting(true);
-
     try {
       const tokens = await authApi.loginApiV1AuthLoginPost({ email, password });
-      setAuthTokens({
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-      });
+      setAuthTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
       router.push("/inbox");
     } catch (err) {
-      setError(getApiErrorMessage(err, "Не удалось войти. Проверь email и пароль."));
-    } finally {
-      setIsSubmitting(false);
-    }
+      setError(getApiErrorMessage(err, "Не удалось войти. Проверьте почту и пароль."));
+    } finally { setIsSubmitting(false); }
   }
 
   return (
-    <main className="soft-grid min-h-screen px-5 py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-black/10 bg-white shadow-2xl shadow-black/10 lg:grid-cols-[1fr_0.9fr]">
-        <section className="relative hidden bg-[#17130f] p-10 text-white lg:block">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-sm font-black text-black">
-              Е
-            </span>
-            <span className="text-xl font-black">Едино</span>
-          </Link>
-
-          <div className="mt-24 max-w-md">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
-              <Sparkles size={16} className="text-orange-300" />
-              Кабинет уже ждёт
+    <AuthShell>
+      <section className="ap-auth-card" aria-labelledby="login-title">
+        <h1 id="login-title" className="text-center font-heading text-[24px] font-extrabold tracking-[-0.04em]">Вход в кабинет</h1>
+        <div className="my-[18px] h-px bg-[#e5eaf1]" />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+          <label className="ap-label">Почта<input className="ap-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="anna@studio.ru" required /></label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3"><label htmlFor="login-password" className="text-[13px] font-semibold">Пароль</label><Link href="/register" className="text-[13px] text-[#1546ad] hover:text-[#2463eb]">Забыли пароль?</Link></div>
+            <div className="flex items-center rounded-[8px] border border-[#d9e1ec] bg-white pr-1 focus-within:border-[#2463eb] focus-within:shadow-[0_0_0_3px_#eaf1ff]">
+              <input id="login-password" className="min-h-11 min-w-0 flex-1 rounded-[8px] border-0 bg-transparent px-3.5 text-[14px] outline-none" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="Введите пароль" required />
+              <button type="button" className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={18} strokeWidth={1.75} /> : <Eye size={18} strokeWidth={1.75} />}</button>
             </div>
-            <h1 className="mt-6 text-5xl font-black tracking-[-0.05em]">
-              Вернись к диалогам без лишней рутины.
-            </h1>
-            <p className="mt-5 text-white/60">
-              После входа ты попадёшь в inbox, где собраны обращения, база знаний и черновики AI.
-            </p>
           </div>
-
-          <div className="absolute bottom-10 left-10 right-10 rounded-[1.5rem] border border-white/10 bg-white/8 p-5">
-            {["JWT-сессия", "Access token в запросах", "Refresh cookie для кабинета"].map((item) => (
-              <div key={item} className="mt-3 first:mt-0 flex items-center gap-3 text-sm text-white/75">
-                <CheckCircle2 size={16} className="text-emerald-300" />
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <Link href="/" className="mb-10 flex items-center gap-3 lg:hidden">
-              <span className="flex size-10 items-center justify-center rounded-2xl bg-black text-sm font-black text-white">
-                Е
-              </span>
-              <span className="text-lg font-black">Едино</span>
-            </Link>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
-              <LockKeyhole size={22} />
-            </div>
-            <h2 className="mt-6 text-3xl font-black tracking-tight">Вход</h2>
-            <p className="mt-2 text-sm text-neutral-600">
-              Используй тестового пользователя или свой аккаунт после регистрации.
-            </p>
-
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <label className="block text-sm">
-                <span className="font-bold">Email</span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="font-bold">Пароль</span>
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                />
-              </label>
-
-              {error ? (
-                <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-                  {error}
-                </p>
-              ) : null}
-
-              <button
-                disabled={isSubmitting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 font-bold text-white shadow-xl shadow-black/15 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-              >
-                {isSubmitting ? "Входим..." : "Войти"}
-                <ArrowRight size={18} />
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-neutral-600">
-              Нет аккаунта?{" "}
-              <Link href="/register" className="font-bold text-black underline decoration-orange-300 underline-offset-4">
-                Создать аккаунт
-              </Link>
-            </p>
-          </div>
-        </section>
-      </div>
-    </main>
+          <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-[#526071]"><input className="peer sr-only" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span className="flex size-[18px] items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]">{remember ? <Check size={12} strokeWidth={3} className="text-white" /> : null}</span>Запомнить</label>
+          {error ? <p role="alert" className="rounded-[8px] border border-[#f3cfcf] bg-[#fdeded] p-3 text-[13px] text-[#a72f2f]">{error}</p> : null}
+          <button className="ap-primary flex items-center justify-center gap-2" type="submit" disabled={isSubmitting}>{isSubmitting ? <><span className="ap-spinner" />Входим</> : "Войти"}</button>
+        </form>
+      </section>
+      <p className="m-0 text-[14px] text-[#526071]">Нет аккаунта? <Link href="/register" className="text-[#1546ad] hover:text-[#2463eb]">Зарегистрироваться</Link></p>
+    </AuthShell>
   );
 }

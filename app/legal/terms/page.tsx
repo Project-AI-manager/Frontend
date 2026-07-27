@@ -1,33 +1,10 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
+const sections = ["Термины", "Предмет соглашения", "Права и обязанности", "Оплата", "Данные и приватность", "Ответственность"];
+
 export default function TermsPage() {
-  return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-3xl px-5 py-16 lg:px-8">
-        <div className="glass-card rounded-[2rem] p-8">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
-            Документы
-          </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight">Условия использования</h1>
-          <p className="mt-5 leading-7 text-neutral-600">
-            Это MVP-заготовка условий. Здесь будут правила использования кабинета, AI-черновиков,
-            базы знаний, каналов связи и ограничений тарифа.
-          </p>
-          <div className="mt-8 space-y-4 text-sm leading-7 text-neutral-600">
-            <p>
-              AI-ответы на текущем этапе считаются подсказками для менеджера. Пользователь отвечает
-              за проверку фактов, источников и финального текста перед отправкой клиенту.
-            </p>
-            <p>
-              Автоматическая отправка ответов должна включаться только после настройки порога
-              уверенности, базы знаний и правил эскалации.
-            </p>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
+  return <><Header /><main className="bg-white px-5 py-12 text-[#101828] lg:px-12 lg:py-14"><div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-[220px_1px_minmax(0,720px)] lg:gap-12"><aside className="hidden flex-col gap-3 md:flex"><p className="mb-1 text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">Разделы</p>{sections.map((section, index) => <a key={section} href={`#section-${index + 1}`} className={`text-sm ${index === 0 ? "font-semibold text-[#1546ad]" : "text-[#526071] hover:text-[#1546ad]"}`}>{index + 1}. {section}</a>)}</aside><div className="hidden bg-[#e5eaf1] md:block" /><article className="space-y-6"><div><p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">Редакция от 27 июля 2026</p><h1 className="mt-2 text-4xl font-extrabold tracking-[-.05em]">Условия использования</h1></div><div className="h-px bg-[#e5eaf1]" /><LegalSection id="section-1" title="1. Термины"><p>«Автопилот» — программный сервис для обработки обращений клиентов, подготовки ответов с помощью искусственного интеллекта и передачи диалогов сотрудникам пользователя.</p><p>Пользователь — организация или физическое лицо, создавшее аккаунт и использующее сервис в рамках выбранного тарифа.</p></LegalSection><LegalSection id="section-2" title="2. Предмет соглашения"><p>Сервис предоставляет доступ к личному кабинету, базе знаний, каналам связи и аналитике. Доступные функции и лимиты определяются тарифом пользователя.</p><ul className="list-disc space-y-2 pl-6"><li>пользователь обеспечивает достоверность загружаемых данных;</li><li>проверяет ответы ассистента до включения автоматической отправки;</li><li>не использует сервис для нарушения закона и прав третьих лиц.</li></ul></LegalSection><blockquote className="border-l-2 border-[#2463eb] bg-[#f8fbff] p-5 text-[15px] leading-7 text-[#526071]">Автоматическая отправка ответов включается пользователем самостоятельно. Пользователь отвечает за настройки базы знаний, порога уверенности и правил эскалации.</blockquote><LegalSection id="section-3" title="3. Права и обязанности"><p>Пользователь обязан сохранять конфиденциальность данных для входа. Сервис вправе приостановить доступ при угрозе безопасности или существенном нарушении условий.</p></LegalSection><LegalSection id="section-4" title="4. Оплата"><p>Стоимость, расчётный период и лимиты указываются в кабинете. Оплаченные услуги предоставляются в пределах выбранного тарифа.</p></LegalSection><p className="pt-2 text-[13px] text-[#64717f]">Вопросы по документу: <a className="text-[#1546ad] underline" href="mailto:legal@autopilot.ru">legal@autopilot.ru</a></p></article></div></main><Footer /></>;
 }
+
+function LegalSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) { return <section id={id} className="scroll-mt-24 space-y-4"><h2 className="text-xl font-extrabold tracking-[-.04em]">{title}</h2><div className="space-y-4 text-pretty text-base leading-[1.7]">{children}</div></section>; }

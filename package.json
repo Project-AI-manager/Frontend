@@ -2,8 +2,8 @@
   "name": "ai-manager-frontend",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "api:gen": "orval"
@@ -35,5 +35,10 @@
   },
   "overrides": {
     "postcss": "8.5.15"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }
