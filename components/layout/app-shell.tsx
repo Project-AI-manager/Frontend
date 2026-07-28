@@ -6,6 +6,7 @@ import {
   BookOpen,
   Inbox,
   Menu,
+  RadioTower,
   Settings,
   UserRound,
   X,
@@ -33,6 +34,7 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { href: "/inbox", label: "Диалоги", icon: Inbox },
   { href: "/knowledge", label: "База знаний", icon: BookOpen },
+  { href: "/channels", label: "Каналы", icon: RadioTower },
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/settings", label: "Настройки", icon: Settings, separated: true },
   { href: "/profile", label: "Профиль", icon: UserRound },
@@ -66,7 +68,9 @@ export function AppShell({
 
   useEffect(() => {
     if (currentUser.data && !currentUser.data.email_verified) {
-      router.replace(`/verify-email?email=${encodeURIComponent(currentUser.data.email)}`);
+      router.replace(
+        `/verify-email?email=${encodeURIComponent(currentUser.data.email)}`,
+      );
     }
   }, [currentUser.data, router]);
 
@@ -142,11 +146,16 @@ export function AppShell({
             <X size={19} />
           </button>
         </div>
-        <Navigation pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+        <Navigation
+          pathname={pathname}
+          onNavigate={() => setMobileOpen(false)}
+        />
       </aside>
 
       <div className="lg:pl-[212px]">
-        <header className={`${immersive ? "lg:hidden" : ""} sticky top-0 z-30 border-b border-[#d9e1ec] bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8`}>
+        <header
+          className={`${immersive ? "lg:hidden" : ""} sticky top-0 z-30 border-b border-[#d9e1ec] bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8`}
+        >
           <div className="mx-auto flex max-w-[1180px] items-center gap-3">
             <button
               type="button"
@@ -167,7 +176,9 @@ export function AppShell({
               </p>
             </div>
             {actions ? (
-              <div className="hidden shrink-0 items-center gap-2 sm:flex">{actions}</div>
+              <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                {actions}
+              </div>
             ) : null}
             <Link
               href="/profile"
@@ -181,7 +192,11 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className={immersive ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh" : "relative min-h-[calc(100dvh-65px)] bg-[#f4f7fb]"}
+          className={
+            immersive
+              ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh"
+              : "relative min-h-[calc(100dvh-65px)] bg-[#f4f7fb]"
+          }
         >
           {immersive ? (
             <>
@@ -211,7 +226,8 @@ function Navigation({
 }) {
   const conversations = useQuery({
     queryKey: ["conversations"],
-    queryFn: () => conversationsApi.listConversationItemsApiV1ConversationsGet(),
+    queryFn: () =>
+      conversationsApi.listConversationItemsApiV1ConversationsGet(),
     enabled: Boolean(getAccessToken()),
     retry: 1,
     refetchInterval: 4_000,

@@ -29,7 +29,7 @@ describe("OnboardingPage", () => {
     ).toHaveAttribute("href", "/profile");
     expect(
       within(onboardingSteps).getByRole("link", { name: /Настроить канал/i }),
-    ).toHaveAttribute("href", "/settings#channels");
+    ).toHaveAttribute("href", "/channels");
     expect(
       within(onboardingSteps).getByRole("link", { name: /Перейти к знаниям/i }),
     ).toHaveAttribute("href", "/knowledge");

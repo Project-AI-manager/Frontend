@@ -34,7 +34,9 @@ afterEach(() => {
 
 function renderShell(children: React.ReactElement) {
   return render(
-    <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      {children}
+    </QueryClientProvider>,
   );
 }
 
@@ -56,7 +58,10 @@ describe("AppShell", () => {
       "page",
     );
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
-    expect(screen.queryByRole("link", { name: "Каналы" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Каналы" })).toHaveAttribute(
+      "href",
+      "/channels",
+    );
     expect(
       screen.getByRole("link", { name: "Перейти к содержимому" }),
     ).toHaveAttribute("href", "#main-content");
@@ -104,8 +109,12 @@ describe("AppShell", () => {
     );
 
     const main = screen.getByRole("main");
-    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
-    expect(container.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelectorAll('[data-app-background="true"]'),
+    ).toHaveLength(1);
   });
 
   it("renders the shared background for standard cabinet pages", () => {
@@ -116,8 +125,12 @@ describe("AppShell", () => {
     );
 
     const main = screen.getByRole("main");
-    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
-    expect(container.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelectorAll('[data-app-background="true"]'),
+    ).toHaveLength(1);
   });
 
   it("keeps logout out of both sidebar variants", () => {
@@ -127,19 +140,22 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(screen.queryByRole("button", { name: "Выйти" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Выйти" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Открыть меню" }));
 
-    expect(screen.queryByRole("button", { name: "Выйти" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Выйти" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the live unread total instead of a hardcoded badge", async () => {
     localStorage.setItem("ai_manager_access_token", "token");
-    conversationsApi.listConversationItemsApiV1ConversationsGet.mockResolvedValue([
-      { unread_count: 2 },
-      { unread_count: 5 },
-    ]);
+    conversationsApi.listConversationItemsApiV1ConversationsGet.mockResolvedValue(
+      [{ unread_count: 2 }, { unread_count: 5 }],
+    );
     usersApi.meApiV1UsersMeGet.mockResolvedValue({
       email: "verified@example.com",
       email_verified: true,
@@ -203,10 +219,9 @@ describe("InfoRow", () => {
     // Инвертированная поверхность в каркасе не отличается цветом: подпись
     // остаётся приглушённой, а сам prop виден через data-inverted.
     expect(screen.getByText("Tenant ID")).toHaveClass("wf-muted");
-    expect(screen.getByText("Tenant ID").parentElement?.parentElement).toHaveAttribute(
-      "data-inverted",
-      "true",
-    );
+    expect(
+      screen.getByText("Tenant ID").parentElement?.parentElement,
+    ).toHaveAttribute("data-inverted", "true");
     expect(screen.getByText("very-long-id")).toHaveClass("truncate");
     expect(screen.getByText("very-long-id")).toHaveAttribute(
       "title",

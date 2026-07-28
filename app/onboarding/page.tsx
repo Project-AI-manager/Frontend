@@ -13,7 +13,7 @@ const steps = [
   {
     title: "Подключи Telegram",
     text: "Добавь токен бота и проверь, что канал появился в списке подключённых.",
-    href: "/settings#channels",
+    href: "/channels",
     action: "Настроить канал",
     state: "current" as const,
   },
