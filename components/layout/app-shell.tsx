@@ -11,15 +11,17 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Brand } from "@/components/ui/brand";
 import { AuthBackground } from "@/components/ui/auth-background";
 import { getConversations } from "@/lib/api/generated/conversations/conversations";
+import { getUsers } from "@/lib/api/generated/users/users";
 import { getAccessToken } from "@/lib/api/token";
 
 const conversationsApi = getConversations();
+const usersApi = getUsers();
 
 type NavigationItem = {
   href: string;
@@ -52,8 +54,21 @@ export function AppShell({
   immersive = false,
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const currentUser = useQuery({
+    queryKey: ["profile-user"],
+    queryFn: usersApi.meApiV1UsersMeGet,
+    enabled: Boolean(getAccessToken()),
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (currentUser.data && !currentUser.data.email_verified) {
+      router.replace(`/verify-email?email=${encodeURIComponent(currentUser.data.email)}`);
+    }
+  }, [currentUser.data, router]);
 
   useEffect(() => {
     if (!mobileOpen) {
@@ -77,6 +92,10 @@ export function AppShell({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [mobileOpen]);
+
+  if (currentUser.data && !currentUser.data.email_verified) {
+    return <main className="ap-doodle min-h-screen" />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f7fb] text-[#101828]">
@@ -162,14 +181,21 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className={immersive ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh" : "mx-auto max-w-[1180px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8"}
+          className={immersive ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh" : "relative min-h-[calc(100dvh-65px)] bg-[#f4f7fb]"}
         >
           {immersive ? (
             <>
-              <AuthBackground waves={false} />
+              <AuthBackground />
               <div className="relative h-full min-h-0">{children}</div>
             </>
-          ) : children}
+          ) : (
+            <>
+              <AuthBackground />
+              <div className="relative mx-auto max-w-[1180px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+                {children}
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MoreHorizontal, RefreshCw } from "lucide-react";
+import { MoreHorizontal, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -9,7 +9,6 @@ import { TelegramConnectDialog } from "@/components/settings/telegram-connect-di
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { getChannels } from "@/lib/api/generated/channels/channels";
-import { integrationsApi, type IntegrationProbeResponse, type IntegrationsHealthResponse } from "@/lib/api/integrations";
 import { settingsApi } from "@/lib/api/settings";
 
 const channelsApi = getChannels();
@@ -36,12 +35,6 @@ export default function SettingsPage() {
     queryKey: ["settings-channels"],
     queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
   });
-  const integrationsQuery = useQuery({
-    queryKey: ["integrations-health"],
-    queryFn: integrationsApi.getHealth,
-    retry: 1,
-  });
-
   const loading = aiQuery.isLoading || billingQuery.isLoading;
   const error = aiQuery.error ?? billingQuery.error;
 
@@ -71,10 +64,8 @@ export default function SettingsPage() {
           ) : (
             <SettingsContent
               ai={aiQuery.data}
+              billing={billingQuery.data}
               channels={channelsQuery.data ?? []}
-              integrations={integrationsQuery.data}
-              integrationsError={integrationsQuery.error}
-              refreshIntegrations={() => integrationsQuery.refetch().then(() => undefined)}
             />
           )}
         </div>
@@ -85,16 +76,12 @@ export default function SettingsPage() {
 
 function SettingsContent({
   ai,
+  billing,
   channels,
-  integrations,
-  integrationsError,
-  refreshIntegrations,
 }: {
   ai: Awaited<ReturnType<typeof settingsApi.getAiSettings>>;
+  billing: Awaited<ReturnType<typeof settingsApi.getBillingSettings>>;
   channels: ChannelResponse[];
-  integrations?: IntegrationsHealthResponse;
-  integrationsError: Error | null;
-  refreshIntegrations: () => Promise<void>;
 }) {
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(ai.auto_reply_enabled);
@@ -192,12 +179,6 @@ function SettingsContent({
         </div>
       </SettingsCard>
 
-      <IntegrationDiagnostics
-        health={integrations}
-        error={integrationsError}
-        onRefresh={refreshIntegrations}
-      />
-
       <SettingsCard title="Оплата">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:gap-8">
           <div className="flex flex-col gap-1">
@@ -205,21 +186,21 @@ function SettingsContent({
               Баланс
             </span>
             <span className="font-heading text-[30px] font-extrabold tracking-[-.04em] tabular-nums text-[#2463eb]">
-              7 520 ₽
+              {formatRubles(billing.balance_kopecks)}
             </span>
             <span className="text-[13px] tabular-nums text-[#64717f]">
-              Хватит примерно на 2 900 ответов
+              Бонусный баланс для работы ассистента
             </span>
           </div>
           <div className="hidden h-14 w-px bg-[#e5eaf1] md:block" />
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">
-              Расход за июль
+              Расход за текущий месяц
             </span>
             <span className="font-heading text-2xl font-extrabold tracking-[-.04em] tabular-nums">
-              12 480 ₽
+              {formatRubles(billing.expenses_kopecks)}
             </span>
-            <span className="text-[13px] text-[#0c7a4e]">−14% к июню</span>
+            <span className="text-[13px] text-[#64717f]">Обновляется по фактическому использованию</span>
           </div>
           <TopUpForm />
         </div>
@@ -281,7 +262,6 @@ function SettingsContent({
           onClose={() => setTelegramDialogOpen(false)}
           onConnected={async () => {
             await client.invalidateQueries({ queryKey: ["settings-channels"] });
-            await refreshIntegrations();
           }}
         />
       ) : null}
@@ -289,67 +269,8 @@ function SettingsContent({
   );
 }
 
-function IntegrationDiagnostics({
-  health,
-  error,
-  onRefresh,
-}: {
-  health?: IntegrationsHealthResponse;
-  error: Error | null;
-  onRefresh: () => Promise<void>;
-}) {
-  const client = useQueryClient();
-  const llmProbe = useMutation({
-    mutationFn: integrationsApi.probeLlm,
-    onSuccess: (result) => updateHealth("llm", result),
-  });
-  const embeddingsProbe = useMutation({
-    mutationFn: integrationsApi.probeEmbeddings,
-    onSuccess: (result) => updateHealth("embeddings", result),
-  });
-
-  function updateHealth(key: "llm" | "embeddings", result: IntegrationProbeResponse) {
-    client.setQueryData<IntegrationsHealthResponse>(["integrations-health"], (current) => current ? { ...current, [key]: result } : current);
-  }
-
-  return (
-    <SettingsCard title="Подключения AI">
-      {error ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f]">
-          <span>{getApiErrorMessage(error, "Не удалось проверить подключения.")}</span>
-          <button type="button" onClick={() => void onRefresh()} className="font-semibold underline underline-offset-2">Повторить</button>
-        </div>
-      ) : !health ? (
-        <div role="status" className="flex items-center gap-2 text-sm text-[#526071]"><Loader2 size={17} className="animate-spin" />Проверяем подключения…</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <IntegrationItem label="Omni Router" value={health.llm} action="Проверить ответ" pending={llmProbe.isPending} onAction={() => llmProbe.mutate()} />
-          <IntegrationItem label="Эмбеддинги" value={health.embeddings} action="Проверить вектор" pending={embeddingsProbe.isPending} onAction={() => embeddingsProbe.mutate()} />
-          <IntegrationItem label="Векторная база" value={health.qdrant} />
-        </div>
-      )}
-      {llmProbe.error || embeddingsProbe.error ? <p role="alert" className="text-sm text-[#a72f2f]">{getApiErrorMessage(llmProbe.error ?? embeddingsProbe.error, "Проверка подключения завершилась ошибкой.")}</p> : null}
-      <p className="text-xs leading-5 text-[#64717f]">Ключи и адреса хранятся только в окружении backend и здесь не отображаются.</p>
-    </SettingsCard>
-  );
-}
-
-function IntegrationItem({ label, value, action, pending, onAction }: { label: string; value: IntegrationProbeResponse; action?: string; pending?: boolean; onAction?: () => void }) {
-  const ok = value.status === "ok";
-  return (
-    <article className="flex min-h-[128px] flex-col rounded-lg border border-[#d9e1ec] bg-[#f8fbff] p-4">
-      <div className="flex items-center justify-between gap-3"><strong className="text-sm">{label}</strong><span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[.06em] ${ok ? "text-[#0c7a4e]" : "text-[#94600b]"}`}><span className={`size-1.5 rounded-full ${ok ? "bg-[#13a66b]" : "bg-[#e89120]"}`} />{integrationStatusLabel(value.status)}</span></div>
-      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#526071]">{value.message}</p>
-      {action && onAction ? <button type="button" onClick={onAction} disabled={pending} className="mt-auto inline-flex min-h-9 w-fit items-center gap-2 pt-3 text-[13px] font-semibold text-[#1546ad] disabled:opacity-50">{pending ? <Loader2 size={15} className="animate-spin" /> : null}{action}</button> : null}
-    </article>
-  );
-}
-
-function integrationStatusLabel(status: IntegrationProbeResponse["status"]) {
-  if (status === "ok") return "Работает";
-  if (status === "disabled") return "Отключено";
-  if (status === "not_configured") return "Не настроено";
-  return "Ошибка";
+function formatRubles(kopecks: number) {
+  return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(kopecks / 100)} ₽`;
 }
 
 function SettingsCard({

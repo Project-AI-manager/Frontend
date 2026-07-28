@@ -5,9 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "@/app/profile/page";
 
 const usersApi = vi.hoisted(() => ({ meApiV1UsersMeGet: vi.fn() }));
+const notificationsApi = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 const shell = vi.hoisted(() => ({ props: null as null | Record<string, unknown> }));
 
 vi.mock("@/lib/api/generated/users/users", () => ({ getUsers: () => usersApi }));
+vi.mock("@/lib/api/notifications", () => ({ notificationsApi }));
 vi.mock("@/components/layout/app-shell", () => ({
   AppShell: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => {
     shell.props = props;
@@ -38,6 +40,14 @@ describe("ProfilePage", () => {
     vi.clearAllMocks();
     shell.props = null;
     usersApi.meApiV1UsersMeGet.mockResolvedValue(user);
+    notificationsApi.get.mockResolvedValue({
+      escalation_email_enabled: true,
+      daily_digest_email_enabled: false,
+    });
+    notificationsApi.update.mockImplementation(async (data) => ({
+      escalation_email_enabled: data.escalation_email_enabled ?? true,
+      daily_digest_email_enabled: data.daily_digest_email_enabled ?? false,
+    }));
   });
 
   it("shows only real personal data, notifications and logout on the immersive background", async () => {
@@ -47,7 +57,7 @@ describe("ProfilePage", () => {
     expect(screen.getAllByText("timur@example.com").length).toBeGreaterThan(0);
     expect(shell.props).toEqual(expect.objectContaining({ immersive: true }));
     expect(screen.getByRole("heading", { name: "Уведомления" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Присылать в Telegram, когда нужен человек" })).toBeInTheDocument();
+    expect(await screen.findByRole("switch", { name: "Присылать на почту, когда нужен человек" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Сводка за день на почту" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Выйти" })).toBeInTheDocument();
     expect(screen.queryByText("Компания")).not.toBeInTheDocument();
@@ -57,12 +67,15 @@ describe("ProfilePage", () => {
     expect(screen.queryByRole("button", { name: "Сохранить" })).not.toBeInTheDocument();
   });
 
-  it("toggles notification preferences locally", async () => {
+  it("persists email notification preferences", async () => {
     renderPage();
-    const telegram = await screen.findByRole("switch", { name: "Присылать в Telegram, когда нужен человек" });
-    expect(telegram).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(telegram);
-    expect(telegram).toHaveAttribute("aria-checked", "false");
+    const escalationEmail = await screen.findByRole("switch", { name: "Присылать на почту, когда нужен человек" });
+    await waitFor(() => expect(escalationEmail).not.toBeDisabled());
+    expect(escalationEmail).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(escalationEmail);
+    await waitFor(() => expect(notificationsApi.update).toHaveBeenCalled());
+    expect(notificationsApi.update.mock.calls[0][0]).toEqual({ escalation_email_enabled: false });
+    await waitFor(() => expect(escalationEmail).toHaveAttribute("aria-checked", "false"));
   });
 
   it("retries the user request from the error state", async () => {

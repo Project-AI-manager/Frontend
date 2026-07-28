@@ -10,6 +10,9 @@ const navigationState = vi.hoisted(() => ({ pathname: "/inbox" }));
 const conversationsApi = vi.hoisted(() => ({
   listConversationItemsApiV1ConversationsGet: vi.fn(),
 }));
+const usersApi = vi.hoisted(() => ({
+  meApiV1UsersMeGet: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
@@ -18,11 +21,15 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/generated/conversations/conversations", () => ({
   getConversations: () => conversationsApi,
 }));
+vi.mock("@/lib/api/generated/users/users", () => ({
+  getUsers: () => usersApi,
+}));
 
 afterEach(() => {
   navigationState.pathname = "/inbox";
   localStorage.clear();
   conversationsApi.listConversationItemsApiV1ConversationsGet.mockReset();
+  usersApi.meApiV1UsersMeGet.mockReset();
 });
 
 function renderShell(children: React.ReactElement) {
@@ -101,6 +108,18 @@ describe("AppShell", () => {
     expect(container.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
   });
 
+  it("renders the shared background for standard cabinet pages", () => {
+    const { container } = renderShell(
+      <AppShell title="Начало работы" description="Настройка кабинета">
+        <p>Содержимое страницы</p>
+      </AppShell>,
+    );
+
+    const main = screen.getByRole("main");
+    expect(main.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-app-background="true"]')).toHaveLength(1);
+  });
+
   it("keeps logout out of both sidebar variants", () => {
     renderShell(
       <AppShell title="Диалоги" description="Входящие обращения">
@@ -121,6 +140,10 @@ describe("AppShell", () => {
       { unread_count: 2 },
       { unread_count: 5 },
     ]);
+    usersApi.meApiV1UsersMeGet.mockResolvedValue({
+      email: "verified@example.com",
+      email_verified: true,
+    });
 
     renderShell(
       <AppShell title="Диалоги" description="Входящие обращения">

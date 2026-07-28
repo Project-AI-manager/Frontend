@@ -15,6 +15,9 @@ const api = vi.hoisted(() => ({
 const usersApi = vi.hoisted(() => ({
   meApiV1UsersMeGet: vi.fn(),
 }));
+const conversationActions = vi.hoisted(() => ({
+  markConversationRead: vi.fn(),
+}));
 
 vi.mock("@/components/layout/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -26,6 +29,11 @@ vi.mock("@/lib/api/generated/conversations/conversations", () => ({
 
 vi.mock("@/lib/api/generated/users/users", () => ({
   getUsers: () => usersApi,
+}));
+
+vi.mock("@/lib/api/conversations", () => conversationActions);
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 function renderPage() {
@@ -61,7 +69,7 @@ describe("InboxPage live actions", () => {
         status: "open",
         last_message_at: "2026-07-21T10:00:00Z",
         last_message_preview: "Когда будет доставка?",
-        unread_count: 1,
+        unread_count: 0,
       },
     ]);
     api.getConversationApiV1ConversationsConversationIdGet.mockResolvedValue({
@@ -73,7 +81,7 @@ describe("InboxPage live actions", () => {
       status: "answered",
       last_message_at: "2026-07-21T10:00:00Z",
       last_message_preview: "Когда будет доставка?",
-      unread_count: 1,
+      unread_count: 0,
       messages: [
         {
           id: "message-1",
@@ -100,6 +108,58 @@ describe("InboxPage live actions", () => {
       {},
     );
     api.closeApiV1ConversationsConversationIdClosePost.mockResolvedValue({});
+    conversationActions.markConversationRead.mockResolvedValue({});
+  });
+
+  it("shows an unread dot under the time and clears it when the chat is opened", async () => {
+    const conversationItems = [
+      {
+        id: "conversation-1",
+        channel_id: "telegram",
+        channel_type: "telegram",
+        customer_id: "customer-1",
+        customer_name: "Анна",
+        status: "answered",
+        last_message_at: "2026-07-21T10:00:00Z",
+        last_message_preview: "Первый диалог",
+        unread_count: 0,
+      },
+      {
+        id: "conversation-2",
+        channel_id: "telegram",
+        channel_type: "telegram",
+        customer_id: "customer-2",
+        customer_name: "Мария",
+        status: "open",
+        last_message_at: "2026-07-21T10:03:00Z",
+        last_message_preview: "Новое сообщение",
+        unread_count: 1,
+      },
+    ];
+    api.listConversationItemsApiV1ConversationsGet.mockImplementation(async () => conversationItems);
+    conversationActions.markConversationRead.mockImplementation(async () => {
+      conversationItems[1] = { ...conversationItems[1], unread_count: 0 };
+      return {
+        ...(await api.getConversationApiV1ConversationsConversationIdGet()),
+        id: "conversation-2",
+        customer_name: "Мария",
+        unread_count: 0,
+      };
+    });
+
+    renderPage();
+
+    const maria = await screen.findByRole("button", { name: /Мария/ });
+    expect(within(maria).getByLabelText("Непрочитанный диалог")).toBeInTheDocument();
+
+    fireEvent.click(maria);
+
+    await waitFor(() =>
+      expect(conversationActions.markConversationRead).toHaveBeenCalledWith("conversation-2"),
+    );
+    await waitFor(() =>
+      expect(within(maria).queryByLabelText("Непрочитанный диалог")).not.toBeInTheDocument(),
+    );
   });
 
   it("loads the live thread and sends a manager reply", async () => {
@@ -135,15 +195,19 @@ describe("InboxPage live actions", () => {
 
   it("polls the conversation list and selected thread", async () => {
     vi.useFakeTimers();
-    renderPage();
-    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-    expect(api.listConversationItemsApiV1ConversationsGet).toHaveBeenCalledTimes(1);
-    expect(api.getConversationApiV1ConversationsConversationIdGet).toHaveBeenCalledTimes(1);
+    try {
+      renderPage();
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      await act(async () => { await Promise.resolve(); });
+      const initialListCalls = api.listConversationItemsApiV1ConversationsGet.mock.calls.length;
+      const initialThreadCalls = api.getConversationApiV1ConversationsConversationIdGet.mock.calls.length;
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(4_000); });
-    expect(api.listConversationItemsApiV1ConversationsGet).toHaveBeenCalledTimes(2);
-    expect(api.getConversationApiV1ConversationsConversationIdGet).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
+      await act(async () => { await vi.advanceTimersByTimeAsync(4_000); });
+      expect(api.listConversationItemsApiV1ConversationsGet).toHaveBeenCalledTimes(initialListCalls + 1);
+      expect(api.getConversationApiV1ConversationsConversationIdGet).toHaveBeenCalledTimes(initialThreadCalls + 1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders customer messages on the left and current user replies as plain bubbles on the right", async () => {
@@ -251,7 +315,7 @@ describe("InboxPage live actions", () => {
       status: "escalated",
       last_message_at: "2026-07-21T10:00:00Z",
       last_message_preview: "Нам нужна интеграция с CRM.",
-      unread_count: 1,
+      unread_count: 0,
     }]);
     api.getConversationApiV1ConversationsConversationIdGet.mockResolvedValueOnce({
       id: "conversation-maria",
@@ -262,7 +326,7 @@ describe("InboxPage live actions", () => {
       status: "escalated",
       last_message_at: "2026-07-21T10:00:00Z",
       last_message_preview: "Нам нужна интеграция с CRM.",
-      unread_count: 1,
+      unread_count: 0,
       messages: [{
         id: "message-maria",
         text: "Нам нужна интеграция с CRM.",

@@ -1,9 +1,9 @@
 import { useId } from "react";
 
-export function AuthBackground({ waves = true }: { waves?: boolean }) {
+export function AuthBackground() {
   const id = useId().replaceAll(":", "");
   const patternId = `${id}-auth-doodle-pattern`;
-  const waveId = `${id}-auth-wave`;
+  const routePatternId = `${id}-auth-route-pattern`;
 
   return (
     <svg
@@ -71,14 +71,19 @@ export function AuthBackground({ waves = true }: { waves?: boolean }) {
             <Bolt transform="translate(306 173) rotate(20) scale(1.13)" />
           </g>
         </pattern>
-        <path id={waveId} d="M-120-700q20.2 21.8 50 21.67t50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67 50 21.67" />
+        <pattern
+          id={routePatternId}
+          width="720"
+          height="416"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(30)"
+        >
+          <path d="M0 80C60 16 120 16 180 80S300 144 360 80 480 16 540 80 660 144 720 80" fill="none" stroke="#b9cde7" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="5 8" />
+          <path d="M0 288C60 352 120 352 180 288S300 224 360 288 480 352 540 288 660 224 720 288" fill="none" stroke="#b9cde7" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="5 8" />
+        </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-      {waves ? (
-        <g fill="none" stroke="#c6d5e9" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="5 8">
-          {Array.from({ length: 14 }, (_, index) => <use key={index} href={`#${waveId}`} y={index * 160} />)}
-        </g>
-      ) : null}
+      <rect width="100%" height="100%" fill={`url(#${routePatternId})`} />
     </svg>
   );
 }

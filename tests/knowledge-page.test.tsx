@@ -55,7 +55,11 @@ describe("KnowledgePage", () => {
     vi.clearAllMocks();
     api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValue(documents);
     api.uploadDocumentApiV1KnowledgeDocumentsPost.mockResolvedValue(documents[0]);
-    apiClient.mockResolvedValue(documents[0]);
+    apiClient.mockImplementation(({ url }: { url: string }) => Promise.resolve(
+      url === "/api/v1/knowledge/reindex"
+        ? { documents_count: 2, chunks_count: 7, updated_at: "2026-07-27T08:20:30Z" }
+        : documents[0],
+    ));
     api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost.mockResolvedValue({ document: { ...documents[0], status: "archived" } });
   });
 
@@ -71,9 +75,22 @@ describe("KnowledgePage", () => {
     expect(screen.getByText("Перетащите файлы")).toBeInTheDocument();
     expect(screen.getByText("PDF, DOCX, XLSX, MD, TXT")).toBeInTheDocument();
     expect(screen.getByText("Обновить базу знаний")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Загрузить файл" })).not.toBeInTheDocument();
   });
 
-  it("searches, sorts and refreshes live documents", async () => {
+  it("shows a just-updated UTC server timestamp without a local timezone shift", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-07-27T08:20:30Z"));
+    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValueOnce([
+      { ...documents[1], status: "ready", updated_at: "2026-07-27T08:20:00" },
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("База знаний обновлена только что")).toBeInTheDocument();
+    now.mockRestore();
+  });
+
+  it("searches, sorts and rebuilds the vector knowledge base", async () => {
     renderPage();
     await screen.findByText("Сроки и оплата.pdf");
 
@@ -85,7 +102,12 @@ describe("KnowledgePage", () => {
     expect(screen.getByRole("button", { name: "Сначала старые" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Обновить базу знаний" }));
+    await waitFor(() => expect(apiClient).toHaveBeenCalledWith({
+      url: "/api/v1/knowledge/reindex",
+      method: "POST",
+    }));
     await waitFor(() => expect(api.listDocumentsApiV1KnowledgeDocumentsGet).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("status")).toHaveTextContent("База знаний обновлена: 2 файла, 7 фрагментов.");
   });
 
   it("uploads files as multipart data through the extraction endpoint", async () => {
@@ -102,6 +124,30 @@ describe("KnowledgePage", () => {
     expect(request.method).toBe("POST");
     expect(request.data).toBeInstanceOf(FormData);
     expect(request.data.get("file")).toBe(file);
+    expect(screen.getByRole("status")).toHaveTextContent("3 фрагмента проиндексировано");
+  });
+
+  it("shows an actionable Russian error when an XLSX cannot be read", async () => {
+    apiClient.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: {
+        status: 422,
+        data: { detail: { message: "The XLSX file could not be read" } },
+      },
+    });
+    renderPage();
+    await waitFor(() => expect(api.listDocumentsApiV1KnowledgeDocumentsGet).toHaveBeenCalled());
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: {
+        files: [new File(["broken"], "price.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })],
+      },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось прочитать таблицу XLSX");
+    expect(screen.getByRole("alert")).toHaveTextContent("открывается в Excel");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("could not be read");
   });
 
   it("archives a file from its ellipsis action", async () => {
@@ -118,6 +164,40 @@ describe("KnowledgePage", () => {
     renderPage();
 
     expect(await screen.findByText("В базе знаний пока нет файлов")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Загрузить файл" })).toHaveLength(2);
+    expect(screen.getByText("У вас ещё нет базы знаний")).toBeInTheDocument();
+    expect(screen.queryByText(/База знаний обновлена/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 файлов/)).not.toBeInTheDocument();
+    expect(screen.getByText("Поддерживаемые форматы: PDF, DOCX, XLSX, MD и TXT")).toBeInTheDocument();
+    expect(screen.getByText(/Перетащите файлы сюда из Проводника/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Загрузить файл" })).not.toBeInTheDocument();
+  });
+
+  it("uploads a file dropped onto the empty state and shows the drag state", async () => {
+    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValueOnce([]);
+    renderPage();
+
+    const dropzone = await screen.findByRole("button", { name: /В базе знаний пока нет файлов/ });
+    const file = new File(["Условия доставки"], "delivery.md", { type: "text/markdown" });
+
+    fireEvent.dragEnter(dropzone, { dataTransfer: { files: [file], dropEffect: "none" } });
+    expect(screen.getByText("Отпустите файлы, чтобы загрузить")).toBeInTheDocument();
+
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file], dropEffect: "copy" } });
+
+    await waitFor(() => expect(apiClient).toHaveBeenCalledTimes(1));
+    expect(apiClient.mock.calls[0][0].data.get("file")).toBe(file);
+    expect(screen.queryByText("Отпустите файлы, чтобы загрузить")).not.toBeInTheDocument();
+  });
+
+  it("opens the file picker when the empty dropzone is activated", async () => {
+    api.listDocumentsApiV1KnowledgeDocumentsGet.mockResolvedValueOnce([]);
+    renderPage();
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+
+    fireEvent.click(await screen.findByRole("button", { name: /В базе знаний пока нет файлов/ }));
+
+    expect(click).toHaveBeenCalledOnce();
   });
 });

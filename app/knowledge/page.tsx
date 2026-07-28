@@ -1,17 +1,24 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, FileText, Loader2, MoreHorizontal, Plus, RefreshCw, Search, Upload } from "lucide-react";
-import { type ChangeEvent, type DragEvent, useMemo, useRef, useState } from "react";
+import { ArrowDown, FileText, Loader2, MoreHorizontal, Plus, RefreshCw, Search } from "lucide-react";
+import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { apiClient } from "@/lib/api/client";
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { getApiErrorMessage, getKnowledgeUploadErrorMessage } from "@/lib/api/errors";
 import type { KnowledgeDocumentResponse } from "@/lib/api/generated/ai.schemas";
 import { getKnowledge } from "@/lib/api/generated/knowledge/knowledge";
+import { formatRelativeServerTime, parseServerDateTime } from "@/lib/date-time";
 
 const api = getKnowledge();
 const supportedFormats = ".pdf,.docx,.xlsx,.md,.txt";
+
+type KnowledgeReindexResponse = {
+  documents_count: number;
+  chunks_count: number;
+  updated_at: string | null;
+};
 
 export default function KnowledgePage() {
   const client = useQueryClient();
@@ -20,6 +27,8 @@ export default function KnowledgePage() {
   const [sort, setSort] = useState<"new" | "old">("new");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastIndexedAt, setLastIndexedAt] = useState<string | null>(null);
+  const now = useRelativeTimeClock();
 
   const documents = useQuery({
     queryKey: ["knowledge", "documents"],
@@ -27,14 +36,19 @@ export default function KnowledgePage() {
     retry: 1,
   });
 
-  const shown = useMemo(
+  const activeDocuments = useMemo(
     () => normalizeDocuments(documents.data)
-      .filter((document) => document.status !== "archived")
+      .filter((document) => document.status !== "archived"),
+    [documents.data],
+  );
+
+  const shown = useMemo(
+    () => activeDocuments
       .filter((document) => document.title.toLowerCase().includes(search.trim().toLowerCase()))
       .sort((a, b) => sort === "new"
-        ? Date.parse(b.updated_at) - Date.parse(a.updated_at)
-        : Date.parse(a.updated_at) - Date.parse(b.updated_at)),
-    [documents.data, search, sort],
+        ? parseServerDateTime(b.updated_at) - parseServerDateTime(a.updated_at)
+        : parseServerDateTime(a.updated_at) - parseServerDateTime(b.updated_at)),
+    [activeDocuments, search, sort],
   );
 
   const upload = useMutation({
@@ -52,14 +66,15 @@ export default function KnowledgePage() {
         data,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (document) => {
       setError(null);
-      setNotice("Файл добавлен в базу знаний.");
+      setLastIndexedAt(document.updated_at);
+      setNotice(`Файл добавлен: ${document.chunks_count} ${chunkWord(document.chunks_count)} проиндексировано.`);
       await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
     onError: (mutationError) => {
       setNotice(null);
-      setError(getApiErrorMessage(mutationError, "Не удалось загрузить файл."));
+      setError(getKnowledgeUploadErrorMessage(mutationError));
     },
   });
 
@@ -76,6 +91,23 @@ export default function KnowledgePage() {
     },
   });
 
+  const reindex = useMutation({
+    mutationFn: () => apiClient<KnowledgeReindexResponse>({
+      url: "/api/v1/knowledge/reindex",
+      method: "POST",
+    }),
+    onSuccess: async (result) => {
+      setError(null);
+      setLastIndexedAt(result.updated_at);
+      setNotice(`База знаний обновлена: ${result.documents_count} ${fileWord(result.documents_count)}, ${result.chunks_count} ${chunkWord(result.chunks_count)}.`);
+      await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
+    },
+    onError: (mutationError) => {
+      setNotice(null);
+      setError(getApiErrorMessage(mutationError, "Не удалось создать векторную базу знаний."));
+    },
+  });
+
   async function addFiles(files: FileList | File[]) {
     for (const file of Array.from(files)) {
       const extension = fileExtension(file.name);
@@ -85,17 +117,6 @@ export default function KnowledgePage() {
         continue;
       }
       await upload.mutateAsync(file).catch(() => undefined);
-    }
-  }
-
-  async function refreshKnowledge() {
-    setNotice(null);
-    setError(null);
-    try {
-      await documents.refetch();
-      setNotice("База знаний обновлена.");
-    } catch (refreshError) {
-      setError(getApiErrorMessage(refreshError, "Не удалось обновить базу знаний."));
     }
   }
 
@@ -111,9 +132,6 @@ export default function KnowledgePage() {
             <ArrowDown size={16} strokeWidth={1.85} className={sort === "old" ? "rotate-180" : ""} />
             {sort === "new" ? "Сначала новые" : "Сначала старые"}
           </button>
-          <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold hover:border-[#c9d6e8] hover:bg-[#f4f7fb]">
-            <Upload size={17} strokeWidth={1.85} /> Загрузить файл
-          </button>
           <input ref={fileInput} type="file" multiple className="hidden" accept={supportedFormats} onChange={(event: ChangeEvent<HTMLInputElement>) => { if (event.target.files) void addFiles(event.target.files); event.target.value = ""; }} />
         </header>
 
@@ -124,7 +142,15 @@ export default function KnowledgePage() {
           {documents.isLoading ? <CardSkeleton /> : documents.error ? (
             <State title="Файлы не загрузились" text={getApiErrorMessage(documents.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => documents.refetch()} />
           ) : shown.length === 0 ? (
-            <State title={search.trim() ? "По запросу ничего не найдено" : "В базе знаний пока нет файлов"} text={search.trim() ? "Попробуйте изменить поисковый запрос." : undefined} action={search.trim() ? undefined : "Загрузить файл"} onAction={() => fileInput.current?.click()} />
+            search.trim() ? (
+              <State title="По запросу ничего не найдено" text="Попробуйте изменить поисковый запрос." />
+            ) : (
+              <EmptyKnowledgeDropzone
+                isUploading={upload.isPending}
+                onClick={() => fileInput.current?.click()}
+                onFiles={addFiles}
+              />
+            )
           ) : (
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
               {shown.map((document) => <DocumentCard key={document.id} document={document} onArchive={() => archive.mutate(document.id)} disabled={archive.isPending} />)}
@@ -134,13 +160,19 @@ export default function KnowledgePage() {
 
           <footer className="mt-auto flex min-h-[68px] shrink-0 flex-col gap-3 rounded-lg border border-[#d9e1ec] bg-white px-5 py-3 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:flex-row sm:items-center sm:justify-between">
             <p className="flex min-w-0 flex-wrap items-center gap-2.5 text-sm text-[#101828]">
-              <span className="size-2 shrink-0 rounded-full bg-[#13a66b]" />
-              <span>База знаний обновлена {latestUpdate(shown)}</span>
-              <span className="tabular-nums text-[#64717f]">· {shown.length} {fileWord(shown.length)}</span>
+              <span className={`size-2 shrink-0 rounded-full ${activeDocuments.length ? "bg-[#13a66b]" : "bg-[#e9a52a]"}`} />
+              {activeDocuments.length ? (
+                <>
+                  <span>База знаний обновлена {lastIndexedAt ? formatRelativeServerTime(lastIndexedAt, now) : latestUpdate(activeDocuments, now)}</span>
+                  <span className="tabular-nums text-[#64717f]">· {activeDocuments.length} {fileWord(activeDocuments.length)}</span>
+                </>
+              ) : (
+                <span className="font-medium text-[#94600b]">У вас ещё нет базы знаний</span>
+              )}
             </p>
-            <button type="button" onClick={() => void refreshKnowledge()} disabled={documents.isFetching} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60">
-              {documents.isFetching ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
-              Обновить базу знаний
+            <button type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60">
+              {reindex.isPending ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
+              {reindex.isPending ? "Создаём векторную базу…" : "Обновить базу знаний"}
             </button>
           </footer>
         </main>
@@ -174,6 +206,59 @@ function UploadCard({ onClick, onFiles }: { onClick: () => void; onFiles: (files
   </button>;
 }
 
+function EmptyKnowledgeDropzone({ isUploading, onClick, onFiles }: { isUploading: boolean; onClick: () => void; onFiles: (files: FileList | File[]) => Promise<void> }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const dragDepth = useRef(0);
+
+  function handleDragEnter(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepth.current += 1;
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepth.current = 0;
+    setIsDragging(false);
+    if (event.dataTransfer.files.length) void onFiles(event.dataTransfer.files);
+  }
+
+  return (
+    <button
+      type="button"
+      aria-busy={isUploading}
+      aria-describedby="knowledge-supported-formats"
+      onClick={onClick}
+      onDragEnter={handleDragEnter}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex min-h-[300px] w-full flex-col items-center justify-center rounded-lg border p-8 text-center transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#b9ceff] ${isDragging ? "border-[#2463eb] bg-[#eef4ff] shadow-[0_0_0_4px_rgba(36,99,235,.1)]" : "border-dashed border-[#c9d6e8] bg-white hover:border-[#2463eb] hover:bg-[#f8fbff]"}`}
+    >
+      <span className={`flex size-12 items-center justify-center rounded-xl border transition ${isDragging ? "border-[#2463eb] bg-[#2463eb] text-white" : "border-[#b9ceff] bg-[#eef4ff] text-[#2463eb]"}`}>
+        {isUploading ? <Loader2 size={22} className="animate-spin" /> : <Plus size={22} strokeWidth={1.85} />}
+      </span>
+      <h2 className="mt-4 font-heading font-extrabold">{isDragging ? "Отпустите файлы, чтобы загрузить" : "В базе знаний пока нет файлов"}</h2>
+      <p className="mt-2 max-w-md text-sm leading-6 text-[#526071]">Перетащите файлы сюда из Проводника или нажмите на эту область, чтобы выбрать их.</p>
+      <span className="mt-4 rounded-lg bg-[#2463eb] px-4 py-2.5 text-sm font-semibold text-white">{isUploading ? "Загружаем…" : "Выбрать файлы"}</span>
+      <p id="knowledge-supported-formats" className="mt-3 text-[13px] leading-5 text-[#64717f]">Поддерживаемые форматы: PDF, DOCX, XLSX, MD и TXT</p>
+    </button>
+  );
+}
+
 function CardSkeleton() { return <div role="status" aria-label="Загружаем документы" className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-[168px] animate-pulse rounded-lg bg-[#e5eaf1]" />)}</div>; }
 
 function State({ title, text, action, onAction }: { title: string; text?: string; action?: string; onAction?: () => void }) { return <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center"><FileText size={28} className="text-[#2463eb]" /><h2 className="mt-4 font-heading font-extrabold">{title}</h2>{text ? <p className="mt-2 text-sm text-[#526071]">{text}</p> : null}{action ? <button type="button" onClick={onAction} className="mt-4 min-h-10 rounded-lg bg-[#2463eb] px-4 text-sm font-semibold text-white">{action}</button> : null}</div>; }
@@ -181,6 +266,18 @@ function normalizeDocuments(value?: KnowledgeDocumentResponse[]) { return Array.
 function fileExtension(name: string) { return name.split(".").pop()?.toLowerCase() || "txt"; }
 function displayExtension(document: KnowledgeDocumentResponse) { const value = fileExtension(document.title); if (value !== document.title.toLowerCase()) return value.slice(0, 4).toUpperCase(); return document.source_type === "manual" ? "TXT" : document.source_type.slice(0, 4).toUpperCase(); }
 function fileSize(document: KnowledgeDocumentResponse) { return document.chunks_count ? `${document.chunks_count} ${document.chunks_count === 1 ? "фрагмент" : "фрагм."}` : "0 фрагм."; }
-function updatedLabel(value: string) { const date = new Date(value); if (Number.isNaN(date.getTime())) return value; const today = new Date(); const sameDay = date.toDateString() === today.toDateString(); const time = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date); if (sameDay) return `сегодня, ${time}`; return `${new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(date)}, ${time}`; }
-function latestUpdate(documents: KnowledgeDocumentResponse[]) { if (!documents.length) return "только что"; const latest = [...documents].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]; const diff = Date.now() - Date.parse(latest.updated_at); if (diff >= 0 && diff < 60 * 60 * 1000) return `${Math.max(1, Math.floor(diff / 60000))} мин назад`; if (diff >= 0 && diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)} ч назад`; return updatedLabel(latest.updated_at); }
+function updatedLabel(value: string) { const date = new Date(parseServerDateTime(value)); if (Number.isNaN(date.getTime())) return value; const today = new Date(); const sameDay = date.toDateString() === today.toDateString(); const time = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date); if (sameDay) return `сегодня, ${time}`; return `${new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(date)}, ${time}`; }
+function latestUpdate(documents: KnowledgeDocumentResponse[], now: number) { if (!documents.length) return "только что"; const latest = [...documents].sort((a, b) => parseServerDateTime(b.updated_at) - parseServerDateTime(a.updated_at))[0]; return formatRelativeServerTime(latest.updated_at, now); }
 function fileWord(count: number) { const mod10 = count % 10; const mod100 = count % 100; if (mod10 === 1 && mod100 !== 11) return "файл"; if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "файла"; return "файлов"; }
+function chunkWord(count: number) { const mod10 = count % 10; const mod100 = count % 100; if (mod10 === 1 && mod100 !== 11) return "фрагмент"; if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "фрагмента"; return "фрагментов"; }
+
+function useRelativeTimeClock() {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return now;
+}

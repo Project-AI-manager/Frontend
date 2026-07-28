@@ -1108,6 +1108,10 @@
             <span class="contact-label">Почта</span>
             <button class="contact-link" type="button" data-copy-email="timurzakirov@kpfu.ru">timurzakirov@kpfu.ru</button>
           </div>
+          <div class="contact-row">
+            <span class="contact-label">Сайт</span>
+            <button class="contact-link" type="button" data-copy-site="https://автопилот.space">автопилот.space</button>
+          </div>
         </div>
       </div>
     </footer>
@@ -1126,6 +1130,7 @@
       const productFrame = document.querySelector(".product-frame");
       const floatNote = document.querySelector(".float-note");
       const emailButton = document.querySelector("[data-copy-email]");
+      const siteButton = document.querySelector("[data-copy-site]");
 
       const updateScrollState = () => {
         topbar.classList.toggle("scrolled", scrollY > 40);
@@ -1179,6 +1184,17 @@
           setTimeout(() => { emailButton.textContent = email; }, 1600);
         } catch {
           emailButton.textContent = email;
+        }
+      });
+
+      siteButton?.addEventListener("click", async () => {
+        const siteUrl = siteButton.dataset.copySite;
+        try {
+          await navigator.clipboard.writeText(siteUrl);
+          siteButton.textContent = "Адрес скопирован";
+          setTimeout(() => { siteButton.textContent = "автопилот.space"; }, 1600);
+        } catch {
+          siteButton.textContent = "автопилот.space";
         }
       });
 

@@ -18,11 +18,17 @@ function VerifyEmailForm() {
   const [seconds, setSeconds] = useState(42);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [devToken, setDevToken] = useState(() => typeof window !== "undefined" && process.env.NODE_ENV === "development" ? sessionStorage.getItem("autopilot_verification_dev_token") ?? "" : "");
-  const [pastedToken, setPastedToken] = useState("");
+  const [devToken, setDevToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      const storedToken = sessionStorage.getItem("autopilot_verification_dev_token") ?? "";
+      window.setTimeout(() => setDevToken(storedToken), 0);
+    }
+  }, []);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -31,10 +37,13 @@ function VerifyEmailForm() {
   }, [seconds]);
 
   function setCharacter(index: number, raw: string) {
-    const nextValue = raw.replace(/\s/g, "").slice(-1);
-    setPastedToken("");
+    const nextValue = raw.replace(/\D/g, "").slice(0, 1);
     setCharacters((current) => current.map((value, itemIndex) => itemIndex === index ? nextValue : value));
     if (nextValue && index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
+  }
+
+  function handleInput(index: number, event: FormEvent<HTMLInputElement>) {
+    setCharacter(index, event.currentTarget.value);
   }
 
   function handleKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
@@ -44,10 +53,9 @@ function VerifyEmailForm() {
   }
 
   function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
-    const token = event.clipboardData.getData("text").trim();
+    const token = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
     if (!token) return;
     event.preventDefault();
-    setPastedToken(token);
     setCharacters(Array.from({ length: CODE_LENGTH }, (_, index) => token[index] ?? ""));
     inputs.current[Math.min(token.length, CODE_LENGTH) - 1]?.focus();
   }
@@ -55,7 +63,7 @@ function VerifyEmailForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const enteredCode = characters.join("");
-    const token = pastedToken || (enteredCode.length === CODE_LENGTH ? enteredCode : devToken);
+    const token = enteredCode.length === CODE_LENGTH ? enteredCode : "";
     if (!token) { setError("Введите код из шести символов."); return; }
     setError(""); setIsSubmitting(true);
     try {
@@ -74,7 +82,6 @@ function VerifyEmailForm() {
       setDevToken(localToken);
       if (localToken) sessionStorage.setItem("autopilot_verification_dev_token", localToken);
       setCharacters(Array.from({ length: CODE_LENGTH }, () => ""));
-      setPastedToken("");
       setSeconds(42);
       setNotice("Новый код отправлен.");
       inputs.current[0]?.focus();
@@ -100,11 +107,11 @@ function VerifyEmailForm() {
                   ref={(node) => { inputs.current[index] = node; }}
                   className="h-[58px] w-[43px] rounded-[8px] border border-[#d9e1ec] bg-white text-center font-heading text-[24px] font-extrabold tabular-nums outline-none focus:border-[#2463eb] focus:shadow-[0_0_0_3px_#eaf1ff] sm:h-[60px] sm:w-[52px]"
                   value={character}
-                  onChange={(event) => setCharacter(index, event.target.value)}
+                  onInput={(event) => handleInput(index, event)}
                   onKeyDown={(event) => handleKeyDown(index, event)}
                   onPaste={handlePaste}
                   autoComplete={index === 0 ? "one-time-code" : "off"}
-                  inputMode="text"
+                  inputMode="numeric"
                   maxLength={1}
                   aria-label={`Символ ${index + 1}`}
                 />

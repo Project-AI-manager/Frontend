@@ -1,13 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Mail, RefreshCw, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
+import { notificationsApi } from "@/lib/api/notifications";
 
 const usersApi = getUsers();
 
@@ -33,8 +34,15 @@ export default function ProfilePage() {
 }
 
 function ProfileContent({ user }: { user: Awaited<ReturnType<typeof usersApi.meApiV1UsersMeGet>> }) {
-  const [telegramAlerts, setTelegramAlerts] = useState(true);
-  const [emailDigest, setEmailDigest] = useState(false);
+  const client = useQueryClient();
+  const notificationsQuery = useQuery({
+    queryKey: ["profile-notifications"],
+    queryFn: notificationsApi.get,
+  });
+  const saveNotifications = useMutation({
+    mutationFn: notificationsApi.update,
+    onSuccess: (data) => client.setQueryData(["profile-notifications"], data),
+  });
   const initials = useMemo(
     () => user.full_name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "А",
     [user.full_name],
@@ -68,9 +76,24 @@ function ProfileContent({ user }: { user: Awaited<ReturnType<typeof usersApi.meA
           </div>
         </div>
         <div className="mt-5 divide-y divide-[#e5eaf1] border-y border-[#e5eaf1]">
-          <NotificationRow label="Присылать в Telegram, когда нужен человек" checked={telegramAlerts} onChange={setTelegramAlerts} />
-          <NotificationRow label="Сводка за день на почту" checked={emailDigest} onChange={setEmailDigest} />
+          <NotificationRow
+            label="Присылать на почту, когда нужен человек"
+            checked={notificationsQuery.data?.escalation_email_enabled ?? true}
+            disabled={notificationsQuery.isLoading || saveNotifications.isPending}
+            onChange={(value) => saveNotifications.mutate({ escalation_email_enabled: value })}
+          />
+          <NotificationRow
+            label="Сводка за день на почту"
+            checked={notificationsQuery.data?.daily_digest_email_enabled ?? false}
+            disabled={notificationsQuery.isLoading || saveNotifications.isPending}
+            onChange={(value) => saveNotifications.mutate({ daily_digest_email_enabled: value })}
+          />
         </div>
+        {notificationsQuery.error || saveNotifications.error ? (
+          <p role="alert" className="mt-3 text-sm text-[#a72f2f]">
+            {getApiErrorMessage(notificationsQuery.error ?? saveNotifications.error, "Не удалось сохранить настройки уведомлений.")}
+          </p>
+        ) : null}
       </section>
 
       <section className="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:p-7">
@@ -96,11 +119,11 @@ function ProfileField({ icon: Icon, label, value, separated = false }: { icon: t
   );
 }
 
-function NotificationRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+function NotificationRow({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
   return (
     <div className="flex min-h-[64px] items-center justify-between gap-6 py-3.5">
       <span className="text-sm font-semibold text-[#101828]">{label}</span>
-      <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className={`flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] transition-colors ${checked ? "justify-end bg-[#2463eb]" : "justify-start bg-[#d9e1ec]"}`}>
+      <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] transition-colors disabled:opacity-50 ${checked ? "justify-end bg-[#2463eb]" : "justify-start bg-[#d9e1ec]"}`}>
         <span className="size-5 rounded-full bg-white shadow-sm" />
       </button>
     </div>

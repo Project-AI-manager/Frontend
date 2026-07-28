@@ -35,6 +35,8 @@ export type BillingSettingsResponse = {
   dialogs_limit: number;
   ai_replies_used: number;
   channel_limit: number;
+  balance_kopecks: number;
+  expenses_kopecks: number;
 };
 
 export const settingsApi = {

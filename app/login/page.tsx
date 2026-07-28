@@ -8,11 +8,11 @@ import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/ui/auth-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getAuth } from "@/lib/api/generated/auth/auth";
+import { getUsers } from "@/lib/api/generated/users/users";
 import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
-const DEMO_EMAIL = "owner.demo@example.com";
-const DEMO_PASSWORD = "demo-password";
+const usersApi = getUsers();
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,7 +32,8 @@ export default function LoginPage() {
         password: nextPassword,
       });
       setAuthTokens({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
-      router.push("/inbox");
+      const user = await usersApi.meApiV1UsersMeGet();
+      router.push(user.email_verified ? "/inbox" : `/verify-email?email=${encodeURIComponent(user.email)}`);
     } catch (err) {
       setError(getApiErrorMessage(err, "Не удалось войти. Проверьте почту и пароль."));
     } finally { setIsSubmitting(false); }
@@ -41,12 +42,6 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await signIn(email, password);
-  }
-
-  async function handleDemoLogin() {
-    setEmail(DEMO_EMAIL);
-    setPassword(DEMO_PASSWORD);
-    await signIn(DEMO_EMAIL, DEMO_PASSWORD);
   }
 
   return (
@@ -66,7 +61,6 @@ export default function LoginPage() {
           <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-[#526071]"><input className="peer sr-only" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span className="flex size-[18px] items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]">{remember ? <Check size={12} strokeWidth={3} className="text-white" /> : null}</span>Запомнить</label>
           {error ? <p role="alert" className="rounded-[8px] border border-[#f3cfcf] bg-[#fdeded] p-3 text-[13px] text-[#a72f2f]">{error}</p> : null}
           <button className="ap-primary flex items-center justify-center gap-2" type="submit" disabled={isSubmitting}>{isSubmitting ? <><span className="ap-spinner" />Входим</> : "Войти"}</button>
-          <button className="min-h-11 rounded-[8px] border border-[#d9e1ec] bg-white px-4 text-sm font-semibold text-[#1546ad] hover:bg-[#f4f7fb] disabled:opacity-60" type="button" disabled={isSubmitting} onClick={handleDemoLogin}>Войти в демо без регистрации</button>
         </form>
       </section>
       <p className="m-0 text-[14px] text-[#526071]">Нет аккаунта? <Link href="/register" className="text-[#1546ad] hover:text-[#2463eb]">Зарегистрироваться</Link></p>

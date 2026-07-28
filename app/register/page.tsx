@@ -13,19 +13,12 @@ import { setAuthTokens } from "@/lib/api/token";
 
 const authApi = getAuth();
 
-/** Витрина слева: что именно создаётся при регистрации. */
-const showcasePoints = [
-  "Компания + владелец",
-  "Безопасный вход сразу после регистрации",
-  "Переход в onboarding",
-];
-
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [accepted, setAccepted] = useState(true);
+  const [accepted, setAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,8 +40,6 @@ export default function RegisterPage() {
     } finally { setIsSubmitting(false); }
   }
 
-  const strength = Math.min(3, Math.ceil(password.length / 4));
-
   return (
     <AuthShell width={480}>
       <section className="ap-auth-card" aria-labelledby="register-title">
@@ -63,7 +54,6 @@ export default function RegisterPage() {
               <input id="register-password" className="min-h-11 min-w-0 flex-1 rounded-[8px] border-0 bg-transparent px-3.5 text-[14px] outline-none" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Не менее 8 символов" minLength={8} required />
               <button type="button" className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
-            <div className="flex items-center gap-2" aria-label={`Надёжность пароля: ${strength} из 3`}><span className={`h-1 flex-1 rounded-full ${strength >= 1 ? "bg-[#2463eb]" : "bg-[#e5eaf1]"}`} /><span className={`h-1 flex-1 rounded-full ${strength >= 2 ? "bg-[#2463eb]" : "bg-[#e5eaf1]"}`} /><span className={`h-1 flex-1 rounded-full ${strength >= 3 ? "bg-[#2463eb]" : "bg-[#e5eaf1]"}`} /><span className="text-[13px] text-[#64717f]">от 8 символов</span></div>
           </div>
           <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-[1.5] text-[#526071]"><input className="peer sr-only" type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span className="mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]">{accepted ? <Check size={12} strokeWidth={3} className="text-white" /> : null}</span><span>Принимаю <Link href="/legal/terms" className="text-[#1546ad]">условия использования</Link> и <Link href="/legal/privacy" className="text-[#1546ad]">политику конфиденциальности</Link></span></label>
           {error ? <p role="alert" className="rounded-[8px] border border-[#f3cfcf] bg-[#fdeded] p-3 text-[13px] text-[#a72f2f]">{error}</p> : null}

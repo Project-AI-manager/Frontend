@@ -61,6 +61,8 @@ const billingSettings = {
   dialogs_limit: 500,
   ai_replies_used: 20,
   channel_limit: 1,
+  balance_kopecks: 100000,
+  expenses_kopecks: 0,
 };
 
 const telegram = {
@@ -121,12 +123,12 @@ describe("SettingsPage", () => {
     expect(container.firstElementChild).toHaveAttribute("data-immersive", "true");
     expect(screen.getByText("Отвечать автоматически")).toBeInTheDocument();
     expect(screen.getByText("72%")).toBeInTheDocument();
-    expect(screen.getByText("7 520 ₽")).toBeInTheDocument();
+    expect(screen.getByText("1 000 ₽")).toBeInTheDocument();
     expect(
-      screen.getByText("Хватит примерно на 2 900 ответов"),
+      screen.getByText("Бонусный баланс для работы ассистента"),
     ).toBeInTheDocument();
-    expect(screen.getByText("12 480 ₽")).toBeInTheDocument();
-    expect(screen.getByText("−14% к июню")).toBeInTheDocument();
+    expect(screen.getByText("0 ₽")).toBeInTheDocument();
+    expect(screen.getByText("Расход за текущий месяц")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Сумма, ₽")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Пополнить" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Сохранить" })).not.toBeInTheDocument();
@@ -212,17 +214,11 @@ describe("SettingsPage", () => {
     expect(channelsApi.listChannelsApiV1ChannelsGet).toHaveBeenCalledTimes(2);
   });
 
-  it("shows integration health and runs manual probes", async () => {
+  it("does not expose internal AI integration diagnostics", async () => {
     renderPage();
 
-    expect(await screen.findByText("Подключения AI")).toBeInTheDocument();
-    expect(screen.getByText("Omni Router готов")).toBeInTheDocument();
-    expect(screen.getByText("Ключи и адреса хранятся только в окружении backend и здесь не отображаются.")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Проверить ответ" }));
-    fireEvent.click(screen.getByRole("button", { name: "Проверить вектор" }));
-    await waitFor(() => expect(integrationsApi.probeLlm).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(integrationsApi.probeEmbeddings).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("Вектор получен")).toBeInTheDocument();
+    expect(await screen.findByText("Поведение ассистента")).toBeInTheDocument();
+    expect(screen.queryByText("Подключения AI")).not.toBeInTheDocument();
+    expect(integrationsApi.getHealth).not.toHaveBeenCalled();
   });
 });

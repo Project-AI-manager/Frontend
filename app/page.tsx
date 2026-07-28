@@ -1,6 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import type { Metadata } from "next";
 import Script from "next/script";
+
+import { getSiteUrl } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: getSiteUrl("/") },
+  openGraph: { url: getSiteUrl("/") },
+};
 
 const sourceCandidates = [
   path.join(process.cwd(), "autopilot-one-page.html"),

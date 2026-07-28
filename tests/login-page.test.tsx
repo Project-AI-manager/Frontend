@@ -9,6 +9,7 @@ import { getAccessToken, getRefreshToken } from "@/lib/api/token";
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   loginApiV1AuthLoginPost: vi.fn(),
+  meApiV1UsersMeGet: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -23,29 +24,59 @@ vi.mock("@/lib/api/generated/auth/auth", () => ({
   })),
 }));
 
+vi.mock("@/lib/api/generated/users/users", () => ({
+  getUsers: () => ({
+    meApiV1UsersMeGet: mocks.meApiV1UsersMeGet,
+  }),
+}));
+
 describe("LoginPage", () => {
   beforeEach(() => {
     mocks.push.mockClear();
     mocks.loginApiV1AuthLoginPost.mockReset();
+    mocks.meApiV1UsersMeGet.mockReset();
     vi.mocked(getAuth).mockClear();
     mocks.loginApiV1AuthLoginPost.mockResolvedValue({
-      access_token: "demo-access-token",
-      refresh_token: "demo-refresh-token",
+      access_token: "test-access-token",
+      refresh_token: "test-refresh-token",
+    });
+    mocks.meApiV1UsersMeGet.mockResolvedValue({
+      email: "user@example.com",
+      email_verified: true,
     });
     document.cookie = "refresh_token=; path=/; max-age=0; SameSite=Lax";
   });
 
-  it("opens the seeded demo workspace without manual registration", async () => {
+  it("signs in only with credentials entered by the user", async () => {
     render(<LoginPage />);
 
-    await userEvent.click(screen.getByRole("button", { name: /войти в демо без регистрации/i }));
+    expect(screen.queryByRole("button", { name: /демо/i })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("owner.demo@example.com")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "user@example.com");
+    await userEvent.type(screen.getByPlaceholderText("Введите пароль"), "real-password");
+    await userEvent.click(screen.getByRole("button", { name: "Войти" }));
 
     expect(mocks.loginApiV1AuthLoginPost).toHaveBeenCalledWith({
-      email: "owner.demo@example.com",
-      password: "demo-password",
+      email: "user@example.com",
+      password: "real-password",
     });
-    expect(getAccessToken()).toBe("demo-access-token");
-    expect(getRefreshToken()).toBe("demo-refresh-token");
+    expect(getAccessToken()).toBe("test-access-token");
+    expect(getRefreshToken()).toBe("test-refresh-token");
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/inbox"));
+  });
+
+  it("sends an unverified user to email confirmation", async () => {
+    mocks.meApiV1UsersMeGet.mockResolvedValue({
+      email: "new@example.com",
+      email_verified: false,
+    });
+    render(<LoginPage />);
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "new@example.com");
+    await userEvent.type(screen.getByPlaceholderText("Введите пароль"), "real-password");
+    await userEvent.click(screen.getByRole("button", { name: "Войти" }));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/verify-email?email=new%40example.com"));
   });
 });

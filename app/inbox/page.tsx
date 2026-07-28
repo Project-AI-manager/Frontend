@@ -2,9 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Loader2, Plus, Search, Send, WandSparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { markConversationRead } from "@/lib/api/conversations";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ConversationMessageResponse, ConversationResponse } from "@/lib/api/generated/ai.schemas";
 import { getConversations } from "@/lib/api/generated/conversations/conversations";
@@ -15,12 +17,22 @@ const usersApi = getUsers();
 const filters = ["Все", "Нужен человек", "Отвечено", "Закрытые"];
 
 export default function InboxPage() {
+  return (
+    <Suspense fallback={<AppShell title="Диалоги" description="Все обращения клиентов в одном месте"><State title="Загружаем диалоги…" /></AppShell>}>
+      <InboxContent />
+    </Suspense>
+  );
+}
+
+function InboxContent() {
   const client = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("conversation"));
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Все");
   const [reply, setReply] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const readAttempts = useRef(new Set<string>());
 
   const list = useQuery({
     queryKey: ["conversations"],
@@ -39,6 +51,50 @@ export default function InboxPage() {
     refetchInterval: 4_000,
     refetchIntervalInBackground: false,
   });
+  const selectedConversation = list.data?.find((item) => item.id === effectiveSelectedId);
+  const markRead = useMutation({
+    mutationFn: (conversationId: string) => markConversationRead(conversationId),
+    onMutate: async (conversationId) => {
+      await Promise.all([
+        client.cancelQueries({ queryKey: ["conversations"] }),
+        client.cancelQueries({ queryKey: ["conversation", conversationId] }),
+      ]);
+      client.setQueryData<ConversationResponse[]>(["conversations"], (current) =>
+        current?.map((item) =>
+          item.id === conversationId ? { ...item, unread_count: 0 } : item,
+        ),
+      );
+      client.setQueryData(["conversation", conversationId], (current: unknown) =>
+        current && typeof current === "object" ? { ...current, unread_count: 0 } : current,
+      );
+    },
+    onSuccess: (_conversation, conversationId) => {
+      client.setQueryData(["conversation", conversationId], (current: unknown) =>
+        current && typeof current === "object" ? { ...current, unread_count: 0 } : current,
+      );
+      client.setQueryData<ConversationResponse[]>(["conversations"], (current) =>
+        current?.map((item) =>
+          item.id === conversationId ? { ...item, unread_count: 0 } : item,
+        ),
+      );
+    },
+  });
+  const markReadConversation = markRead.mutate;
+
+  useEffect(() => {
+    const readKey = effectiveSelectedId && selectedConversation
+      ? `${effectiveSelectedId}:${selectedConversation.last_message_at}:${selectedConversation.unread_count}`
+      : null;
+    if (
+      effectiveSelectedId &&
+      readKey &&
+      (selectedConversation?.unread_count ?? 0) > 0 &&
+      !readAttempts.current.has(readKey)
+    ) {
+      readAttempts.current.add(readKey);
+      markReadConversation(effectiveSelectedId);
+    }
+  }, [effectiveSelectedId, markReadConversation, selectedConversation]);
   const send = useMutation({
     mutationFn: (text: string) => api.replyApiV1ConversationsConversationIdReplyPost(effectiveSelectedId!, { text }),
     onSuccess: async () => {
@@ -146,7 +202,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ConversationItem({ item, active, onClick }: { item: ConversationResponse; active: boolean; onClick: () => void }) {
-  return <button type="button" aria-pressed={active} onClick={onClick} className={`block w-full border-b border-[#e5eaf1] px-4 py-3.5 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : ""}`}><div className="flex items-center gap-2"><span className={`size-2 shrink-0 rounded-full ${statusDot(item.status)}`} /><span className="min-w-0 truncate text-sm font-semibold">{item.customer_name}</span><span className="ml-auto shrink-0 text-xs tabular-nums text-[#64717f]">{time(item.last_message_at)}</span></div><p className="mt-1.5 truncate text-[13px] leading-5 text-[#526071]">{item.last_message_preview || "Новый диалог"}</p><div className="mt-1.5 flex gap-1.5"><span className={`rounded-[5px] px-[7px] py-0.5 text-[11px] font-bold uppercase tracking-[.04em] ${statusTone(item.status)}`}>{statusLabel(item.status)}</span><span className="rounded-[5px] bg-[#f4f7fb] px-[7px] py-0.5 text-[11px] font-bold uppercase tracking-[.04em] text-[#526071]">{channelLabel(item.channel_type)}</span></div></button>;
+  return <button type="button" aria-pressed={active} onClick={onClick} className={`block w-full border-b border-[#e5eaf1] px-4 py-3.5 text-left transition hover:bg-[#f8fbff] ${active ? "bg-[#f8fbff]" : ""}`}><div className="flex items-center gap-2"><span className={`size-2 shrink-0 rounded-full ${statusDot(item.status)}`} /><span className="min-w-0 truncate text-sm font-semibold">{item.customer_name}</span><span className="ml-auto flex shrink-0 flex-col items-center gap-1 text-xs tabular-nums text-[#64717f]"><span>{time(item.last_message_at)}</span>{item.unread_count > 0 ? <span aria-label="Непрочитанный диалог" className="size-1.5 rounded-full bg-[#2463eb]" /> : null}</span></div><p className="mt-1.5 truncate text-[13px] leading-5 text-[#526071]">{item.last_message_preview || "Новый диалог"}</p><div className="mt-1.5 flex gap-1.5"><span className={`rounded-[5px] px-[7px] py-0.5 text-[11px] font-bold uppercase tracking-[.04em] ${statusTone(item.status)}`}>{statusLabel(item.status)}</span><span className="rounded-[5px] bg-[#f4f7fb] px-[7px] py-0.5 text-[11px] font-bold uppercase tracking-[.04em] text-[#526071]">{channelLabel(item.channel_type)}</span></div></button>;
 }
 
 function ListSkeleton() { return <div className="space-y-3 p-4">{Array.from({ length: 7 }).map((_, index) => <div key={index} className="h-[84px] animate-pulse rounded-lg bg-[#e5eaf1]" />)}</div>; }

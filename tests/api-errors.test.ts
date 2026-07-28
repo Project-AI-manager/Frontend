@@ -1,7 +1,7 @@
 import axios from "axios";
 import { describe, expect, it } from "vitest";
 
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { getApiErrorMessage, getKnowledgeUploadErrorMessage } from "@/lib/api/errors";
 
 function axiosError(detail: unknown) {
   return new axios.AxiosError("Request failed", "ERR_BAD_RESPONSE", undefined, {}, {
@@ -48,5 +48,33 @@ describe("getApiErrorMessage", () => {
 
   it("uses fallback for non-Axios errors", () => {
     expect(getApiErrorMessage(new Error("Boom"), "Fallback")).toBe("Fallback");
+  });
+});
+
+describe("getKnowledgeUploadErrorMessage", () => {
+  it("explains an unreadable XLSX in Russian without exposing the backend message", () => {
+    const message = getKnowledgeUploadErrorMessage(
+      axiosError("The XLSX file could not be read"),
+    );
+
+    expect(message).toContain("Не удалось прочитать таблицу XLSX");
+    expect(message).toContain("открывается в Excel");
+    expect(message).not.toContain("could not be read");
+  });
+
+  it("localizes generic upload limits and unsupported media errors", () => {
+    const oversized = axiosError("Unexpected parser error");
+    oversized.response!.status = 413;
+    const unsupported = axiosError("Unexpected parser error");
+    unsupported.response!.status = 415;
+
+    expect(getKnowledgeUploadErrorMessage(oversized)).toContain("слишком большой");
+    expect(getKnowledgeUploadErrorMessage(unsupported)).toContain("PDF, DOCX, XLSX, MD или TXT");
+  });
+
+  it("does not expose an unknown English parser error", () => {
+    expect(getKnowledgeUploadErrorMessage(axiosError("Workbook parser exploded"))).toBe(
+      "Не удалось обработать файл. Проверьте, что он не повреждён, и попробуйте снова.",
+    );
   });
 });

@@ -1,20 +1,6 @@
 import Link from "next/link";
 
-type FooterLink = {
-  href: string;
-  label: string;
-};
-
-const productLinks: FooterLink[] = [
-  { href: "/#features", label: "Возможности" },
-  { href: "/#how", label: "Как работает" },
-  { href: "/#pricing", label: "Тарифы" },
-];
-
-const legalLinks: FooterLink[] = [
-  { href: "/legal/terms", label: "Условия" },
-  { href: "/legal/privacy", label: "Политика конфиденциальности" },
-];
+import { SITE_HOST_DISPLAY, SITE_ORIGIN } from "@/lib/site";
 
 export function Footer() {
   return (
@@ -31,6 +17,12 @@ export function Footer() {
             AI-сотрудник для МСП: единое окно обращений, RAG по базе знаний, эскалация
             менеджеру и самообучение на реальных диалогах.
           </p>
+          <a
+            href={SITE_ORIGIN}
+            className="mt-4 inline-flex font-semibold text-blue-600 transition hover:text-blue-700"
+          >
+            {SITE_HOST_DISPLAY}
+          </a>
         </div>
 
         <div className="flex flex-wrap items-start gap-6 font-semibold text-slate-500 lg:justify-end mt-4 lg:mt-0">
@@ -44,31 +36,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterColumn({
-  title,
-  links,
-}: {
-  title: string;
-  links: FooterLink[];
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="wf-kicker">{title}</p>
-      <ul className="mt-3 space-y-1 text-sm">
-        {links.map((link) => (
-          <li key={link.href}>
-            <Link
-              href={link.href}
-              className="wf-muted inline-flex min-h-9 items-center"
-            >
-              {link.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
