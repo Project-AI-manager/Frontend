@@ -46,4 +46,11 @@ export const analyticsApi = {
       method: "GET",
       params: period,
     }),
+  downloadDetailed: (period: AnalyticsPeriod) =>
+    apiClient<Blob>({
+      url: "/api/v1/analytics/export",
+      method: "GET",
+      params: { ...period, include_messages: true },
+      responseType: "blob",
+    }),
 };

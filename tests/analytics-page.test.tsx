@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AxiosError, type AxiosResponse } from "axios";
 
 import AnalyticsPage from "@/app/analytics/page";
 
 const api = vi.hoisted(() => ({
   getOverview: vi.fn(),
+  downloadDetailed: vi.fn(),
 }));
 
 vi.mock("@/components/layout/app-shell", () => ({
@@ -62,6 +64,9 @@ describe("AnalyticsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getOverview.mockResolvedValue(overview);
+    api.downloadDetailed.mockResolvedValue(
+      new Blob(["xlsx"], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    );
   });
 
   it("renders the normal reference analytics layout with live values", async () => {
@@ -77,6 +82,9 @@ describe("AnalyticsPage", () => {
     expect(screen.getByText("Автопилот ответил в 3 753 диалогах")).toBeInTheDocument();
     expect(screen.queryByText(/п\.п\./i)).not.toBeInTheDocument();
     expect(screen.getByText("Обращения по дням")).toBeInTheDocument();
+    expect(
+      screen.getByText("Уникальные диалоги, в которых клиент написал в этот день"),
+    ).toBeInTheDocument();
     expect(screen.getByText("115 / день")).toBeInTheDocument();
     expect(screen.getByText("28.06")).toBeInTheDocument();
     expect(screen.getByText("27.07")).toBeInTheDocument();
@@ -119,7 +127,7 @@ describe("AnalyticsPage", () => {
     expect(screen.getByRole("button", { name: "Другой период" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("downloads the detailed report as CSV", async () => {
+  it("downloads the detailed report as XLSX from the backend", async () => {
     const createObjectURL = vi.fn(() => "blob:analytics");
     const revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
@@ -130,10 +138,35 @@ describe("AnalyticsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Выгрузить подробно" }));
 
+    await waitFor(() => expect(api.downloadDetailed).toHaveBeenCalledOnce());
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(click).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:analytics");
     click.mockRestore();
+  });
+
+  it("shows a backend export error returned as a Blob", async () => {
+    const response = {
+      status: 500,
+      statusText: "Internal Server Error",
+      headers: {},
+      config: {},
+      data: new Blob(
+        [JSON.stringify({ detail: "Не удалось подготовить строки отчёта." })],
+        { type: "application/json" },
+      ),
+    } as AxiosResponse<Blob>;
+    api.downloadDetailed.mockRejectedValueOnce(
+      new AxiosError("Request failed", "ERR_BAD_RESPONSE", undefined, undefined, response),
+    );
+    renderPage();
+    await screen.findAllByText("4 812");
+
+    fireEvent.click(screen.getByRole("button", { name: "Выгрузить подробно" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Не удалось подготовить строки отчёта.",
+    );
   });
 
   it("shows the reference empty state", async () => {

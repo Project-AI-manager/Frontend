@@ -14,21 +14,9 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { analyticsApi } from "@/lib/api/analytics";
 import type { AnalyticsOverviewResponse } from "@/lib/api/analytics";
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { getApiDownloadErrorMessage, getApiErrorMessage } from "@/lib/api/errors";
 
 const periods = [7, 30] as const;
-const counts = [
-  96, 112, 104, 128, 141, 118, 88, 132, 156, 149, 137, 168, 174, 152,
-  130, 121, 165, 181, 158, 143, 176, 190, 172, 238, 205, 188, 166, 152,
-  194, 206,
-];
-const demoDailyData = counts.map((value, index) => {
-  const date = new Date(Date.UTC(2026, 5, 28 + index));
-  return {
-    date: date.toISOString().slice(0, 10),
-    dialogs: value,
-  };
-});
 function formatNumber(value: number | undefined) {
   return new Intl.NumberFormat("ru-RU")
     .format(value ?? 0)
@@ -71,7 +59,30 @@ export default function AnalyticsPage() {
   const overview = useQuery({
     queryKey: ["analytics-overview", range.from, range.to],
     queryFn: () => analyticsApi.getOverview(range),
+    refetchInterval: 15_000,
   });
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function downloadDetailedReport() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const blob = await analyticsApi.downloadDetailed(range);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `autopilot-analytics-${range.from}-${range.to}.xlsx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setExportError(
+        await getApiDownloadErrorMessage(error, "Не удалось сформировать подробный отчёт."),
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
   const data = overview.data;
   const dialogs = data?.dialogs_total ?? data?.dialogs_used ?? 0;
   const dialogsWithAutopilot = Math.round((data?.auto_reply_rate ?? 0) * dialogs);
@@ -180,8 +191,8 @@ export default function AnalyticsPage() {
 
           <button
             type="button"
-            onClick={() => data && exportDetailedReport(data, range)}
-            disabled={!data}
+            onClick={() => void downloadDetailedReport()}
+            disabled={!data || exporting}
             className="ml-auto flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-4 text-sm font-semibold whitespace-nowrap text-[#101828] hover:bg-[#f4f7fb]"
           >
             <Download
@@ -190,9 +201,15 @@ export default function AnalyticsPage() {
               className="text-[#526071]"
               aria-hidden="true"
             />
-            Выгрузить подробно
+            {exporting ? "Формируем…" : "Выгрузить подробно"}
           </button>
         </header>
+
+        {exportError ? (
+          <p role="alert" className="mx-8 mt-4 rounded-lg border border-[#d84545]/30 bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f]">
+            {exportError}
+          </p>
+        ) : null}
 
         <main className="relative min-h-0 flex-1 overflow-y-auto px-8 pt-6 pb-7">
           {overview.isLoading ? (
@@ -234,7 +251,7 @@ export default function AnalyticsPage() {
                 ))}
               </section>
 
-              <DailyChart period={period} data={data?.daily_series ?? demoDailyData.slice(-period)} />
+              <DailyChart period={period} data={data?.daily_series ?? []} />
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_1fr]">
                 <DialogBreakdown data={data!} />
@@ -264,9 +281,14 @@ function DailyChart({ period, data }: { period: (typeof periods)[number]; data: 
   return (
     <article className="flex flex-col gap-4 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="font-heading text-base font-extrabold tracking-[-.02em]">
-          Обращения по дням
-        </h2>
+        <div>
+          <h2 className="font-heading text-base font-extrabold tracking-[-.02em]">
+            Обращения по дням
+          </h2>
+          <p className="mt-1 text-[12px] text-[#64717f]">
+            Уникальные диалоги, в которых клиент написал в этот день
+          </p>
+        </div>
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-[13px] text-[#64717f]">в среднем</span>
@@ -350,30 +372,6 @@ function formatRange(from: string, to: string) {
   const formatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
   const year = to.slice(0, 4);
   return `${formatter.format(new Date(`${from}T00:00:00Z`))} — ${formatter.format(new Date(`${to}T00:00:00Z`))} ${year}`;
-}
-
-function exportDetailedReport(data: AnalyticsOverviewResponse, range: { from: string; to: string }) {
-  const rows = [
-    ["Отчёт Автопилота", `${range.from} — ${range.to}`],
-    ["Показатель", "Значение"],
-    ["Обращений", data.dialogs_total],
-    ["С ответом автопилота", `${Math.round(data.auto_reply_rate * 100)}%`],
-    ["Передано менеджеру", `${Math.round(data.escalation_rate * 100)}%`],
-    ["Среднее время ответа, сек", data.avg_response_sec],
-    ["Ответов автопилота", data.ai_replies_count],
-    ["Ответов менеджеров", data.manager_replies_count],
-    ["Сообщений клиентов", data.inbound_messages_count],
-    [],
-    ["Дата", "Обращений"],
-    ...data.daily_series.map((item) => [item.date, item.dialogs]),
-  ];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(";")).join("\r\n");
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `autopilot-analytics-${range.from}-${range.to}.csv`;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function DialogBreakdown({ data }: { data: AnalyticsOverviewResponse }) {

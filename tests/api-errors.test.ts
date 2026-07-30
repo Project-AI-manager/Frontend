@@ -39,11 +39,17 @@ describe("getApiErrorMessage", () => {
     );
   });
 
-  it("uses network messages only when there is no response", () => {
+  it("does not expose a raw Axios network error to the user", () => {
     expect(getApiErrorMessage(new axios.AxiosError("Network Error"), "Fallback")).toBe(
-      "Network Error",
+      "Fallback",
     );
     expect(getApiErrorMessage(axiosError({ code: "unknown" }), "Fallback")).toBe("Fallback");
+  });
+
+  it("uses a localized connection message when no fallback was provided", () => {
+    expect(getApiErrorMessage(new axios.AxiosError("Network Error"), "")).toBe(
+      "Не удалось связаться с сервером. Проверьте, что сервер запущен, и попробуйте ещё раз.",
+    );
   });
 
   it("uses fallback for non-Axios errors", () => {

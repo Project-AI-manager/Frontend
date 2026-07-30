@@ -42,3 +42,11 @@ export async function getAuthenticatedAttachment(url: string) {
   const response = await axiosInstance.get<Blob>(url, { responseType: "blob" });
   return response.data;
 }
+
+export async function downloadConversationExport(conversationId: string) {
+  const response = await axiosInstance.get<Blob>(
+    `/api/v1/conversations/${conversationId}/export`,
+    { responseType: "blob" },
+  );
+  return response.data;
+}

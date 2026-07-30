@@ -1,26 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { TelegramConnectDialog } from "@/components/settings/telegram-connect-dialog";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
-import { getChannels } from "@/lib/api/generated/channels/channels";
 import { settingsApi } from "@/lib/api/settings";
-
-const channelsApi = getChannels();
-
-const channelCatalog = [
-  { type: "telegram", mark: "TG", name: "Telegram" },
-  { type: "whatsapp", mark: "WA", name: "WhatsApp" },
-  { type: "avito", mark: "AV", name: "Avito" },
-  { type: "vk", mark: "VK", name: "VK" },
-  { type: "instagram", mark: "IG", name: "Instagram" },
-  { type: "max", mark: "MAX", name: "Max" },
-] as const;
 
 export default function SettingsPage() {
   const aiQuery = useQuery({
@@ -31,17 +17,13 @@ export default function SettingsPage() {
     queryKey: ["settings-billing"],
     queryFn: settingsApi.getBillingSettings,
   });
-  const channelsQuery = useQuery({
-    queryKey: ["settings-channels"],
-    queryFn: () => channelsApi.listChannelsApiV1ChannelsGet(),
-  });
   const loading = aiQuery.isLoading || billingQuery.isLoading;
   const error = aiQuery.error ?? billingQuery.error;
 
   return (
     <AppShell
       title="Настройки"
-      description="Поведение ассистента, оплата и каналы связи."
+      description="Поведение ассистента и оплата."
       immersive
     >
       <div className="relative h-full min-h-0 overflow-hidden">
@@ -58,15 +40,10 @@ export default function SettingsPage() {
               onRetry={() => {
                 void aiQuery.refetch();
                 void billingQuery.refetch();
-                void channelsQuery.refetch();
               }}
             />
           ) : (
-            <SettingsContent
-              ai={aiQuery.data}
-              billing={billingQuery.data}
-              channels={channelsQuery.data ?? []}
-            />
+            <SettingsContent ai={aiQuery.data} billing={billingQuery.data} />
           )}
         </div>
       </div>
@@ -77,16 +54,13 @@ export default function SettingsPage() {
 function SettingsContent({
   ai,
   billing,
-  channels,
 }: {
   ai: Awaited<ReturnType<typeof settingsApi.getAiSettings>>;
   billing: Awaited<ReturnType<typeof settingsApi.getBillingSettings>>;
-  channels: ChannelResponse[];
 }) {
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(ai.auto_reply_enabled);
   const [threshold, setThreshold] = useState(ai.confidence_threshold);
-  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
   const save = useMutation({
     mutationFn: (next: {
@@ -147,7 +121,7 @@ function SettingsContent({
         <div className="flex flex-col gap-2.5">
           <div className="flex items-baseline justify-between gap-4">
             <label htmlFor="confidence" className="text-sm font-semibold">
-              Порог уверенности для передачи человеку
+              Доля автоматических ответов
             </label>
             <output
               htmlFor="confidence"
@@ -206,65 +180,6 @@ function SettingsContent({
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Каналы связи" id="channels">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {channelCatalog.map((item) => {
-            const channel = findChannel(channels, item.type);
-            const connected = isConnected(channel);
-
-            return (
-              <article
-                key={item.type}
-                className="flex items-center gap-3 rounded-lg border border-[#d9e1ec] bg-white px-4 py-3.5 transition-[border-color,background] hover:border-[#c9d6e8] hover:bg-[#f8fbff]"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#d9e1ec] font-heading text-xs font-extrabold text-[#526071]">
-                  {item.mark}
-                </span>
-                <span className="flex min-w-0 flex-col gap-[3px]">
-                  <span className="truncate text-sm font-semibold">
-                    {item.name}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.06em] ${connected ? "text-[#0c7a4e]" : "text-[#94600b]"}`}
-                  >
-                    <span
-                      className={`size-1.5 rounded-full ${connected ? "bg-[#13a66b]" : "bg-[#e89120]"}`}
-                    />
-                    {connected ? "Работает" : "Не подключено"}
-                  </span>
-                </span>
-                {connected ? (
-                  <button
-                    type="button"
-                    aria-label={`Меню канала ${item.name}`}
-                    className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-lg border border-transparent bg-transparent text-[#64717f] hover:bg-[#eaf1ff]"
-                  >
-                    <MoreHorizontal size={18} strokeWidth={1.75} />
-                  </button>
-                ) : item.type === "telegram" ? (
-                  <button
-                    type="button"
-                    onClick={() => setTelegramDialogOpen(true)}
-                    className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
-                  >
-                    Подключить
-                  </button>
-                ) : (
-                  <span className="ml-auto text-[12px] font-semibold text-[#64717f]">Скоро</span>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </SettingsCard>
-      {telegramDialogOpen ? (
-        <TelegramConnectDialog
-          onClose={() => setTelegramDialogOpen(false)}
-          onConnected={async () => {
-            await client.invalidateQueries({ queryKey: ["settings-channels"] });
-          }}
-        />
-      ) : null}
     </>
   );
 }
@@ -351,28 +266,10 @@ function TopUpForm() {
   );
 }
 
-function findChannel(channels: ChannelResponse[], type: string) {
-  return channels.find(
-    (channel) =>
-      channel.type.toLocaleLowerCase("ru-RU") === type && isConnected(channel),
-  ) ?? channels.find(
-    (channel) => channel.type.toLocaleLowerCase("ru-RU") === type,
-  );
-}
-
-function isConnected(channel?: ChannelResponse) {
-  const active = channel?.status === "active" || channel?.status === "connected";
-  return Boolean(
-    active &&
-    (channel?.type.toLocaleLowerCase("ru-RU") !== "telegram" ||
-      channel.settings.transport === "mtproto"),
-  );
-}
-
 function SettingsSkeleton() {
   return (
     <div className="flex flex-col gap-4" role="status" aria-label="Загружаем настройки">
-      {[226, 174, 255].map((height) => (
+      {[226, 174].map((height) => (
         <div
           key={height}
           className="animate-pulse rounded-lg bg-[#e5eaf1]"

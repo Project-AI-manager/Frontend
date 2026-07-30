@@ -6,7 +6,7 @@ import ChannelsPage from "@/app/channels/page";
 
 const api = vi.hoisted(() => ({
   listChannelsApiV1ChannelsGet: vi.fn(),
-  connectChannelApiV1ChannelsPost: vi.fn(),
+  disconnect: vi.fn(),
   startAccount: vi.fn(),
   confirmCode: vi.fn(),
   confirmPassword: vi.fn(),
@@ -39,6 +39,10 @@ vi.mock("@/lib/api/telegram", () => ({
   },
 }));
 
+vi.mock("@/lib/api/channels", () => ({
+  channelsManagementApi: { disconnect: api.disconnect },
+}));
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: {
@@ -57,7 +61,8 @@ describe("ChannelsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.listChannelsApiV1ChannelsGet.mockReset();
-    api.connectChannelApiV1ChannelsPost.mockReset();
+    api.disconnect.mockReset();
+    api.disconnect.mockResolvedValue(undefined);
     api.listChannelsApiV1ChannelsGet.mockResolvedValue([
       {
         id: "telegram-account",
@@ -69,28 +74,43 @@ describe("ChannelsPage", () => {
         updated_at: "2026-07-27T00:00:00Z",
       },
     ]);
-    api.connectChannelApiV1ChannelsPost.mockResolvedValue({});
+    api.startAccount.mockResolvedValue({ channel_id: "channel-new", status: "code_required" });
+    api.confirmCode.mockResolvedValue({ channel_id: "channel-new", status: "password_required", display_name: "" });
+    api.confirmPassword.mockResolvedValue({ channel_id: "channel-new", status: "active", display_name: "Тимур" });
+  });
+
+  it("opens channel actions and disconnects Telegram", async () => {
+    renderPage();
+
+    const menuButton = await screen.findByRole("button", { name: "Меню канала Telegram" });
+    fireEvent.click(menuButton);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Отключить канал" }));
+
+    await waitFor(() => expect(api.disconnect).toHaveBeenCalledWith("telegram-account"));
+    expect(await screen.findByRole("status")).toHaveTextContent("Канал отключён");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("renders the standalone channel catalog and live connection state", async () => {
+  it("renders the channel block moved from settings with live connection state", async () => {
     renderPage();
 
     expect(
       await screen.findByRole("heading", { level: 1, name: "Каналы" }),
     ).toBeInTheDocument();
-    await screen.findByText("Telegram Тимура");
-    expect(screen.getByText("Telegram Тимура")).toBeInTheDocument();
-    expect(screen.getByText("@timur")).toBeInTheDocument();
-    expect(screen.getAllByText("Подключено").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Telegram Bot")).toBeInTheDocument();
-    expect(screen.getAllByText("VK").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("MAX").length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByText("Каналы связи")).toBeInTheDocument();
+    expect(screen.getByText("Telegram")).toBeInTheDocument();
+    expect(screen.getByText("WhatsApp")).toBeInTheDocument();
+    expect(screen.getByText("VK")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Логотип VK" })).toBeInTheDocument();
+    expect(screen.getByText("Max")).toBeInTheDocument();
     expect(screen.getByText("Avito")).toBeInTheDocument();
-    expect(screen.getByText("Веб-чат")).toBeInTheDocument();
+    expect(screen.getByText("Instagram")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Меню канала Telegram" })).toBeInTheDocument();
+    expect(screen.getByText("Работает")).toBeInTheDocument();
+    expect(screen.getAllByText("Не подключено")).toHaveLength(5);
   });
 
   it("keeps connection controls available when statuses cannot be loaded", async () => {
@@ -110,12 +130,9 @@ describe("ChannelsPage", () => {
     expect(
       screen.getByRole("button", { name: "Подключить" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Отправить код" }),
-    ).toBeInTheDocument();
   });
 
-  it("connects a Telegram bot through the generated channels client", async () => {
+  it("connects a Telegram account through the moved settings dialog", async () => {
     api.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
     renderPage();
 
@@ -125,21 +142,12 @@ describe("ChannelsPage", () => {
       ).not.toBeInTheDocument(),
     );
     fireEvent.click(await screen.findByRole("button", { name: "Подключить" }));
-    fireEvent.change(screen.getByLabelText("Токен Telegram Bot"), {
-      target: { value: "1234567890:telegram-token" },
+    fireEvent.change(screen.getByLabelText("Номер телефона"), {
+      target: { value: "+79991234567" },
     });
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "@autopilot_bot" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
-
+    fireEvent.click(screen.getByRole("button", { name: "Получить код" }));
     await waitFor(() =>
-      expect(api.connectChannelApiV1ChannelsPost).toHaveBeenCalledWith({
-        type: "telegram",
-        bot_token: "1234567890:telegram-token",
-        bot_username: "@autopilot_bot",
-        name: "Telegram Bot",
-      }),
+      expect(api.startAccount).toHaveBeenCalledWith({ phone: "+79991234567" }),
     );
   });
 });

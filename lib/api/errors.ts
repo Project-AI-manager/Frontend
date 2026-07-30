@@ -40,11 +40,38 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
     }
   }
 
-  if (!error.response && error.message) {
-    return error.message;
+  if (!error.response) {
+    return fallback || "Не удалось связаться с сервером. Проверьте, что сервер запущен, и попробуйте ещё раз.";
   }
 
   return fallback;
+}
+
+/** Read API errors returned from endpoints whose successful response is a Blob. */
+export async function getApiDownloadErrorMessage(
+  error: unknown,
+  fallback: string,
+): Promise<string> {
+  if (!axios.isAxiosError(error)) {
+    return fallback;
+  }
+
+  const responseData = error.response?.data;
+  if (responseData instanceof Blob) {
+    try {
+      const payload = JSON.parse(await responseData.text()) as { detail?: ApiErrorDetail };
+      const message = readApiErrorDetail(payload.detail);
+      if (message) return message;
+    } catch {
+      // The backend may return an HTML/plain-text gateway error. Use the status fallback below.
+    }
+  }
+
+  if (!error.response) {
+    return "Не удалось связаться с сервером. Проверьте, что сервер запущен, и попробуйте ещё раз.";
+  }
+
+  return getApiErrorMessage(error, fallback);
 }
 
 /** Convert document-parser errors into actionable Russian upload messages. */
@@ -139,4 +166,11 @@ function readMessage(detail: ApiErrorMessage): string | undefined {
     : typeof detail.message === "string"
       ? detail.message
       : undefined;
+}
+
+function readApiErrorDetail(detail: ApiErrorDetail): string | undefined {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map(readMessage).find(Boolean);
+  if (!isMessageDetail(detail)) return undefined;
+  return readMessage(detail) ?? detail.errors?.map(readMessage).find(Boolean);
 }

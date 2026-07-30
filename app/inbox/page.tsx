@@ -25,6 +25,7 @@ import {
 
 import { AppShell } from "@/components/layout/app-shell";
 import {
+  downloadConversationExport,
   getAuthenticatedAttachment,
   replyToConversationWithFile,
   type ConversationAttachment,
@@ -230,15 +231,14 @@ function InboxContent() {
     const previousMessageIds = observedThreadMessageIds.current.get(
       effectiveSelectedId,
     );
-    const receivedInboundMessage =
+    const receivedNewMessage =
       previousMessageIds !== undefined &&
       thread.data.messages.some(
-        (message) =>
-          !previousMessageIds.has(message.id) && !isOutgoingMessage(message),
+        (message) => !previousMessageIds.has(message.id),
       );
     observedThreadMessageIds.current.set(effectiveSelectedId, currentMessageIds);
 
-    if (receivedInboundMessage && messageViewportNearBottom.current) {
+    if (receivedNewMessage && messageViewportNearBottom.current) {
       viewport.scrollTo?.({
         top: viewport.scrollHeight,
         behavior: "smooth",
@@ -453,6 +453,21 @@ function InboxContent() {
       current.filter((_, itemIndex) => itemIndex !== index),
     );
   }
+  const exportConversation = useMutation({
+    mutationFn: () => downloadConversationExport(effectiveSelectedId!),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dialog-${effectiveSelectedId}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: (error) =>
+      setActionMessage(
+        getApiErrorMessage(error, "Не удалось скачать диалог."),
+      ),
+  });
   const close = useMutation({
     mutationFn: () =>
       api.closeApiV1ConversationsConversationIdClosePost(effectiveSelectedId!),
@@ -597,9 +612,24 @@ function InboxContent() {
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={thread.data.status} />
                   {isClosed(thread.data.status) ? (
-                    <span className="rounded-lg bg-[#e5eaf1] px-3.5 py-2.5 text-sm font-semibold text-[#526071]">
-                      Диалог закрыт
-                    </span>
+                    <>
+                      <span className="rounded-lg bg-[#e5eaf1] px-3.5 py-2.5 text-sm font-semibold text-[#526071]">
+                        Диалог закрыт
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => exportConversation.mutate()}
+                        disabled={exportConversation.isPending}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50"
+                      >
+                        {exportConversation.isPending ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Download size={16} />
+                        )}
+                        Скачать диалог
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -638,7 +668,7 @@ function InboxContent() {
                 onSubmit={(event) => {
                   event.preventDefault();
                   const text = reply.trim();
-                  if ((!text && attachments.length === 0) || isClosed(thread.data.status))
+                  if (!text && attachments.length === 0)
                     return;
                   setActionMessage(null);
                   sendReply(text, attachments);
@@ -683,7 +713,7 @@ function InboxContent() {
                     aria-label="Прикрепить файл"
                     title="Прикрепить фото или документ"
                     onClick={() => fileInput.current?.click()}
-                    disabled={isClosed(thread.data.status) || close.isPending}
+                    disabled={close.isPending}
                     className="flex size-10 shrink-0 self-end items-center justify-center rounded-full text-[#64717f] hover:bg-[#eaf1ff] disabled:opacity-40"
                   >
                     <Plus size={22} />
@@ -696,13 +726,9 @@ function InboxContent() {
                       setReply(event.target.value);
                       resizeComposer(event.currentTarget);
                     }}
-                    placeholder={
-                      isClosed(thread.data.status)
-                        ? "Диалог закрыт"
-                        : "Введите сообщение"
-                    }
+                    placeholder="Введите сообщение"
                     rows={1}
-                    disabled={isClosed(thread.data.status) || close.isPending}
+                    disabled={close.isPending}
                     className="inbox-composer-input min-h-10 max-h-40 flex-1 resize-none overflow-x-hidden overflow-y-hidden bg-transparent py-2.5 pl-1.5 pr-3 text-sm leading-5 outline-none [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <button
@@ -710,7 +736,6 @@ function InboxContent() {
                     aria-label="Отправить ответ"
                     disabled={
                       (!reply.trim() && attachments.length === 0) ||
-                      isClosed(thread.data.status) ||
                       close.isPending
                     }
                     className="flex size-10 shrink-0 self-end items-center justify-center rounded-full text-[#2463eb] hover:bg-[#eaf1ff] disabled:opacity-40"
@@ -962,6 +987,11 @@ function MessageTail({ outgoing = false }: { outgoing?: boolean }) {
         <path
           d="M0.5 0.5H11L0.5 13Z"
           fill={outgoing ? "#dce9ff" : "#ffffff"}
+          stroke="none"
+        />
+        <path
+          d="M0.5 0.5H11L0.5 13"
+          fill="none"
           stroke={outgoing ? "#a9c4f2" : "#e5eaf1"}
         />
       </svg>

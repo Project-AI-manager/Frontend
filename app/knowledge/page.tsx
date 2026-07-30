@@ -13,6 +13,7 @@ import { formatRelativeServerTime, parseServerDateTime } from "@/lib/date-time";
 
 const api = getKnowledge();
 const supportedFormats = ".pdf,.docx,.xlsx,.md,.txt";
+const feedbackDismissDelayMs = 3_000;
 
 type KnowledgeReindexResponse = {
   documents_count: number;
@@ -28,7 +29,19 @@ export default function KnowledgePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastIndexedAt, setLastIndexedAt] = useState<string | null>(null);
+  const [openDocumentMenuId, setOpenDocumentMenuId] = useState<string | null>(null);
   const now = useRelativeTimeClock();
+
+  useEffect(() => {
+    if (!notice && !error) return;
+
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+      setError(null);
+    }, feedbackDismissDelayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [notice, error]);
 
   const documents = useQuery({
     queryKey: ["knowledge", "documents"],
@@ -80,15 +93,28 @@ export default function KnowledgePage() {
 
   const archive = useMutation({
     mutationFn: (id: string) => api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost(id),
-    onSuccess: async () => {
+    onMutate: async (id) => {
+      await client.cancelQueries({ queryKey: ["knowledge", "documents"] });
+      const previous = client.getQueryData<KnowledgeDocumentResponse[]>(["knowledge", "documents"]);
+      client.setQueryData<KnowledgeDocumentResponse[]>(
+        ["knowledge", "documents"],
+        (current) => current?.filter((document) => document.id !== id),
+      );
+      setOpenDocumentMenuId(null);
+      return { previous };
+    },
+    onSuccess: () => {
       setError(null);
       setNotice("Файл убран из базы знаний.");
-      await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
-    onError: (mutationError) => {
+    onError: (mutationError, _id, context) => {
+      if (context?.previous) {
+        client.setQueryData(["knowledge", "documents"], context.previous);
+      }
       setNotice(null);
       setError(getApiErrorMessage(mutationError, "Не удалось убрать файл."));
     },
+    onSettled: () => client.invalidateQueries({ queryKey: ["knowledge", "documents"] }),
   });
 
   const reindex = useMutation({
@@ -104,7 +130,7 @@ export default function KnowledgePage() {
     },
     onError: (mutationError) => {
       setNotice(null);
-      setError(getApiErrorMessage(mutationError, "Не удалось создать векторную базу знаний."));
+      setError(getApiErrorMessage(mutationError, "Не удалось обновить базу знаний. Повторите попытку через несколько секунд."));
     },
   });
 
@@ -136,9 +162,6 @@ export default function KnowledgePage() {
         </header>
 
         <main className="relative flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-8 pb-7 pt-6">
-          {error ? <p role="alert" className="rounded-lg border border-[#d84545]/30 bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f]">{error}</p> : null}
-          {notice ? <p role="status" className="rounded-lg border border-[#13a66b]/25 bg-[#e8f7f0] px-4 py-3 text-sm text-[#08724b]">{notice}</p> : null}
-
           {documents.isLoading ? <CardSkeleton /> : documents.error ? (
             <State title="Файлы не загрузились" text={getApiErrorMessage(documents.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => documents.refetch()} />
           ) : shown.length === 0 ? (
@@ -153,7 +176,16 @@ export default function KnowledgePage() {
             )
           ) : (
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-              {shown.map((document) => <DocumentCard key={document.id} document={document} onArchive={() => archive.mutate(document.id)} disabled={archive.isPending} />)}
+              {shown.map((document) => (
+                <DocumentCard
+                  key={document.id}
+                  document={document}
+                  menuOpen={openDocumentMenuId === document.id}
+                  onToggleMenu={() => setOpenDocumentMenuId((current) => current === document.id ? null : document.id)}
+                  onArchive={() => archive.mutate(document.id)}
+                  disabled={archive.isPending}
+                />
+              ))}
               <UploadCard onClick={() => fileInput.current?.click()} onFiles={addFiles} />
             </div>
           )}
@@ -170,10 +202,21 @@ export default function KnowledgePage() {
                 <span className="font-medium text-[#94600b]">У вас ещё нет базы знаний</span>
               )}
             </p>
-            <button type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60">
-              {reindex.isPending ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
-              {reindex.isPending ? "Создаём векторную базу…" : "Обновить базу знаний"}
-            </button>
+            <div className="relative w-full shrink-0 sm:w-auto">
+              {error ? (
+                <p role="alert" data-testid="knowledge-feedback" className="absolute right-0 bottom-[calc(100%+8px)] z-20 w-full rounded-lg border border-[#d84545]/30 bg-[#fdeded] px-4 py-3 text-sm text-[#a72f2f] shadow-[0_12px_30px_rgba(18,39,76,.13)] sm:w-[380px]">
+                  {error}
+                </p>
+              ) : notice ? (
+                <p role="status" data-testid="knowledge-feedback" className="absolute right-0 bottom-[calc(100%+8px)] z-20 w-full rounded-lg border border-[#13a66b]/25 bg-[#e8f7f0] px-4 py-3 text-sm text-[#08724b] shadow-[0_12px_30px_rgba(18,39,76,.13)] sm:w-[380px]">
+                  {notice}
+                </p>
+              ) : null}
+              <button type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60 sm:w-auto">
+                {reindex.isPending ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
+                {reindex.isPending ? "Создаём векторную базу…" : "Обновить базу знаний"}
+              </button>
+            </div>
           </footer>
         </main>
       </div>
@@ -181,15 +224,22 @@ export default function KnowledgePage() {
   );
 }
 
-function DocumentCard({ document, onArchive, disabled }: { document: KnowledgeDocumentResponse; onArchive: () => void; disabled: boolean }) {
+function DocumentCard({ document, menuOpen, onToggleMenu, onArchive, disabled }: { document: KnowledgeDocumentResponse; menuOpen: boolean; onToggleMenu: () => void; onArchive: () => void; disabled: boolean }) {
   const extension = displayExtension(document);
   const isReady = document.status === "ready";
   return (
-    <article className="flex min-h-[168px] flex-col gap-3 rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-[0_10px_22px_rgba(18,39,76,.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(18,39,76,.09)]">
+    <article className="relative flex min-h-[168px] flex-col gap-3 rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-[0_10px_22px_rgba(18,39,76,.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(18,39,76,.09)]">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#d9e1ec] font-heading text-[10px] font-extrabold tracking-[.04em] text-[#526071]">{extension}</span>
-        <button type="button" aria-label={`Меню файла ${document.title}`} title="Убрать из базы знаний" onClick={onArchive} disabled={disabled} className="ml-auto flex size-10 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50"><MoreHorizontal size={18} strokeWidth={1.75} /></button>
+        <button type="button" aria-label={`Меню файла ${document.title}`} aria-expanded={menuOpen} onClick={onToggleMenu} disabled={disabled} className="ml-auto flex size-10 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50"><MoreHorizontal size={18} strokeWidth={1.75} /></button>
       </div>
+      {menuOpen ? (
+        <div role="menu" aria-label={`Действия с файлом ${document.title}`} className="absolute right-4 top-[54px] z-20 min-w-[156px] rounded-lg border border-[#d9e1ec] bg-white p-1.5 shadow-[0_14px_34px_rgba(18,39,76,.16)]">
+          <button type="button" role="menuitem" onClick={onArchive} disabled={disabled} className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#b93838] hover:bg-[#fdeded] disabled:opacity-50">
+            {disabled ? "Удаляем…" : "Удалить"}
+          </button>
+        </div>
+      ) : null}
       <h2 className="truncate text-sm font-semibold leading-[1.4]" title={document.title}>{document.title}</h2>
       <span className={`w-fit rounded-[5px] px-[9px] py-[3px] text-[11px] font-extrabold uppercase tracking-[.08em] ${isReady ? "bg-[#e6f7f0] text-[#0c7a4e]" : "bg-[#fff5df] text-[#94600b]"}`}>{isReady ? "В базе" : "Не в базе"}</span>
       <div className="mt-auto h-px bg-[#e5eaf1]" />

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import KnowledgePage from "@/app/knowledge/page";
@@ -108,6 +108,49 @@ describe("KnowledgePage", () => {
     }));
     await waitFor(() => expect(api.listDocumentsApiV1KnowledgeDocumentsGet).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("status")).toHaveTextContent("База знаний обновлена: 2 файла, 7 фрагментов.");
+    expect(screen.getByTestId("knowledge-feedback").parentElement).toContainElement(
+      screen.getByRole("button", { name: "Обновить базу знаний" }),
+    );
+  });
+
+  it("hides transient knowledge feedback after three seconds", async () => {
+    renderPage();
+    await screen.findByText("Сроки и оплата.pdf");
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Обновить базу знаний" }));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("База знаний обновлена");
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_999);
+      });
+      expect(screen.getByRole("status")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows an actionable Russian error instead of a raw Network Error during reindex", async () => {
+    apiClient.mockRejectedValueOnce(new Error("Network Error"));
+    renderPage();
+    await screen.findByText("Сроки и оплата.pdf");
+
+    fireEvent.click(screen.getByRole("button", { name: "Обновить базу знаний" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Не удалось обновить базу знаний. Повторите попытку через несколько секунд.",
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Network Error");
   });
 
   it("uploads files as multipart data through the extraction endpoint", async () => {
@@ -150,13 +193,25 @@ describe("KnowledgePage", () => {
     expect(screen.getByRole("alert")).not.toHaveTextContent("could not be read");
   });
 
-  it("archives a file from its ellipsis action", async () => {
+  it("opens a file menu and removes the file immediately after confirmation", async () => {
+    let resolveArchive: ((value: unknown) => void) | undefined;
+    api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveArchive = resolve; }),
+    );
     renderPage();
     await screen.findByText("Сроки и оплата.pdf");
 
     fireEvent.click(screen.getByRole("button", { name: "Меню файла Сроки и оплата.pdf" }));
+    expect(api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost).not.toHaveBeenCalled();
+    expect(screen.getByRole("menu", { name: "Действия с файлом Сроки и оплата.pdf" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Удалить" }));
 
     await waitFor(() => expect(api.archiveDocumentApiV1KnowledgeDocumentsDocumentIdArchivePost).toHaveBeenCalledWith("document-1"));
+    expect(screen.queryByText("Сроки и оплата.pdf")).not.toBeInTheDocument();
+    await act(async () => {
+      resolveArchive?.({ document: { ...documents[0], status: "archived" } });
+      await Promise.resolve();
+    });
   });
 
   it("shows the reference empty state", async () => {

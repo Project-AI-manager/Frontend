@@ -122,6 +122,7 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("Поведение ассистента")).toBeInTheDocument();
     expect(container.firstElementChild).toHaveAttribute("data-immersive", "true");
     expect(screen.getByText("Отвечать автоматически")).toBeInTheDocument();
+    expect(screen.getByText("Доля автоматических ответов")).toBeInTheDocument();
     expect(screen.getByText("72%")).toBeInTheDocument();
     expect(screen.getByText("1 000 ₽")).toBeInTheDocument();
     expect(
@@ -132,36 +133,7 @@ describe("SettingsPage", () => {
     expect(screen.getByPlaceholderText("Сумма, ₽")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Пополнить" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Сохранить" })).not.toBeInTheDocument();
-    expect(document.getElementById("channels")).toBeInTheDocument();
-  });
-
-  it("merges live channels into the canonical six-channel catalog", async () => {
-    renderPage();
-
-    expect(await screen.findByText("Telegram")).toBeInTheDocument();
-    for (const name of ["WhatsApp", "Avito", "Instagram", "Max"]) {
-      expect(screen.getByText(name)).toBeInTheDocument();
-    }
-    expect(screen.getAllByText("VK")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Меню канала Telegram" })).toBeInTheDocument();
-    expect(screen.getAllByText("Работает").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Не подключено")).toHaveLength(5);
-    expect(screen.queryByRole("link", { name: "Подключить" })).not.toBeInTheDocument();
-    expect(screen.getAllByText("Скоро")).toHaveLength(5);
-  });
-
-  it("keeps settings visible when channel listing is forbidden", async () => {
-    channelsApi.listChannelsApiV1ChannelsGet.mockRejectedValueOnce(
-      new Error("403 Forbidden"),
-    );
-
-    renderPage();
-
-    expect(await screen.findByText("Поведение ассистента")).toBeInTheDocument();
-    expect(screen.queryByText("Настройки не загрузились")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Не подключено")).toHaveLength(6);
-    expect(screen.getByRole("button", { name: "Подключить" })).toBeInTheDocument();
-    expect(screen.getAllByText("Скоро")).toHaveLength(5);
+    expect(screen.queryByText("Каналы связи")).not.toBeInTheDocument();
   });
 
   it("auto-saves toggle and confidence changes without adding a save button", async () => {
@@ -179,7 +151,7 @@ describe("SettingsPage", () => {
       }),
     );
 
-    fireEvent.change(screen.getByLabelText("Порог уверенности для передачи человеку"), {
+    fireEvent.change(screen.getByLabelText("Доля автоматических ответов"), {
       target: { value: "64" },
     });
 
@@ -190,28 +162,6 @@ describe("SettingsPage", () => {
       }),
     );
     expect(screen.getByText("64%")).toBeInTheDocument();
-  });
-
-  it("connects a Telegram account through phone, OTP and 2FA", async () => {
-    channelsApi.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
-    renderPage();
-
-    fireEvent.click(await screen.findByRole("button", { name: "Подключить" }));
-    expect(screen.getByRole("dialog", { name: "Подключить Telegram" })).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Номер телефона"), { target: { value: "+79991234567" } });
-    fireEvent.click(screen.getByRole("button", { name: "Получить код" }));
-    await waitFor(() => expect(telegramApi.startAccount).toHaveBeenCalledWith({ phone: "+79991234567" }));
-
-    fireEvent.change(await screen.findByLabelText("Код подтверждения"), { target: { value: "12345" } });
-    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }));
-    await waitFor(() => expect(telegramApi.confirmCode).toHaveBeenCalledWith({ channel_id: "channel-new", code: "12345" }));
-
-    fireEvent.change(await screen.findByLabelText("Облачный пароль"), { target: { value: "secret-password" } });
-    fireEvent.click(screen.getByRole("dialog").querySelector('button[type="submit"]')!);
-    await waitFor(() => expect(telegramApi.confirmPassword).toHaveBeenCalledWith({ channel_id: "channel-new", password: "secret-password" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(channelsApi.listChannelsApiV1ChannelsGet).toHaveBeenCalledTimes(2);
   });
 
   it("does not expose internal AI integration diagnostics", async () => {

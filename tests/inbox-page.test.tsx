@@ -30,6 +30,7 @@ const conversationActions = vi.hoisted(() => ({
 const attachmentApi = vi.hoisted(() => ({
   replyToConversationWithFile: vi.fn(),
   getAuthenticatedAttachment: vi.fn(),
+  downloadConversationExport: vi.fn(),
 }));
 
 vi.mock("@/components/layout/app-shell", () => ({
@@ -129,6 +130,9 @@ describe("InboxPage live actions", () => {
     attachmentApi.replyToConversationWithFile.mockResolvedValue({});
     attachmentApi.getAuthenticatedAttachment.mockResolvedValue(
       new Blob(["file"]),
+    );
+    attachmentApi.downloadConversationExport.mockResolvedValue(
+      new Blob(["dialog"]),
     );
   });
 
@@ -489,6 +493,50 @@ describe("InboxPage live actions", () => {
 
     expect(scrollTo).not.toHaveBeenCalled();
     expect(viewport.scrollTop).toBe(100);
+  });
+
+  it("smoothly follows a new Autopilot reply only while the viewport is near the bottom", async () => {
+    const { client } = renderPage();
+
+    await screen.findByRole("heading", { level: 2 });
+    const viewport = screen.getByTestId("inbox-message-viewport");
+    const scrollTo = vi.fn();
+    Object.defineProperties(viewport, {
+      scrollHeight: { configurable: true, value: 1_000 },
+      clientHeight: { configurable: true, value: 400 },
+      scrollTop: { configurable: true, writable: true, value: 590 },
+      scrollTo: { configurable: true, value: scrollTo },
+    });
+    fireEvent.scroll(viewport);
+
+    await act(async () => {
+      client.setQueryData(["conversation", "conversation-1"], (current) => {
+        const conversation = current as { messages: Array<Record<string, unknown>> };
+        return {
+          ...conversation,
+          messages: [
+            ...conversation.messages,
+            {
+              id: "autopilot-message-1",
+              text: "Autopilot answer",
+              direction: "outbound",
+              sender_type: "ai",
+              sender_user_id: null,
+              status: "sent",
+              created_at: "2026-07-21T10:02:00Z",
+            },
+          ],
+        };
+      });
+    });
+
+    await screen.findByText("Autopilot answer");
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith({
+        top: 1_000,
+        behavior: "smooth",
+      }),
+    );
   });
 
   it("preserves line breaks in sent and rendered messages", async () => {
@@ -867,6 +915,43 @@ describe("InboxPage live actions", () => {
         api.closeApiV1ConversationsConversationIdClosePost,
       ).toHaveBeenCalledWith("conversation-1"),
     );
+  });
+
+  it("keeps the composer enabled and exports a closed conversation", async () => {
+    api.getConversationApiV1ConversationsConversationIdGet.mockResolvedValueOnce({
+      ...(await api.getConversationApiV1ConversationsConversationIdGet()),
+      status: "closed",
+    });
+    const createObjectURL = vi.fn(() => "blob:dialog-export");
+    const revokeObjectURL = vi.fn();
+    const linkClick = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      linkClick,
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Диалог закрыт")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ответ клиенту")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Прикрепить файл" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Скачать диалог" }));
+
+    await waitFor(() =>
+      expect(attachmentApi.downloadConversationExport).toHaveBeenCalledWith(
+        "conversation-1",
+      ),
+    );
+    expect(linkClick).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:dialog-export");
+    click.mockRestore();
   });
 
   it("hides the successful close notification after three seconds", async () => {
@@ -1746,6 +1831,12 @@ describe("InboxPage live actions", () => {
     expect(
       outgoing.querySelector('[data-message-tail="outgoing"]'),
     ).not.toBeNull();
+    const outgoingTailPaths = outgoing.querySelectorAll(
+      '[data-message-tail="outgoing"] path',
+    );
+    expect(outgoingTailPaths).toHaveLength(2);
+    expect(outgoingTailPaths[0]).toHaveAttribute("stroke", "none");
+    expect(outgoingTailPaths[1]).toHaveAttribute("d", "M0.5 0.5H11L0.5 13");
     expect(outgoingContinuation).not.toHaveAttribute("data-tail-start");
     expect(
       outgoingContinuation.querySelector("[data-message-tail]"),
