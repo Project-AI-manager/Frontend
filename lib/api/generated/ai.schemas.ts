@@ -7,9 +7,9 @@
 export interface AISettingsResponse {
   auto_reply_enabled: boolean;
   /**
-     * @minimum 0
-     * @maximum 100
-     */
+   * @minimum 0
+   * @maximum 100
+   */
   confidence_threshold: number;
   llm_provider: string;
   embedding_model: string;
@@ -73,7 +73,7 @@ export interface BillingSettingsResponse {
 }
 
 export interface ChannelConnectRequest {
-  type: 'telegram';
+  type: "telegram";
   /** @minLength 10 */
   bot_token: string;
   /** @maxLength 255 */
@@ -94,12 +94,13 @@ export interface ChannelResponse {
   updated_at: string;
 }
 
-export type ChannelWebhookResponseDecision = typeof ChannelWebhookResponseDecision[keyof typeof ChannelWebhookResponseDecision] | null;
-
+export type ChannelWebhookResponseDecision =
+  | (typeof ChannelWebhookResponseDecision)[keyof typeof ChannelWebhookResponseDecision]
+  | null;
 
 export const ChannelWebhookResponseDecision = {
-  auto_reply: 'auto_reply',
-  escalate: 'escalate',
+  auto_reply: "auto_reply",
+  escalate: "escalate",
 } as const;
 
 export interface ChannelWebhookResponse {
@@ -112,14 +113,14 @@ export interface ChannelWebhookResponse {
   decision?: ChannelWebhookResponseDecision;
 }
 
-export type ChatTurnSchemaRole = typeof ChatTurnSchemaRole[keyof typeof ChatTurnSchemaRole];
-
+export type ChatTurnSchemaRole =
+  (typeof ChatTurnSchemaRole)[keyof typeof ChatTurnSchemaRole];
 
 export const ChatTurnSchemaRole = {
-  customer: 'customer',
-  manager: 'manager',
-  ai: 'ai',
-  system: 'system',
+  customer: "customer",
+  manager: "manager",
+  ai: "ai",
+  system: "system",
 } as const;
 
 export interface ChatTurnSchema {
@@ -148,6 +149,7 @@ export interface ConversationThreadResponse {
   channel_type: string;
   customer_id: string;
   customer_name: string;
+  avatar_url?: string | null;
   status: string;
   last_message_at: string | null;
   last_message_preview: string;
@@ -163,9 +165,9 @@ export interface ConversationActionResponse {
 
 export interface ConversationReplyRequest {
   /**
-     * @minLength 1
-     * @maxLength 4000
-     */
+   * @minLength 1
+   * @maxLength 4000
+   */
   text: string;
 }
 
@@ -175,6 +177,7 @@ export interface ConversationResponse {
   channel_type: string;
   customer_id: string;
   customer_name: string;
+  avatar_url?: string | null;
   status: string;
   last_message_at: string | null;
   last_message_preview: string;
@@ -216,20 +219,20 @@ export interface ErrorDetail {
   msg: string;
   errors?: ValidationIssue[];
   [key: string]: unknown;
- }
+}
 
 export interface ErrorResponse {
   detail: ErrorDetail;
 }
 
-export type IntegrationProbeResponseStatus = typeof IntegrationProbeResponseStatus[keyof typeof IntegrationProbeResponseStatus];
-
+export type IntegrationProbeResponseStatus =
+  (typeof IntegrationProbeResponseStatus)[keyof typeof IntegrationProbeResponseStatus];
 
 export const IntegrationProbeResponseStatus = {
-  ok: 'ok',
-  disabled: 'disabled',
-  not_configured: 'not_configured',
-  error: 'error',
+  ok: "ok",
+  disabled: "disabled",
+  not_configured: "not_configured",
+  error: "error",
 } as const;
 
 export type IntegrationProbeResponseDetails = { [key: string]: unknown };
@@ -297,7 +300,7 @@ export interface KnowledgeCandidateStatusResponse {
   updated_at: string;
 }
 
-export type KnowledgeChunkResponseTags = {[key: string]: string};
+export type KnowledgeChunkResponseTags = { [key: string]: string };
 
 export interface KnowledgeChunkResponse {
   id: string;
@@ -309,23 +312,23 @@ export interface KnowledgeChunkResponse {
   version: number;
 }
 
-export type KnowledgeDocumentCreateSourceType = typeof KnowledgeDocumentCreateSourceType[keyof typeof KnowledgeDocumentCreateSourceType];
-
+export type KnowledgeDocumentCreateSourceType =
+  (typeof KnowledgeDocumentCreateSourceType)[keyof typeof KnowledgeDocumentCreateSourceType];
 
 export const KnowledgeDocumentCreateSourceType = {
-  manual: 'manual',
-  txt: 'txt',
-  md: 'md',
-  url: 'url',
+  manual: "manual",
+  txt: "txt",
+  md: "md",
+  url: "url",
 } as const;
 
-export type KnowledgeDocumentCreateTags = {[key: string]: string};
+export type KnowledgeDocumentCreateTags = { [key: string]: string };
 
 export interface KnowledgeDocumentCreate {
   /**
-     * @minLength 1
-     * @maxLength 512
-     */
+   * @minLength 1
+   * @maxLength 512
+   */
   title: string;
   /** @minLength 1 */
   text: string;
@@ -369,15 +372,15 @@ export interface MLAnswerRequest {
   history?: ChatTurnSchema[];
 }
 
-export type MLAnswerResponseDecision = typeof MLAnswerResponseDecision[keyof typeof MLAnswerResponseDecision];
-
+export type MLAnswerResponseDecision =
+  (typeof MLAnswerResponseDecision)[keyof typeof MLAnswerResponseDecision];
 
 export const MLAnswerResponseDecision = {
-  auto_reply: 'auto_reply',
-  escalate: 'escalate',
+  auto_reply: "auto_reply",
+  escalate: "escalate",
 } as const;
 
-export type MLSourceSchemaTags = {[key: string]: string};
+export type MLSourceSchemaTags = { [key: string]: string };
 
 export interface MLSourceSchema {
   id: string;
@@ -396,7 +399,6 @@ export interface MLAnswerResponse {
   sources: MLSourceSchema[];
   used_context: boolean;
 }
-
 
 export interface RefreshRequest {
   refresh_token: string;
@@ -447,15 +449,14 @@ export interface WorkspaceSettingsResponse {
 
 export interface WorkspaceSettingsUpdate {
   /**
-     * @minLength 1
-     * @maxLength 255
-     */
+   * @minLength 1
+   * @maxLength 255
+   */
   name: string;
 }
 
 export type ListConversationItemsApiV1ConversationsGetParams = {
-status?: string | null;
+  status?: string | null;
 };
 
-export type HealthHealthGet200 = {[key: string]: string};
-
+export type HealthHealthGet200 = { [key: string]: string };

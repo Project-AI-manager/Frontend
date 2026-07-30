@@ -70,6 +70,21 @@ a { color: inherit; text-decoration: none; }
 button, input, textarea, select { font: inherit; }
 button, a, input, textarea, select { transition-duration: 180ms; transition-timing-function: ease; }
 :focus-visible { outline: 2px solid #2463eb; outline-offset: 2px; }
+.inbox-composer-input {
+  scrollbar-width: thin;
+  scrollbar-color: #9aa0a8 transparent;
+}
+.inbox-composer-input::-webkit-scrollbar { width: 6px; }
+.inbox-composer-input::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 8px;
+}
+.inbox-composer-input::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #9aa0a8;
+  background-clip: padding-box;
+}
 .inbox-composer-input:focus-visible { outline: none; }
 .inbox-filter-button { font-size: 11px; letter-spacing: -0.01em; }
 ::selection { background: rgba(36, 99, 235, 0.24); }

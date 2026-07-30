@@ -14,12 +14,15 @@ describe("replyToConversationWithFile", () => {
     request.mockResolvedValue({ data: { delivered: true } });
   });
 
-  it("posts optional text and file as multipart data", async () => {
-    const file = new File(["image"], "photo.png", { type: "image/png" });
+  it("posts optional text and ordered files as multipart data", async () => {
+    const firstFile = new File(["image"], "photo.png", { type: "image/png" });
+    const secondFile = new File(["document"], "terms.pdf", {
+      type: "application/pdf",
+    });
     await replyToConversationWithFile({
       conversationId: "conversation-1",
       text: " Фото ",
-      file,
+      files: [firstFile, secondFile],
     });
 
     const config = request.mock.calls[0][0];
@@ -29,7 +32,7 @@ describe("replyToConversationWithFile", () => {
     expect(config.method).toBe("POST");
     expect(config.data).toBeInstanceOf(FormData);
     expect(config.data.get("text")).toBe("Фото");
-    expect(config.data.get("file")).toBe(file);
+    expect(config.data.getAll("files")).toEqual([firstFile, secondFile]);
     expect(config.headers["Content-Type"]).toBeUndefined();
   });
 
@@ -40,7 +43,7 @@ describe("replyToConversationWithFile", () => {
     await replyToConversationWithFile({
       conversationId: "conversation-1",
       text: "  ",
-      file,
+      files: [file],
     });
 
     expect(request.mock.calls[0][0].data.has("text")).toBe(false);

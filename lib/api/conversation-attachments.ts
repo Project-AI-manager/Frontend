@@ -16,17 +16,17 @@ export type ConversationAttachment = {
 export async function replyToConversationWithFile({
   conversationId,
   text,
-  file,
+  files,
 }: {
   conversationId: string;
   text?: string;
-  file: File;
+  files: File[];
 }) {
   const data = new FormData();
   const normalizedText = text?.trim();
 
   if (normalizedText) data.append("text", normalizedText);
-  data.append("file", file);
+  files.forEach((file) => data.append("files", file));
 
   const response = await axiosInstance.request<ConversationActionResponse>({
     url: `/api/v1/conversations/${conversationId}/reply-with-file`,
