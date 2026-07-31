@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
     >
       <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
         <header className="relative flex min-h-[65px] shrink-0 flex-wrap items-center gap-3 border-b border-[#d9e1ec] bg-white px-5 py-2.5">
-          <div className="flex items-center gap-2.5">
+          <div data-tour="tour-analytics-period" className="flex items-center gap-2.5">
             <span className="text-[12px] font-bold uppercase tracking-[.09em] text-[#64717f]">Период</span>
             <div
               className="flex items-center gap-1 rounded-full bg-[#f4f7fb] p-1"
@@ -190,6 +190,7 @@ export default function AnalyticsPage() {
           </p>
 
           <button
+            data-tour="tour-analytics-export"
             type="button"
             onClick={() => void downloadDetailedReport()}
             disabled={!data || exporting}
@@ -211,7 +212,7 @@ export default function AnalyticsPage() {
           </p>
         ) : null}
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto px-8 pt-6 pb-7">
+        <main data-tour="tour-analytics-content" className="relative min-h-0 flex-1 overflow-y-auto px-8 pt-6 pb-7">
           {overview.isLoading ? (
             <AnalyticsSkeleton />
           ) : overview.isError ? (
@@ -232,7 +233,7 @@ export default function AnalyticsPage() {
             />
           ) : (
             <div className="flex flex-col gap-4">
-              <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ключевые показатели">
+              <section data-tour="tour-analytics-metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ключевые показатели">
                 {metrics.map((metric) => (
                   <article
                     key={metric.label}

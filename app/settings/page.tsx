@@ -109,7 +109,7 @@ function SettingsContent({
       ) : null}
 
       <SettingsCard title="Поведение ассистента">
-        <div className="flex items-center justify-between gap-6">
+        <div data-tour="tour-settings-auto-replies" className="-mx-1 -my-[18px] flex items-center justify-between gap-6 rounded-[10px] px-1 py-[18px]">
           <span className="text-sm font-semibold">Отвечать автоматически</span>
           <Toggle
             checked={enabled}
@@ -118,7 +118,7 @@ function SettingsContent({
           />
         </div>
         <Divider />
-        <div className="flex flex-col gap-2.5">
+        <div data-tour="tour-settings-confidence" className="-mx-1 -mt-[18px] -mb-6 flex flex-col gap-2.5 rounded-[10px] px-1 pt-[18px] pb-6">
           <div className="flex items-baseline justify-between gap-4">
             <label htmlFor="confidence" className="text-sm font-semibold">
               Доля автоматических ответов
@@ -153,7 +153,7 @@ function SettingsContent({
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Оплата">
+      <SettingsCard title="Оплата" tourTarget="tour-settings-billing">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:gap-8">
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#64717f]">
@@ -191,14 +191,16 @@ function formatRubles(kopecks: number) {
 function SettingsCard({
   title,
   id,
+  tourTarget,
   children,
 }: {
   title: string;
   id?: string;
+  tourTarget?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="flex scroll-mt-7 flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+    <section id={id} data-tour={tourTarget} className="flex scroll-mt-7 flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
       <h2 className="font-heading text-lg font-extrabold tracking-[-.03em]">
         {title}
       </h2>

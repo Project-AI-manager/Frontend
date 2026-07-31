@@ -518,7 +518,7 @@ function InboxContent() {
       immersive
     >
       <div className="grid h-full min-h-0 lg:grid-cols-[392px_minmax(0,1fr)]">
-        <section className="flex min-h-0 flex-col border-r border-[#d9e1ec] bg-white">
+        <section data-tour="tour-inbox-list" className="flex min-h-0 flex-col border-r border-[#d9e1ec] bg-white">
           <div className="flex h-[65px] shrink-0 items-center border-b border-[#d9e1ec] px-4">
             <label className="flex min-h-10 flex-1 items-center gap-2.5 rounded-full border border-[#d9e1ec] bg-[#f8fbff] px-4 focus-within:border-[#2463eb] focus-within:ring-3 focus-within:ring-[#eaf1ff]">
               <Search size={16} className="text-[#64717f]" />
@@ -530,7 +530,7 @@ function InboxContent() {
               />
             </label>
           </div>
-          <div className="grid grid-cols-4 items-center gap-0.5 overflow-hidden border-b border-[#e5eaf1] px-3 py-2.5">
+          <div data-tour="tour-inbox-statuses" className="grid grid-cols-4 items-center gap-0.5 overflow-hidden border-b border-[#e5eaf1] px-3 py-2.5">
             {filters.map((item) => (
               <button
                 key={item}
@@ -582,7 +582,7 @@ function InboxContent() {
           </div>
         </section>
 
-        <section className="relative hidden min-h-0 min-w-0 flex-col overflow-hidden lg:flex">
+        <section data-tour="tour-inbox-thread" className="relative hidden min-h-0 min-w-0 flex-col overflow-hidden lg:flex">
           {!effectiveSelectedId ? (
             <State title="Выберите диалог" text="Переписка откроется здесь." />
           ) : thread.isLoading ? (
@@ -609,7 +609,7 @@ function InboxContent() {
                     {thread.data.customer_name}
                   </h2>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div data-tour="tour-inbox-actions" className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={thread.data.status} />
                   {isClosed(thread.data.status) ? (
                     <>
@@ -694,6 +694,7 @@ function InboxContent() {
                 ) : null}
                 <div
                   data-testid="inbox-composer"
+                  data-tour="tour-inbox-composer"
                   className="flex min-h-[52px] w-full items-end gap-1.5 overflow-hidden rounded-[22px] border border-[#d9e1ec] bg-white px-1.5 py-1.5 shadow-[0_10px_22px_rgba(18,39,76,.07)] focus-within:border-[#2463eb] focus-within:ring-3 focus-within:ring-[#eaf1ff]"
                 >
                   <input

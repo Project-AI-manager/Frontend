@@ -120,7 +120,7 @@ function ChannelsCard({
   onDisconnect: (channelId: string) => void;
 }) {
   return (
-    <section className="flex flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+    <section data-tour="tour-channels-grid" className="flex flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
       <h2 className="font-heading text-lg font-extrabold tracking-[-.03em]">
         Каналы связи
       </h2>
@@ -148,7 +148,7 @@ function ChannelsCard({
                 </span>
               </span>
               {connected ? (
-                <div className="relative ml-auto self-center">
+                <div data-tour={item.type === "telegram" ? "tour-channels-actions" : undefined} className="relative ml-auto self-center">
                   <button
                     type="button"
                     aria-label={`Меню канала ${item.name}`}
@@ -169,6 +169,7 @@ function ChannelsCard({
                 </div>
               ) : item.type === "telegram" ? (
                 <button
+                  data-tour="tour-channels-actions"
                   type="button"
                   onClick={onConnectTelegram}
                   className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"

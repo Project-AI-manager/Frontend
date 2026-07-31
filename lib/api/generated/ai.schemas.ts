@@ -434,6 +434,11 @@ export interface UserMeResponse {
   role: string;
   status: string;
   email_verified?: boolean;
+  onboarding_seen?: boolean;
+}
+
+export interface OnboardingStatusResponse {
+  onboarding_seen: boolean;
 }
 
 export interface VerifyEmailRequest {

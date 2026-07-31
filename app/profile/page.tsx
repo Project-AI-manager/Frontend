@@ -50,7 +50,7 @@ function ProfileContent({ user }: { user: Awaited<ReturnType<typeof usersApi.meA
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <section className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+      <section data-tour="tour-profile-personal" className="overflow-hidden rounded-lg border border-[#d9e1ec] bg-white shadow-[0_10px_22px_rgba(18,39,76,.07)]">
         <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:p-7">
           <div className="flex size-[72px] shrink-0 items-center justify-center rounded-full border border-[#cddfff] bg-[#eaf1ff] font-heading text-2xl font-extrabold text-[#1546ad]">
             {initials}
@@ -67,7 +67,7 @@ function ProfileContent({ user }: { user: Awaited<ReturnType<typeof usersApi.meA
         </div>
       </section>
 
-      <section className="rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:p-7">
+      <section data-tour="tour-profile-notifications" className="rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:p-7">
         <div className="flex items-start gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#eaf1ff] text-[#1546ad]"><Bell size={19} aria-hidden="true" /></span>
           <div>
@@ -96,7 +96,7 @@ function ProfileContent({ user }: { user: Awaited<ReturnType<typeof usersApi.meA
         ) : null}
       </section>
 
-      <section className="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:p-7">
+      <section data-tour="tour-profile-logout" className="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)] sm:p-7">
         <div>
           <h2 className="font-heading font-extrabold tracking-[-.02em]">Выйти из аккаунта</h2>
           <p className="mt-1 text-[13px] text-[#64717f]">Сессия завершится только на этом устройстве.</p>

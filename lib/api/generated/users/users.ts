@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  OnboardingStatusResponse,
   UserMeResponse
 } from '../ai.schemas';
 
@@ -27,6 +28,17 @@ const meApiV1UsersMeGet = (
       options);
     }
   /**
+ * @summary Mark Onboarding Seen
+ */
+const markOnboardingSeenApiV1UsersMeOnboardingSeenPost = (
+
+ options?: SecondParameter<typeof apiClient<OnboardingStatusResponse>>,) => {
+      return apiClient<OnboardingStatusResponse>(
+      {url: `/api/v1/users/me/onboarding/seen`, method: 'POST'
+    },
+      options);
+    }
+  /**
  * @summary List Team
  */
 const listTeamApiV1UsersGet = (
@@ -37,6 +49,7 @@ const listTeamApiV1UsersGet = (
     },
       options);
     }
-  return {meApiV1UsersMeGet,listTeamApiV1UsersGet}};
+  return {meApiV1UsersMeGet,markOnboardingSeenApiV1UsersMeOnboardingSeenPost,listTeamApiV1UsersGet}};
 export type MeApiV1UsersMeGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['meApiV1UsersMeGet']>>>
+export type MarkOnboardingSeenApiV1UsersMeOnboardingSeenPostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['markOnboardingSeenApiV1UsersMeOnboardingSeenPost']>>>
 export type ListTeamApiV1UsersGetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['listTeamApiV1UsersGet']>>>

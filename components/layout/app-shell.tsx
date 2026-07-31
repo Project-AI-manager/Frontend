@@ -253,6 +253,7 @@ function Navigation({
           >
             <Link
               href={item.href}
+              data-tour={`tour-nav-${item.href.slice(1)}`}
               onClick={onNavigate}
               aria-current={isActive ? "page" : undefined}
               className={`relative flex min-h-10 items-center gap-2.5 rounded-[8px] px-3 text-[14px] transition-[background,color,padding] hover:bg-[#f4f7fb] hover:pl-[15px] hover:text-[#101828] ${isActive ? "bg-[#eaf1ff] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]" : "font-medium text-[#526071]"}`}

@@ -161,7 +161,7 @@ export default function KnowledgePage() {
           <input ref={fileInput} type="file" multiple className="hidden" accept={supportedFormats} onChange={(event: ChangeEvent<HTMLInputElement>) => { if (event.target.files) void addFiles(event.target.files); event.target.value = ""; }} />
         </header>
 
-        <main className="relative flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-8 pb-7 pt-6">
+        <main data-tour="tour-knowledge-overview" className="relative flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-8 pb-7 pt-6">
           {documents.isLoading ? <CardSkeleton /> : documents.error ? (
             <State title="Файлы не загрузились" text={getApiErrorMessage(documents.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => documents.refetch()} />
           ) : shown.length === 0 ? (
@@ -212,7 +212,7 @@ export default function KnowledgePage() {
                   {notice}
                 </p>
               ) : null}
-              <button type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60 sm:w-auto">
+              <button data-tour="tour-knowledge-index" type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60 sm:w-auto">
                 {reindex.isPending ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
                 {reindex.isPending ? "Создаём векторную базу…" : "Обновить базу знаний"}
               </button>
@@ -249,7 +249,7 @@ function DocumentCard({ document, menuOpen, onToggleMenu, onArchive, disabled }:
 }
 
 function UploadCard({ onClick, onFiles }: { onClick: () => void; onFiles: (files: FileList | File[]) => Promise<void> }) {
-  return <button type="button" onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={(event: DragEvent<HTMLButtonElement>) => { event.preventDefault(); void onFiles(event.dataTransfer.files); }} className="flex min-h-[168px] flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-[#c9d6e8] bg-white/75 p-4 text-left transition hover:border-[#2463eb] hover:bg-white">
+  return <button data-tour="tour-knowledge-upload" type="button" onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={(event: DragEvent<HTMLButtonElement>) => { event.preventDefault(); void onFiles(event.dataTransfer.files); }} className="flex min-h-[168px] flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-[#c9d6e8] bg-white/75 p-4 text-left transition hover:border-[#2463eb] hover:bg-white">
     <span className="flex size-9 items-center justify-center rounded-lg border border-[#2463eb] text-[#2463eb]"><Plus size={18} strokeWidth={1.85} /></span>
     <strong className="font-heading text-sm font-extrabold tracking-[-0.02em] text-[#1546ad]">Перетащите файлы</strong>
     <span className="text-[13px] leading-[1.5] text-[#526071]">PDF, DOCX, XLSX, MD, TXT</span>
@@ -284,6 +284,7 @@ function EmptyKnowledgeDropzone({ isUploading, onClick, onFiles }: { isUploading
 
   return (
     <button
+      data-tour="tour-knowledge-upload"
       type="button"
       aria-busy={isUploading}
       aria-describedby="knowledge-supported-formats"
