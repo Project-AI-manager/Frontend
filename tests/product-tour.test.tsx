@@ -92,7 +92,7 @@ describe("ProductTour", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("2 из 13")).toBeInTheDocument();
     expect(navigation.push).not.toHaveBeenCalled();
-    expect(users.markSeen).toHaveBeenCalledTimes(1);
+    expect(users.markSeen).not.toHaveBeenCalled();
   });
 
   it("does not start again after the user has already seen it", async () => {
@@ -106,14 +106,16 @@ describe("ProductTour", () => {
     expect(users.markSeen).not.toHaveBeenCalled();
   });
 
-  it("does not show the tour when saving the first view fails", async () => {
+  it("keeps the tour open and uncompleted when saving completion fails", async () => {
     users.markSeen.mockRejectedValue(new Error("network"));
     addTarget("tour-nav-inbox");
 
     render(<ProductTour />);
 
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Пропустить" }));
     await waitFor(() => expect(users.markSeen).toHaveBeenCalledTimes(1));
-    expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument();
+    expect(screen.getByTestId("product-tour")).toBeInTheDocument();
   });
 
   it("navigates to Knowledge after the last Dialogues step", async () => {
@@ -174,8 +176,34 @@ describe("ProductTour", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Пропустить" }));
 
-    expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument();
+    await waitFor(() => expect(users.markSeen).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument());
     expect(document.body.style.overflow).toBe("");
+  });
+
+  it("waits to check eligibility until authentication reaches a tour route", async () => {
+    navigation.pathname = "/verify-email";
+    const view = render(<ProductTour />);
+
+    expect(users.me).not.toHaveBeenCalled();
+    navigation.pathname = "/inbox";
+    addTarget("tour-nav-inbox");
+    view.rerender(<ProductTour />);
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(users.me).toHaveBeenCalledTimes(1);
+    expect(users.markSeen).not.toHaveBeenCalled();
+  });
+
+  it("does not complete onboarding when the tour is closed", async () => {
+    addTarget("tour-nav-inbox");
+    render(<ProductTour />);
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть обучение" }));
+
+    expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument();
+    expect(users.markSeen).not.toHaveBeenCalled();
   });
 
   it("restarts from Dialogues when mounted after a full reload on another tour page", async () => {

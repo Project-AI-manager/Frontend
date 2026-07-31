@@ -185,6 +185,7 @@ export function ProductTour() {
   );
   const [active, setActive] = useState(false);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
+  const [completionPending, setCompletionPending] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<HighlightRect | null>(null);
   const [targetReady, setTargetReady] = useState(false);
@@ -201,17 +202,16 @@ export function ProductTour() {
   useEffect(() => {
     if (!mounted || eligibilityChecked) return;
     const accessToken = getAccessToken();
-    if (!accessToken || !tourPaths.has(pathname)) {
-      setEligibilityChecked(true);
-      return;
-    }
+    // Registration and email verification mount this global component before
+    // authentication is ready. Leave eligibility unchecked there so the first
+    // authenticated tour route can still start onboarding.
+    if (!accessToken || !tourPaths.has(pathname)) return;
 
     let cancelled = false;
     void usersApi
       .meApiV1UsersMeGet()
-      .then(async (user) => {
+      .then((user) => {
         if (cancelled || user.onboarding_seen) return;
-        await usersApi.markOnboardingSeenApiV1UsersMeOnboardingSeenPost();
         if (!cancelled) setActive(true);
       })
       .catch(() => undefined)
@@ -367,12 +367,25 @@ export function ProductTour() {
     }
   }, [pathname, router, stepIndex]);
 
-  const finishTour = useCallback(() => {
+  const dismissTour = useCallback(() => {
     setActive(false);
     setRect(null);
     setTargetReady(false);
     window.requestAnimationFrame(() => previousFocus.current?.focus());
   }, []);
+
+  const completeTour = useCallback(async () => {
+    if (completionPending) return;
+    setCompletionPending(true);
+    try {
+      await usersApi.markOnboardingSeenApiV1UsersMeOnboardingSeenPost();
+      dismissTour();
+    } catch {
+      // Keep the tour active and the account uncompleted so the user can retry.
+    } finally {
+      setCompletionPending(false);
+    }
+  }, [completionPending, dismissTour]);
 
   useEffect(() => {
     if (!active) return;
@@ -395,7 +408,7 @@ export function ProductTour() {
         return;
       }
       if (event.key === "Escape") {
-        finishTour();
+        dismissTour();
       }
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (event.key === "ArrowRight") {
@@ -409,7 +422,7 @@ export function ProductTour() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, finishTour, moveTo, stepIndex]);
+  }, [active, dismissTour, moveTo, stepIndex]);
 
   if (!mounted || !active) return null;
 
@@ -425,7 +438,7 @@ export function ProductTour() {
         <div className="flex max-w-[min(420px,calc(100vw-32px))] flex-col items-center gap-4 rounded-[12px] bg-[#111318] px-5 py-4 text-center text-sm font-semibold text-white shadow-[0_24px_80px_rgba(0,0,0,.52)]">
           <span>Этот блок сейчас недоступен</span>
           <div className="flex gap-2">
-            <button type="button" onClick={finishTour} className="rounded-[8px] px-3 py-2 text-white/70 hover:bg-white/10 hover:text-white">
+            <button type="button" onClick={() => void completeTour()} disabled={completionPending} className="rounded-[8px] px-3 py-2 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-50">
               Пропустить обучение
             </button>
             <button type="button" onClick={() => moveTo(stepIndex + 1)} className="rounded-[8px] bg-[#2463eb] px-3 py-2 text-white hover:bg-[#1d55cf]">
@@ -506,9 +519,10 @@ export function ProductTour() {
           </div>
           <button
             type="button"
-            onClick={finishTour}
+            onClick={dismissTour}
+            disabled={completionPending}
             aria-label="Закрыть обучение"
-            className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-white/65 hover:bg-white/10 hover:text-white"
+            className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-white/65 hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -521,8 +535,9 @@ export function ProductTour() {
           </span>
           <button
             type="button"
-            onClick={finishTour}
-            className="min-h-9 rounded-[8px] px-3 text-[13px] font-semibold text-white/62 hover:bg-white/10 hover:text-white"
+            onClick={() => void completeTour()}
+            disabled={completionPending}
+            className="min-h-9 rounded-[8px] px-3 text-[13px] font-semibold text-white/62 hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
             Пропустить
           </button>
@@ -540,9 +555,10 @@ export function ProductTour() {
             type="button"
             onClick={() =>
               stepIndex === tourSteps.length - 1
-                ? finishTour()
+                ? void completeTour()
                 : moveTo(stepIndex + 1)
             }
+            disabled={completionPending}
             className="inline-flex min-h-9 items-center gap-2 rounded-[8px] bg-[#2463eb] px-3.5 text-[13px] font-semibold text-white hover:bg-[#1d55cf]"
           >
             {stepIndex === tourSteps.length - 1 ? (
