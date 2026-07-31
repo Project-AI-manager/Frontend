@@ -50,8 +50,6 @@ const maxAttachmentSize = 10 * 1024 * 1024;
 const maxAttachmentsPerMessage = 10;
 const composerMaxHeight = 160;
 const messageViewportBottomThreshold = 32;
-const closeSuccessMessage = "Диалог закрыт.";
-const closeSuccessMessageDuration = 3_000;
 
 type OptimisticConversationMessage = ConversationMessageResponse & {
   confirmedMessageId?: string;
@@ -105,19 +103,6 @@ function InboxContent() {
   >({});
   const optimisticSequence = useRef(0);
   const readAttempts = useRef(new Set<string>());
-  const closeSuccessDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  useEffect(
-    () => () => {
-      if (closeSuccessDismissTimer.current) {
-        clearTimeout(closeSuccessDismissTimer.current);
-      }
-    },
-    [],
-  );
-
   const list = useQuery({
     queryKey: ["conversations"],
     queryFn: () => api.listConversationItemsApiV1ConversationsGet(),
@@ -468,31 +453,6 @@ function InboxContent() {
         getApiErrorMessage(error, "Не удалось скачать диалог."),
       ),
   });
-  const close = useMutation({
-    mutationFn: () =>
-      api.closeApiV1ConversationsConversationIdClosePost(effectiveSelectedId!),
-    onSuccess: async () => {
-      if (closeSuccessDismissTimer.current) {
-        clearTimeout(closeSuccessDismissTimer.current);
-      }
-      setActionMessage(closeSuccessMessage);
-      closeSuccessDismissTimer.current = setTimeout(() => {
-        setActionMessage((currentMessage) =>
-          currentMessage === closeSuccessMessage ? null : currentMessage,
-        );
-        closeSuccessDismissTimer.current = null;
-      }, closeSuccessMessageDuration);
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ["conversation", effectiveSelectedId],
-        }),
-        client.invalidateQueries({ queryKey: ["conversations"] }),
-      ]);
-    },
-    onError: (error) =>
-      setActionMessage(getApiErrorMessage(error, "Не удалось закрыть диалог.")),
-  });
-
   const conversations = useMemo(
     () =>
       (list.data ?? []).filter((item) => {
@@ -609,40 +569,23 @@ function InboxContent() {
                     {thread.data.customer_name}
                   </h2>
                 </div>
-                <div data-tour="tour-inbox-actions" className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={thread.data.status} />
                   {isClosed(thread.data.status) ? (
-                    <>
-                      <span className="rounded-lg bg-[#e5eaf1] px-3.5 py-2.5 text-sm font-semibold text-[#526071]">
-                        Диалог закрыт
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => exportConversation.mutate()}
-                        disabled={exportConversation.isPending}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50"
-                      >
-                        {exportConversation.isPending ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <Download size={16} />
-                        )}
-                        Скачать диалог
-                      </button>
-                    </>
-                  ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        setActionMessage(null);
-                        close.mutate();
-                      }}
-                      disabled={close.isPending}
-                      className="min-h-10 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50"
+                      onClick={() => exportConversation.mutate()}
+                      disabled={exportConversation.isPending}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white px-3.5 text-sm font-semibold hover:bg-[#f4f7fb] disabled:opacity-50"
                     >
-                      {close.isPending ? "Закрываем…" : "Закрыть диалог"}
+                      {exportConversation.isPending ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Download size={16} />
+                      )}
+                      Скачать диалог
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </header>
               <div
@@ -686,7 +629,7 @@ function InboxContent() {
                           key={`${attachmentFileKey(file)}\u0000${index}`}
                           file={file}
                           onRemove={() => removeAttachment(index)}
-                          disabled={close.isPending}
+                          disabled={false}
                         />
                       ))}
                     </div>
@@ -694,7 +637,6 @@ function InboxContent() {
                 ) : null}
                 <div
                   data-testid="inbox-composer"
-                  data-tour="tour-inbox-composer"
                   className="flex min-h-[52px] w-full items-end gap-1.5 overflow-hidden rounded-[22px] border border-[#d9e1ec] bg-white px-1.5 py-1.5 shadow-[0_10px_22px_rgba(18,39,76,.07)] focus-within:border-[#2463eb] focus-within:ring-3 focus-within:ring-[#eaf1ff]"
                 >
                   <input
@@ -714,7 +656,6 @@ function InboxContent() {
                     aria-label="Прикрепить файл"
                     title="Прикрепить фото или документ"
                     onClick={() => fileInput.current?.click()}
-                    disabled={close.isPending}
                     className="flex size-10 shrink-0 self-end items-center justify-center rounded-full text-[#64717f] hover:bg-[#eaf1ff] disabled:opacity-40"
                   >
                     <Plus size={22} />
@@ -729,16 +670,12 @@ function InboxContent() {
                     }}
                     placeholder="Введите сообщение"
                     rows={1}
-                    disabled={close.isPending}
                     className="inbox-composer-input min-h-10 max-h-40 flex-1 resize-none overflow-x-hidden overflow-y-hidden bg-transparent py-2.5 pl-1.5 pr-3 text-sm leading-5 outline-none [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <button
                     type="submit"
                     aria-label="Отправить ответ"
-                    disabled={
-                      (!reply.trim() && attachments.length === 0) ||
-                      close.isPending
-                    }
+                    disabled={!reply.trim() && attachments.length === 0}
                     className="flex size-10 shrink-0 self-end items-center justify-center rounded-full text-[#2463eb] hover:bg-[#eaf1ff] disabled:opacity-40"
                   >
                     <Send size={21} />
@@ -750,7 +687,7 @@ function InboxContent() {
           {actionMessage && (
             <p
               role="status"
-              className={`absolute right-6 bottom-20 z-10 rounded-lg px-3 py-2 text-xs ${send.error || close.error ? "bg-[#fdeded] text-[#a72f2f]" : "bg-[#e8f7ef] text-[#16734a]"}`}
+              className={`absolute right-6 bottom-20 z-10 rounded-lg px-3 py-2 text-xs ${send.error ? "bg-[#fdeded] text-[#a72f2f]" : "bg-[#e8f7ef] text-[#16734a]"}`}
             >
               {actionMessage}
             </p>

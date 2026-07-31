@@ -51,27 +51,6 @@ const tourSteps: TourStep[] = [
     placement: "right",
   },
   {
-    id: "inbox-thread-actions",
-    path: "/inbox",
-    target: "tour-inbox-actions|tour-inbox-thread",
-    eyebrow: "Диалоги",
-    title: "Завершённый диалог можно закрыть",
-    body: "Закрытие отмечает завершённое общение или продажу. Переписка не исчезает: её можно скачать, а при новом сообщении диалог снова станет активным.",
-    placement: "bottom",
-    spotlightPaddingX: 5,
-    spotlightPaddingY: 4,
-    spotlightRadius: 10,
-  },
-  {
-    id: "inbox-composer",
-    path: "/inbox",
-    target: "tour-inbox-composer|tour-inbox-thread",
-    eyebrow: "Диалоги",
-    title: "Менеджер может подключиться в любой момент",
-    body: "Пишите ответ, добавляйте несколько фотографий или документов. Сообщение сразу появится в чате и отправится в подключённый канал.",
-    placement: "top",
-  },
-  {
     id: "knowledge-overview",
     path: "/knowledge",
     target: "tour-nav-knowledge",
@@ -185,7 +164,6 @@ export function ProductTour() {
   );
   const [active, setActive] = useState(false);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
-  const [completionPending, setCompletionPending] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<HighlightRect | null>(null);
   const [targetReady, setTargetReady] = useState(false);
@@ -374,18 +352,15 @@ export function ProductTour() {
     window.requestAnimationFrame(() => previousFocus.current?.focus());
   }, []);
 
-  const completeTour = useCallback(async () => {
-    if (completionPending) return;
-    setCompletionPending(true);
-    try {
-      await usersApi.markOnboardingSeenApiV1UsersMeOnboardingSeenPost();
-      dismissTour();
-    } catch {
-      // Keep the tour active and the account uncompleted so the user can retry.
-    } finally {
-      setCompletionPending(false);
-    }
-  }, [completionPending, dismissTour]);
+  const completeTour = useCallback(() => {
+    dismissTour();
+    void usersApi
+      .markOnboardingSeenApiV1UsersMeOnboardingSeenPost()
+      .catch(() => {
+        // The backend remains the source of truth. If saving failed, onboarding
+        // will be offered again on the next authenticated visit.
+      });
+  }, [dismissTour]);
 
   useEffect(() => {
     if (!active) return;
@@ -438,7 +413,7 @@ export function ProductTour() {
         <div className="flex max-w-[min(420px,calc(100vw-32px))] flex-col items-center gap-4 rounded-[12px] bg-[#111318] px-5 py-4 text-center text-sm font-semibold text-white shadow-[0_24px_80px_rgba(0,0,0,.52)]">
           <span>Этот блок сейчас недоступен</span>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void completeTour()} disabled={completionPending} className="rounded-[8px] px-3 py-2 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-50">
+            <button type="button" onClick={completeTour} className="rounded-[8px] px-3 py-2 text-white/70 hover:bg-white/10 hover:text-white">
               Пропустить обучение
             </button>
             <button type="button" onClick={() => moveTo(stepIndex + 1)} className="rounded-[8px] bg-[#2463eb] px-3 py-2 text-white hover:bg-[#1d55cf]">
@@ -520,9 +495,8 @@ export function ProductTour() {
           <button
             type="button"
             onClick={dismissTour}
-            disabled={completionPending}
             aria-label="Закрыть обучение"
-            className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-white/65 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-white/65 hover:bg-white/10 hover:text-white"
           >
             <X size={18} />
           </button>
@@ -535,9 +509,8 @@ export function ProductTour() {
           </span>
           <button
             type="button"
-            onClick={() => void completeTour()}
-            disabled={completionPending}
-            className="min-h-9 rounded-[8px] px-3 text-[13px] font-semibold text-white/62 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            onClick={completeTour}
+            className="min-h-9 rounded-[8px] px-3 text-[13px] font-semibold text-white/62 hover:bg-white/10 hover:text-white"
           >
             Пропустить
           </button>
@@ -555,10 +528,9 @@ export function ProductTour() {
             type="button"
             onClick={() =>
               stepIndex === tourSteps.length - 1
-                ? void completeTour()
+                ? completeTour()
                 : moveTo(stepIndex + 1)
             }
-            disabled={completionPending}
             className="inline-flex min-h-9 items-center gap-2 rounded-[8px] bg-[#2463eb] px-3.5 text-[13px] font-semibold text-white hover:bg-[#1d55cf]"
           >
             {stepIndex === tourSteps.length - 1 ? (

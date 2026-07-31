@@ -70,9 +70,8 @@ describe("ProductTour", () => {
     document.body.style.overflow = "";
   });
 
-  it("starts at Dialogues and explains several targets on the same page", async () => {
+  it("starts at Dialogues and continues to Knowledge without requiring a chat", async () => {
     addTarget("tour-nav-inbox");
-    addTarget("tour-inbox-actions");
 
     render(<ProductTour />);
 
@@ -81,17 +80,11 @@ describe("ProductTour", () => {
         name: /Здесь находятся диалоги/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 из 13")).toBeInTheDocument();
+    expect(screen.getByText("1 из 11")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Далее/ }));
 
-    expect(
-      await screen.findByRole("dialog", {
-        name: /Завершённый диалог можно закрыть/,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("2 из 13")).toBeInTheDocument();
-    expect(navigation.push).not.toHaveBeenCalled();
+    expect(navigation.push).toHaveBeenCalledWith("/knowledge");
     expect(users.markSeen).not.toHaveBeenCalled();
   });
 
@@ -106,7 +99,7 @@ describe("ProductTour", () => {
     expect(users.markSeen).not.toHaveBeenCalled();
   });
 
-  it("keeps the tour open and uncompleted when saving completion fails", async () => {
+  it("closes the tour immediately even when saving completion fails", async () => {
     users.markSeen.mockRejectedValue(new Error("network"));
     addTarget("tour-nav-inbox");
 
@@ -114,23 +107,19 @@ describe("ProductTour", () => {
 
     await screen.findByRole("dialog");
     fireEvent.click(screen.getByRole("button", { name: "Пропустить" }));
+    expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument();
     await waitFor(() => expect(users.markSeen).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId("product-tour")).toBeInTheDocument();
   });
 
-  it("navigates to Knowledge after the last Dialogues step", async () => {
+  it("navigates to Knowledge after the Dialogues overview", async () => {
     addTarget("tour-nav-inbox");
-    addTarget("tour-inbox-actions");
-    addTarget("tour-inbox-composer");
     render(<ProductTour />);
     await screen.findByRole("dialog");
 
-    for (let step = 0; step < 3; step += 1) {
-      fireEvent.click(screen.getByRole("button", { name: /Далее/ }));
-      await act(async () => {
-        vi.advanceTimersByTime(120);
-      });
-    }
+    fireEvent.click(screen.getByRole("button", { name: /Далее/ }));
+    await act(async () => {
+      vi.advanceTimersByTime(120);
+    });
 
     expect(navigation.push).toHaveBeenCalledWith("/knowledge");
     expect(screen.queryByTestId("product-tour-loading")).not.toBeInTheDocument();
@@ -176,9 +165,9 @@ describe("ProductTour", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Пропустить" }));
 
-    await waitFor(() => expect(users.markSeen).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument());
+    expect(screen.queryByTestId("product-tour")).not.toBeInTheDocument();
     expect(document.body.style.overflow).toBe("");
+    await waitFor(() => expect(users.markSeen).toHaveBeenCalledTimes(1));
   });
 
   it("waits to check eligibility until authentication reaches a tour route", async () => {

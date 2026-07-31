@@ -904,19 +904,6 @@ describe("InboxPage live actions", () => {
     ).toBe(pendingArticle);
   });
 
-  it("closes the selected conversation", async () => {
-    renderPage();
-
-    await screen.findByRole("heading", { name: "Анна", level: 2 });
-    fireEvent.click(screen.getByRole("button", { name: "Закрыть диалог" }));
-
-    await waitFor(() =>
-      expect(
-        api.closeApiV1ConversationsConversationIdClosePost,
-      ).toHaveBeenCalledWith("conversation-1"),
-    );
-  });
-
   it("keeps the composer enabled and exports a closed conversation", async () => {
     api.getConversationApiV1ConversationsConversationIdGet.mockResolvedValueOnce({
       ...(await api.getConversationApiV1ConversationsConversationIdGet()),
@@ -939,7 +926,7 @@ describe("InboxPage live actions", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Диалог закрыт")).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Анна", level: 2 });
     expect(screen.getByLabelText("Ответ клиенту")).toBeEnabled();
     expect(screen.getByRole("button", { name: "Прикрепить файл" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Скачать диалог" }));
@@ -952,37 +939,6 @@ describe("InboxPage live actions", () => {
     expect(linkClick).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:dialog-export");
     click.mockRestore();
-  });
-
-  it("hides the successful close notification after three seconds", async () => {
-    vi.useFakeTimers();
-    try {
-      renderPage();
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Закрыть диалог" }),
-      );
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(screen.getByRole("status")).toHaveTextContent("Диалог закрыт.");
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(2_999);
-      });
-      expect(screen.getByRole("status")).toHaveTextContent("Диалог закрыт.");
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-      expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   it("selects, previews and removes an image attachment", async () => {
