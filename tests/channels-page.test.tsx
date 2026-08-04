@@ -142,6 +142,7 @@ describe("ChannelsPage", () => {
       ).not.toBeInTheDocument(),
     );
     fireEvent.click(await screen.findByRole("button", { name: "Подключить" }));
+    fireEvent.click(screen.getByRole("button", { name: /По номеру телефона/ }));
     fireEvent.change(screen.getByLabelText("Номер телефона"), {
       target: { value: "+79991234567" },
     });
