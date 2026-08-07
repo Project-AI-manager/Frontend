@@ -12,9 +12,11 @@ type Step = "method" | "phone" | "code" | "qr" | "password";
 export function TelegramConnectDialog({
   onClose,
   onConnected,
+  replacing = false,
 }: {
   onClose: () => void;
   onConnected: () => Promise<void>;
+  replacing?: boolean;
 }) {
   const closeButton = useRef<HTMLButtonElement>(null);
   const [step, setStep] = useState<Step>("method");
@@ -171,7 +173,7 @@ export function TelegramConnectDialog({
   }
 
   const title = step === "method"
-    ? "Подключить Telegram"
+    ? replacing ? "Заменить Telegram-аккаунт" : "Подключить Telegram"
     : step === "phone"
     ? "Подключить Telegram"
     : step === "code"
@@ -192,7 +194,9 @@ export function TelegramConnectDialog({
         </div>
 
         <p className="mt-3 text-sm leading-6 text-[#526071]">
-          {step === "method" && "Выберите удобный способ. QR-код работает без SMS и кода из служебного чата."}
+          {step === "method" && (replacing
+            ? "Выберите способ входа в новый аккаунт. После начала авторизации текущий канал будет приостановлен до завершения подключения."
+            : "Выберите удобный способ. QR-код работает без SMS и кода из служебного чата.")}
           {step === "phone" && "Укажите номер личного аккаунта в международном формате. Способ доставки кода выбирает Telegram."}
           {step === "code" && (
             <>

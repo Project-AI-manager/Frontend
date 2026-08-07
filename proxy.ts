@@ -4,7 +4,17 @@ import type { NextRequest } from "next/server";
 // Защита экранов кабинета: нет сессии-cookie → на /login. (Next 16: middleware → proxy.)
 export function proxy(req: NextRequest) {
   const hasSession = req.cookies.has("refresh_token");
-  if (!hasSession) {
+  const isAuthPage = ["/login", "/register", "/password-reset", "/password-reset/confirm"]
+    .includes(req.nextUrl.pathname);
+
+  if (hasSession && isAuthPage) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/inbox";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (!hasSession && !isAuthPage) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -21,5 +31,9 @@ export const config = {
     "/settings/:path*",
     "/onboarding",
     "/profile",
+    "/login",
+    "/register",
+    "/password-reset",
+    "/password-reset/confirm",
   ],
 };

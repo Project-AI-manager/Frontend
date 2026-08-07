@@ -55,7 +55,42 @@ export default function RegisterPage() {
               <button type="button" className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
           </div>
-          <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-[1.5] text-[#526071]"><input className="peer sr-only" type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span className="mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]">{accepted ? <Check size={12} strokeWidth={3} className="text-white" /> : null}</span><span>Принимаю <Link href="/legal/terms" className="text-[#1546ad]">условия использования</Link> и <Link href="/legal/privacy" className="text-[#1546ad]">политику конфиденциальности</Link></span></label>
+          <div className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-[#526071]">
+            <input
+              id="register-consent"
+              className="peer sr-only"
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => setAccepted(event.target.checked)}
+            />
+            <label
+              htmlFor="register-consent"
+              className="mt-0.5 flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-focus-visible:ring-3 peer-focus-visible:ring-[#eaf1ff] peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]"
+              aria-label="Принять условия использования и политику конфиденциальности"
+            >
+              {accepted ? <Check size={12} strokeWidth={3} className="text-white" /> : null}
+            </label>
+            <span>
+              <label htmlFor="register-consent" className="cursor-pointer">Принимаю</label>{" "}
+              <Link
+                href="/legal/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#1546ad] underline decoration-[#1546ad]/45 underline-offset-2 hover:text-[#2463eb]"
+              >
+                условия использования
+              </Link>{" "}
+              и{" "}
+              <Link
+                href="/legal/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#1546ad] underline decoration-[#1546ad]/45 underline-offset-2 hover:text-[#2463eb]"
+              >
+                политику конфиденциальности
+              </Link>
+            </span>
+          </div>
           {error ? <p role="alert" className="rounded-[8px] border border-[#f3cfcf] bg-[#fdeded] p-3 text-[13px] text-[#a72f2f]">{error}</p> : null}
           <button className="ap-primary flex items-center justify-center gap-2" type="submit" disabled={isSubmitting}>{isSubmitting ? <><span className="ap-spinner" />Создаём</> : "Создать аккаунт"}</button>
         </form>

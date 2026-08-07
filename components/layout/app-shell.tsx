@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   BookOpen,
@@ -19,6 +19,7 @@ import { Brand } from "@/components/ui/brand";
 import { AuthBackground } from "@/components/ui/auth-background";
 import { getConversations } from "@/lib/api/generated/conversations/conversations";
 import { getUsers } from "@/lib/api/generated/users/users";
+import { subscribeToConversationEvents } from "@/lib/api/conversation-events";
 import { getAccessToken } from "@/lib/api/token";
 
 const conversationsApi = getConversations();
@@ -224,15 +225,27 @@ function Navigation({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [eventStreamOpen, setEventStreamOpen] = useState(false);
   const conversations = useQuery({
     queryKey: ["conversations"],
     queryFn: () =>
       conversationsApi.listConversationItemsApiV1ConversationsGet(),
     enabled: Boolean(getAccessToken()),
     retry: 1,
-    refetchInterval: 4_000,
+    refetchInterval: eventStreamOpen ? false : 4_000,
     refetchIntervalInBackground: false,
   });
+  useEffect(
+    () =>
+      subscribeToConversationEvents({
+        onChanged: () => {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        },
+        onConnectionChange: (state) => setEventStreamOpen(state === "open"),
+      }),
+    [queryClient],
+  );
   const unreadCount = (conversations.data ?? []).reduce(
     (total, conversation) => total + Math.max(0, conversation.unread_count),
     0,

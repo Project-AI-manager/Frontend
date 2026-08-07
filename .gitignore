@@ -6,6 +6,7 @@
 .logs/
 .openapi/
 *.tsbuildinfo
+*.log
 next-env.d.ts
 
 # env
@@ -15,3 +16,6 @@ next-env.d.ts
 
 .DS_Store
 .vercel
+
+# Local downloaded channel-icon drafts (the UI uses maintained SVG/code icons).
+/public/channel-icons/*.png

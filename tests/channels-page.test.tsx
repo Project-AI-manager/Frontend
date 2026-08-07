@@ -109,8 +109,20 @@ describe("ChannelsPage", () => {
     expect(screen.getByText("Avito")).toBeInTheDocument();
     expect(screen.getByText("Instagram")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Меню канала Telegram" })).toBeInTheDocument();
+    expect(screen.getByText("@timur")).toBeInTheDocument();
     expect(screen.getByText("Работает")).toBeInTheDocument();
     expect(screen.getAllByText("Не подключено")).toHaveLength(5);
+  });
+
+  it("shows which Telegram account is connected and exposes reconnection", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Меню канала Telegram" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Заменить аккаунт…" }));
+
+    expect(screen.getByRole("dialog", { name: "Заменить Telegram-аккаунт" })).toBeInTheDocument();
+    expect(screen.getByText(/текущий канал будет приостановлен/)).toBeInTheDocument();
+    expect(screen.getByText("@timur")).toBeInTheDocument();
   });
 
   it("keeps connection controls available when statuses cannot be loaded", async () => {

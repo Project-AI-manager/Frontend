@@ -52,6 +52,7 @@ describe("LoginPage", () => {
 
     expect(screen.queryByRole("button", { name: /демо/i })).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("owner.demo@example.com")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Забыли пароль?" })).toHaveAttribute("href", "/password-reset");
 
     await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "user@example.com");
     await userEvent.type(screen.getByPlaceholderText("Введите пароль"), "real-password");

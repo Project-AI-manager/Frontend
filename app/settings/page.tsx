@@ -121,15 +121,19 @@ function SettingsContent({
         <div data-tour="tour-settings-confidence" className="-mx-1 -mt-[18px] -mb-6 flex flex-col gap-2.5 rounded-[10px] px-1 pt-[18px] pb-6">
           <div className="flex items-baseline justify-between gap-4">
             <label htmlFor="confidence" className="text-sm font-semibold">
-              Доля автоматических ответов
+              Уровень автоматизации
             </label>
             <output
               htmlFor="confidence"
               className="shrink-0 text-sm font-semibold tabular-nums text-[#1546ad]"
             >
-              {threshold}%
+              {automationLabel(threshold)} · {threshold}%
             </output>
           </div>
+          <p id="confidence-help" className="text-[13px] leading-5 text-[#64717f]">
+            Чем выше уровень, тем чаще ассистент отвечает сам, если нашёл подходящие данные в базе знаний.
+            Фактические запросы без данных и темы с пометкой риска передаются менеджеру; выбор не случайный.
+          </p>
           <div className="relative flex h-[26px] items-center">
             <div className="h-1.5 w-full rounded-full border border-[#e5eaf1] bg-[#f4f7fb]" />
             <div
@@ -146,6 +150,7 @@ function SettingsContent({
               min="0"
               max="100"
               value={threshold}
+              aria-describedby="confidence-help"
               onChange={(event) => changeThreshold(Number(event.target.value))}
               className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             />
@@ -182,6 +187,14 @@ function SettingsContent({
 
     </>
   );
+}
+
+function automationLabel(value: number) {
+  if (value === 0) return "Только менеджер";
+  if (value <= 35) return "Осторожный";
+  if (value <= 70) return "Сбалансированный";
+  if (value < 100) return "Активный";
+  return "Максимальный";
 }
 
 function formatRubles(kopecks: number) {

@@ -52,7 +52,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
           <label className="ap-label">Почта<input className="ap-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="anna@studio.ru" required /></label>
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-3"><label htmlFor="login-password" className="text-[13px] font-semibold">Пароль</label><Link href="/register" className="text-[13px] text-[#1546ad] hover:text-[#2463eb]">Забыли пароль?</Link></div>
+            <div className="flex items-baseline justify-between gap-3"><label htmlFor="login-password" className="text-[13px] font-semibold">Пароль</label><Link href="/password-reset" className="text-[13px] text-[#1546ad] hover:text-[#2463eb]">Забыли пароль?</Link></div>
             <div className="flex items-center rounded-[8px] border border-[#d9e1ec] bg-white pr-1 focus-within:border-[#2463eb] focus-within:shadow-[0_0_0_3px_#eaf1ff]">
               <input id="login-password" className="min-h-11 min-w-0 flex-1 rounded-[8px] border-0 bg-transparent px-3.5 text-[14px] outline-none" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="Введите пароль" required />
               <button type="button" className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={18} strokeWidth={1.75} /> : <Eye size={18} strokeWidth={1.75} />}</button>

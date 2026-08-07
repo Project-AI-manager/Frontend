@@ -31,6 +31,10 @@ import {
   type ConversationAttachment,
 } from "@/lib/api/conversation-attachments";
 import { markConversationRead } from "@/lib/api/conversations";
+import {
+  subscribeToConversationEvents,
+  type ConversationEventConnection,
+} from "@/lib/api/conversation-events";
 import { axiosInstance } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
@@ -103,11 +107,14 @@ function InboxContent() {
   >({});
   const optimisticSequence = useRef(0);
   const readAttempts = useRef(new Set<string>());
+  const selectedConversationIdRef = useRef<string | null>(null);
+  const [eventConnection, setEventConnection] =
+    useState<ConversationEventConnection>("connecting");
   const list = useQuery({
     queryKey: ["conversations"],
     queryFn: () => api.listConversationItemsApiV1ConversationsGet(),
     retry: 1,
-    refetchInterval: 4_000,
+    refetchInterval: eventConnection === "open" ? false : 4_000,
     refetchIntervalInBackground: false,
   });
   const currentUser = useQuery({
@@ -124,13 +131,18 @@ function InboxContent() {
       ),
     enabled: Boolean(effectiveSelectedId),
     retry: 1,
-    refetchInterval: (query) =>
-      hasAwaitingReceipt(query.state.data) ? 1_000 : 4_000,
+    refetchInterval: (query) => {
+      if (hasAwaitingReceipt(query.state.data)) return 1_000;
+      return eventConnection === "open" ? false : 4_000;
+    },
     refetchIntervalInBackground: false,
   });
   const selectedConversation = list.data?.find(
     (item) => item.id === effectiveSelectedId,
   );
+  useEffect(() => {
+    selectedConversationIdRef.current = effectiveSelectedId ?? null;
+  }, [effectiveSelectedId]);
   const markRead = useMutation({
     mutationFn: (conversationId: string) =>
       markConversationRead(conversationId),
@@ -172,6 +184,22 @@ function InboxContent() {
     },
   });
   const markReadConversation = markRead.mutate;
+
+  useEffect(
+    () =>
+      subscribeToConversationEvents({
+        onChanged: () => {
+          void client.invalidateQueries({ queryKey: ["conversations"] });
+          if (selectedConversationIdRef.current) {
+            void client.invalidateQueries({
+              queryKey: ["conversation", selectedConversationIdRef.current],
+            });
+          }
+        },
+        onConnectionChange: setEventConnection,
+      }),
+    [client],
+  );
 
   useEffect(() => {
     const readKey =
@@ -959,6 +987,7 @@ function AttachmentPreview({
   return (
     <div className="pointer-events-auto flex w-fit max-w-full items-center gap-2 rounded-lg border border-[#d9e1ec] bg-white p-2 pr-1 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
       {previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
         <img
           src={previewUrl}
           alt="Предпросмотр вложения"
@@ -1083,6 +1112,7 @@ function AuthenticatedAttachment({
       }`}
     >
       {image && objectUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- authenticated object URL
         <img
           src={objectUrl}
           alt={name}

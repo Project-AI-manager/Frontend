@@ -122,8 +122,9 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("Поведение ассистента")).toBeInTheDocument();
     expect(container.firstElementChild).toHaveAttribute("data-immersive", "true");
     expect(screen.getByText("Отвечать автоматически")).toBeInTheDocument();
-    expect(screen.getByText("Доля автоматических ответов")).toBeInTheDocument();
-    expect(screen.getByText("72%")).toBeInTheDocument();
+    expect(screen.getByText("Уровень автоматизации")).toBeInTheDocument();
+    expect(screen.getByText("Активный · 72%")).toBeInTheDocument();
+    expect(screen.getByText(/выбор не случайный/)).toBeInTheDocument();
     expect(screen.getByText("1 000 ₽")).toBeInTheDocument();
     expect(
       screen.getByText("Бонусный баланс для работы ассистента"),
@@ -151,7 +152,7 @@ describe("SettingsPage", () => {
       }),
     );
 
-    fireEvent.change(screen.getByLabelText("Доля автоматических ответов"), {
+    fireEvent.change(screen.getByLabelText("Уровень автоматизации"), {
       target: { value: "64" },
     });
 
@@ -161,7 +162,7 @@ describe("SettingsPage", () => {
         confidence_threshold: 64,
       }),
     );
-    expect(screen.getByText("64%")).toBeInTheDocument();
+    expect(screen.getByText("Сбалансированный · 64%")).toBeInTheDocument();
   });
 
   it("does not expose internal AI integration diagnostics", async () => {

@@ -46,6 +46,21 @@ describe("RegisterPage", () => {
     expect(screen.queryByLabelText(/Надёжность пароля/)).not.toBeInTheDocument();
   });
 
+  it("opens legal documents separately without toggling consent or clearing the form", async () => {
+    render(<RegisterPage />);
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Имя" }), "Тимур");
+    await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "timur@example.com");
+    const terms = screen.getByRole("link", { name: "условия использования" });
+    const privacy = screen.getByRole("link", { name: "политику конфиденциальности" });
+
+    expect(terms).toHaveAttribute("target", "_blank");
+    expect(privacy).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("textbox", { name: "Имя" })).toHaveValue("Тимур");
+    expect(screen.getByRole("textbox", { name: "Почта" })).toHaveValue("timur@example.com");
+  });
+
   it("requests a verification code and opens the confirmation page", async () => {
     mocks.register.mockResolvedValue({
       access_token: "access-token",

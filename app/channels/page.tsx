@@ -26,6 +26,7 @@ const channelCatalog = [
 export default function ChannelsPage() {
   const client = useQueryClient();
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  const [replacingTelegram, setReplacingTelegram] = useState(false);
   const [menuChannelId, setMenuChannelId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const channelsQuery = useQuery({
@@ -81,7 +82,15 @@ export default function ChannelsPage() {
                 channels={channelsQuery.data ?? []}
                 menuChannelId={menuChannelId}
                 disconnectingChannelId={disconnect.isPending ? disconnect.variables : null}
-                onConnectTelegram={() => setTelegramDialogOpen(true)}
+                onConnectTelegram={() => {
+                  setReplacingTelegram(false);
+                  setTelegramDialogOpen(true);
+                }}
+                onReconnectTelegram={() => {
+                  setMenuChannelId(null);
+                  setReplacingTelegram(true);
+                  setTelegramDialogOpen(true);
+                }}
                 onToggleMenu={(channelId) =>
                   setMenuChannelId((current) => current === channelId ? null : channelId)
                 }
@@ -94,6 +103,7 @@ export default function ChannelsPage() {
 
       {telegramDialogOpen ? (
         <TelegramConnectDialog
+          replacing={replacingTelegram}
           onClose={() => setTelegramDialogOpen(false)}
           onConnected={async () => {
             await client.invalidateQueries({ queryKey: ["channels"] });
@@ -109,6 +119,7 @@ function ChannelsCard({
   menuChannelId,
   disconnectingChannelId,
   onConnectTelegram,
+  onReconnectTelegram,
   onToggleMenu,
   onDisconnect,
 }: {
@@ -116,6 +127,7 @@ function ChannelsCard({
   menuChannelId: string | null;
   disconnectingChannelId: string | null;
   onConnectTelegram: () => void;
+  onReconnectTelegram: () => void;
   onToggleMenu: (channelId: string) => void;
   onDisconnect: (channelId: string) => void;
 }) {
@@ -136,8 +148,13 @@ function ChannelsCard({
               className="relative flex min-h-[148px] items-center gap-5 rounded-xl border border-[#d9e1ec] bg-white px-5 py-5 transition-[border-color,background,box-shadow] hover:border-[#c9d6e8] hover:bg-[#f8fbff] hover:shadow-[0_14px_30px_rgba(18,39,76,.06)]"
             >
               <ChannelMark type={item.type} label={item.name} />
-              <span className="flex min-w-0 flex-col gap-2">
+              <span className="flex min-w-0 flex-col gap-1.5">
                 <span className="truncate font-heading text-lg font-extrabold tracking-[-.025em]">{item.name}</span>
+                {connected && channel ? (
+                  <span className="truncate text-[13px] text-[#526071]" title={channelIdentity(channel)}>
+                    {channelIdentity(channel)}
+                  </span>
+                ) : null}
                 <span
                   className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.06em] ${connected ? "text-[#0c7a4e]" : "text-[#94600b]"}`}
                 >
@@ -161,6 +178,11 @@ function ChannelsCard({
                   </button>
                   {channel && menuChannelId === channel.id ? (
                     <div role="menu" aria-label={`Действия с каналом ${item.name}`} className="absolute right-0 top-[46px] z-20 min-w-[184px] rounded-lg border border-[#d9e1ec] bg-white p-1.5 shadow-[0_14px_34px_rgba(18,39,76,.16)]">
+                      {item.type === "telegram" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectTelegram} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Заменить аккаунт…
+                        </button>
+                      ) : null}
                       <button type="button" role="menuitem" onClick={() => onDisconnect(channel.id)} disabled={disconnectingChannelId === channel.id} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#b93838] hover:bg-[#fdeded] disabled:opacity-50">
                         {disconnectingChannelId === channel.id ? "Отключаем…" : "Отключить канал"}
                       </button>
@@ -224,6 +246,22 @@ function isConnected(channel?: ChannelResponse) {
       (channel?.type.toLocaleLowerCase("ru-RU") !== "telegram" ||
         channel.settings.transport === "mtproto"),
   );
+}
+
+function channelIdentity(channel: ChannelResponse) {
+  const username = typeof channel.settings.username === "string"
+    ? channel.settings.username.trim().replace(/^@/, "")
+    : "";
+  if (username) return `@${username}`;
+  const botUsername = typeof channel.settings.bot_username === "string"
+    ? channel.settings.bot_username.trim().replace(/^@/, "")
+    : "";
+  if (botUsername) return `@${botUsername}`;
+  const phone = typeof channel.settings.phone_masked === "string"
+    ? channel.settings.phone_masked.trim()
+    : "";
+  if (phone) return `Аккаунт ${phone}`;
+  return channel.name || "Подключённый аккаунт";
 }
 
 function ChannelsSkeleton() {
