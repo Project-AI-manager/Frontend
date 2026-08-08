@@ -17,6 +17,10 @@ export const axiosInstance = axios.create({
   },
 });
 
+export function resolveApiUrl(path: string) {
+  return new URL(path, apiBaseUrl).toString();
+}
+
 axiosInstance.interceptors.request.use((config) => {
   const token = getAccessToken();
 

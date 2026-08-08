@@ -7,6 +7,9 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ChannelIcon } from "@/components/channels/channel-icon";
 import { TelegramConnectDialog } from "@/components/settings/telegram-connect-dialog";
+import { WhatsAppConnectDialog } from "@/components/settings/whatsapp-connect-dialog";
+import { AvitoConnectDialog } from "@/components/settings/avito-connect-dialog";
+import { VkConnectDialog } from "@/components/settings/vk-connect-dialog";
 import { channelsManagementApi } from "@/lib/api/channels";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
@@ -27,6 +30,11 @@ export default function ChannelsPage() {
   const client = useQueryClient();
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
   const [replacingTelegram, setReplacingTelegram] = useState(false);
+  const [whatsAppDialogOpen, setWhatsAppDialogOpen] = useState(false);
+  const [replacingWhatsApp, setReplacingWhatsApp] = useState(false);
+  const [avitoDialogOpen, setAvitoDialogOpen] = useState(false);
+  const [vkDialogOpen, setVkDialogOpen] = useState(false);
+  const [replacingVk, setReplacingVk] = useState(false);
   const [menuChannelId, setMenuChannelId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const channelsQuery = useQuery({
@@ -35,6 +43,7 @@ export default function ChannelsPage() {
     retry: 1,
     retryDelay: 0,
   });
+
   const disconnect = useMutation({
     mutationFn: (channelId: string) => channelsManagementApi.disconnect(channelId),
     onSuccess: async () => {
@@ -60,7 +69,7 @@ export default function ChannelsPage() {
               title="Статусы каналов недоступны"
               text={getApiErrorMessage(
                 channelsQuery.error,
-                "Ошибка запроса. Подключение Telegram по-прежнему доступно.",
+                "Ошибка запроса. Подключение Telegram и WhatsApp по-прежнему доступно.",
               )}
               onRetry={() => void channelsQuery.refetch()}
             />
@@ -91,6 +100,25 @@ export default function ChannelsPage() {
                   setReplacingTelegram(true);
                   setTelegramDialogOpen(true);
                 }}
+                onConnectWhatsApp={() => {
+                  setReplacingWhatsApp(false);
+                  setWhatsAppDialogOpen(true);
+                }}
+                onReconnectWhatsApp={() => {
+                  setMenuChannelId(null);
+                  setReplacingWhatsApp(true);
+                  setWhatsAppDialogOpen(true);
+                }}
+                onConnectAvito={() => setAvitoDialogOpen(true)}
+                onConnectVk={() => {
+                  setReplacingVk(false);
+                  setVkDialogOpen(true);
+                }}
+                onReconnectVk={() => {
+                  setMenuChannelId(null);
+                  setReplacingVk(true);
+                  setVkDialogOpen(true);
+                }}
                 onToggleMenu={(channelId) =>
                   setMenuChannelId((current) => current === channelId ? null : channelId)
                 }
@@ -110,6 +138,29 @@ export default function ChannelsPage() {
           }}
         />
       ) : null}
+      {whatsAppDialogOpen ? (
+        <WhatsAppConnectDialog
+          replacing={replacingWhatsApp}
+          replaceChannelId={replacingWhatsApp ? activeChannelId(channelsQuery.data, "whatsapp") : undefined}
+          onClose={() => setWhatsAppDialogOpen(false)}
+          onConnected={async () => {
+            await client.invalidateQueries({ queryKey: ["channels"] });
+          }}
+        />
+      ) : null}
+      {avitoDialogOpen ? <AvitoConnectDialog onClose={() => setAvitoDialogOpen(false)} /> : null}
+      {vkDialogOpen ? (
+        <VkConnectDialog
+          replacing={replacingVk}
+          replaceChannelId={replacingVk ? activeChannelId(channelsQuery.data, "vk") : undefined}
+          initialGroupId={replacingVk ? channelSetting(channelsQuery.data, "vk", "group_id") : ""}
+          initialName={replacingVk ? activeChannel(channelsQuery.data, "vk")?.name ?? "" : ""}
+          onClose={() => setVkDialogOpen(false)}
+          onConnected={async () => {
+            await client.invalidateQueries({ queryKey: ["channels"] });
+          }}
+        />
+      ) : null}
     </AppShell>
   );
 }
@@ -120,6 +171,11 @@ function ChannelsCard({
   disconnectingChannelId,
   onConnectTelegram,
   onReconnectTelegram,
+  onConnectWhatsApp,
+  onReconnectWhatsApp,
+  onConnectAvito,
+  onConnectVk,
+  onReconnectVk,
   onToggleMenu,
   onDisconnect,
 }: {
@@ -128,6 +184,11 @@ function ChannelsCard({
   disconnectingChannelId: string | null;
   onConnectTelegram: () => void;
   onReconnectTelegram: () => void;
+  onConnectWhatsApp: () => void;
+  onReconnectWhatsApp: () => void;
+  onConnectAvito: () => void;
+  onConnectVk: () => void;
+  onReconnectVk: () => void;
   onToggleMenu: (channelId: string) => void;
   onDisconnect: (channelId: string) => void;
 }) {
@@ -182,6 +243,18 @@ function ChannelsCard({
                         <button type="button" role="menuitem" onClick={onReconnectTelegram} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
                           Заменить аккаунт…
                         </button>
+                      ) : item.type === "whatsapp" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectWhatsApp} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Переподключить…
+                        </button>
+                      ) : item.type === "avito" ? (
+                        <button type="button" role="menuitem" onClick={onConnectAvito} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Переподключить…
+                        </button>
+                      ) : item.type === "vk" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectVk} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Переподключить…
+                        </button>
                       ) : null}
                       <button type="button" role="menuitem" onClick={() => onDisconnect(channel.id)} disabled={disconnectingChannelId === channel.id} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#b93838] hover:bg-[#fdeded] disabled:opacity-50">
                         {disconnectingChannelId === channel.id ? "Отключаем…" : "Отключить канал"}
@@ -189,11 +262,12 @@ function ChannelsCard({
                     </div>
                   ) : null}
                 </div>
-              ) : item.type === "telegram" ? (
+              ) : item.type === "telegram" || item.type === "whatsapp" || item.type === "avito" || item.type === "vk" ? (
                 <button
-                  data-tour="tour-channels-actions"
+                  data-tour={item.type === "telegram" ? "tour-channels-actions" : undefined}
                   type="button"
-                  onClick={onConnectTelegram}
+                  onClick={item.type === "telegram" ? onConnectTelegram : item.type === "whatsapp" ? onConnectWhatsApp : item.type === "avito" ? onConnectAvito : onConnectVk}
+                  aria-label={`Подключить ${item.name}`}
                   className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
                 >
                   Подключить
@@ -239,6 +313,27 @@ function findChannel(channels: ChannelResponse[], type: string) {
   );
 }
 
+function activeChannelId(channels: ChannelResponse[] | undefined, type: string) {
+  return channels?.find(
+    (channel) => channel.type.toLocaleLowerCase("ru-RU") === type && isConnected(channel),
+  )?.id;
+}
+
+function activeChannel(channels: ChannelResponse[] | undefined, type: string) {
+  return channels?.find(
+    (channel) => channel.type.toLocaleLowerCase("ru-RU") === type && isConnected(channel),
+  );
+}
+
+function channelSetting(
+  channels: ChannelResponse[] | undefined,
+  type: string,
+  key: string,
+) {
+  const value = activeChannel(channels, type)?.settings[key];
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
 function isConnected(channel?: ChannelResponse) {
   const active = channel?.status === "active" || channel?.status === "connected";
   return Boolean(
@@ -261,6 +356,26 @@ function channelIdentity(channel: ChannelResponse) {
     ? channel.settings.phone_masked.trim()
     : "";
   if (phone) return `Аккаунт ${phone}`;
+  const displayPhone = typeof channel.settings.display_phone_number === "string"
+    ? channel.settings.display_phone_number.trim()
+    : "";
+  if (displayPhone) return displayPhone;
+  const phoneNumberId = typeof channel.settings.phone_number_id === "string"
+    ? channel.settings.phone_number_id.trim()
+    : "";
+  if (phoneNumberId) return `Phone Number ID ${phoneNumberId}`;
+  const screenName = typeof channel.settings.screen_name === "string"
+    ? channel.settings.screen_name.trim().replace(/^@/, "")
+    : "";
+  if (screenName) return `@${screenName}`;
+  const groupName = typeof channel.settings.group_name === "string"
+    ? channel.settings.group_name.trim()
+    : "";
+  if (groupName) return groupName;
+  const groupId = typeof channel.settings.group_id === "string" || typeof channel.settings.group_id === "number"
+    ? String(channel.settings.group_id).trim()
+    : "";
+  if (groupId) return `Сообщество ${groupId}`;
   return channel.name || "Подключённый аккаунт";
 }
 
