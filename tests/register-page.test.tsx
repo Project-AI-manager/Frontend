@@ -46,6 +46,22 @@ describe("RegisterPage", () => {
     expect(screen.queryByLabelText(/Надёжность пароля/)).not.toBeInTheDocument();
   });
 
+  it("keeps the checked consent visually selected on hover", async () => {
+    render(<RegisterPage />);
+
+    const checkbox = screen.getByRole("checkbox");
+    const visualCheckbox = screen.getByLabelText(
+      "Принять условия использования и политику конфиденциальности",
+      { selector: "label" },
+    );
+
+    await userEvent.click(checkbox);
+
+    expect(checkbox).toBeChecked();
+    expect(visualCheckbox).toHaveClass("peer-checked:hover:bg-[#1546ad]");
+    expect(visualCheckbox).toHaveClass("hover:scale-110");
+  });
+
   it("opens legal documents separately without toggling consent or clearing the form", async () => {
     render(<RegisterPage />);
 
@@ -54,6 +70,8 @@ describe("RegisterPage", () => {
     const terms = screen.getByRole("link", { name: "условия использования" });
     const privacy = screen.getByRole("link", { name: "политику конфиденциальности" });
 
+    expect(terms).toHaveAttribute("href", "/legal/terms");
+    expect(privacy).toHaveAttribute("href", "/legal/privacy");
     expect(terms).toHaveAttribute("target", "_blank");
     expect(privacy).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("checkbox")).not.toBeChecked();
@@ -76,6 +94,7 @@ describe("RegisterPage", () => {
     await userEvent.type(screen.getByRole("textbox", { name: "Имя" }), "Тимур");
     await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "timur@example.com");
     await userEvent.type(screen.getByPlaceholderText("Не менее 8 символов"), "strong-password");
+    await userEvent.type(screen.getByLabelText("Повторите пароль"), "strong-password");
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "Создать аккаунт" }));
 
@@ -104,11 +123,27 @@ describe("RegisterPage", () => {
     await userEvent.type(screen.getByRole("textbox", { name: "Имя" }), "Тимур");
     await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "timur@example.com");
     await userEvent.type(screen.getByPlaceholderText("Не менее 8 символов"), "strong-password");
+    await userEvent.type(screen.getByLabelText("Повторите пароль"), "strong-password");
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "Создать аккаунт" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Пользователь с такой почтой уже существует",
     );
+  });
+
+  it("does not submit registration when passwords do not match", async () => {
+    render(<RegisterPage />);
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Имя" }), "Тимур");
+    await userEvent.type(screen.getByRole("textbox", { name: "Почта" }), "timur@example.com");
+    await userEvent.type(screen.getByLabelText("Пароль"), "strong-password");
+    await userEvent.type(screen.getByLabelText("Повторите пароль"), "another-password");
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("button", { name: "Создать аккаунт" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Пароли не совпадают.");
+    expect(mocks.register).not.toHaveBeenCalled();
+    expect(mocks.requestVerification).not.toHaveBeenCalled();
   });
 });

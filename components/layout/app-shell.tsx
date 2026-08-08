@@ -5,15 +5,13 @@ import {
   BarChart3,
   BookOpen,
   Inbox,
-  Menu,
   RadioTower,
   Settings,
   UserRound,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Brand } from "@/components/ui/brand";
 import { AuthBackground } from "@/components/ui/auth-background";
@@ -28,13 +26,14 @@ const usersApi = getUsers();
 type NavigationItem = {
   href: string;
   label: string;
+  mobileLabel?: string;
   icon: typeof Inbox;
   separated?: boolean;
 };
 
 const navigation: NavigationItem[] = [
   { href: "/inbox", label: "Диалоги", icon: Inbox },
-  { href: "/knowledge", label: "База знаний", icon: BookOpen },
+  { href: "/knowledge", label: "База знаний", mobileLabel: "Знания", icon: BookOpen },
   { href: "/channels", label: "Каналы", icon: RadioTower },
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/settings", label: "Настройки", icon: Settings, separated: true },
@@ -58,8 +57,16 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const queryClient = useQueryClient();
+  const [eventStreamOpen, setEventStreamOpen] = useState(false);
+  const conversations = useQuery({
+    queryKey: ["conversations"],
+    queryFn: () => conversationsApi.listConversationItemsApiV1ConversationsGet(),
+    enabled: Boolean(getAccessToken()),
+    retry: 1,
+    refetchInterval: eventStreamOpen ? false : 4_000,
+    refetchIntervalInBackground: false,
+  });
   const currentUser = useQuery({
     queryKey: ["profile-user"],
     queryFn: usersApi.meApiV1UsersMeGet,
@@ -75,28 +82,21 @@ export function AppShell({
     }
   }, [currentUser.data, router]);
 
-  useEffect(() => {
-    if (!mobileOpen) {
-      return;
-    }
+  useEffect(
+    () =>
+      subscribeToConversationEvents({
+        onChanged: () => {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        },
+        onConnectionChange: (state) => setEventStreamOpen(state === "open"),
+      }),
+    [queryClient],
+  );
 
-    closeButtonRef.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setMobileOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [mobileOpen]);
+  const unreadCount = (conversations.data ?? []).reduce(
+    (total, conversation) => total + Math.max(0, conversation.unread_count),
+    0,
+  );
 
   if (currentUser.data && !currentUser.data.email_verified) {
     return <main className="ap-doodle min-h-screen" />;
@@ -115,62 +115,20 @@ export function AppShell({
         <div className="min-h-10 px-2">
           <Brand compact />
         </div>
-        <Navigation pathname={pathname} />
-      </aside>
-
-      {mobileOpen ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-[#101828]/30 backdrop-blur-[2px] lg:hidden"
-          aria-label="Закрыть меню"
-          onClick={() => setMobileOpen(false)}
-        />
-      ) : null}
-
-      <aside
-        id="mobile-navigation"
-        role="dialog"
-        aria-modal={mobileOpen ? "true" : undefined}
-        aria-label="Меню кабинета"
-        aria-hidden={!mobileOpen}
-        className={`fixed inset-y-0 left-0 z-50 flex w-[min(82vw,280px)] flex-col gap-5 border-r border-[#d9e1ec] bg-white px-3 py-5 shadow-deep transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <div className="flex min-h-10 items-center justify-between px-2">
-          <Brand compact />
-          <button
-            ref={closeButtonRef}
-            type="button"
-            className="flex size-10 items-center justify-center rounded-[8px] hover:bg-[#f4f7fb]"
-            onClick={() => setMobileOpen(false)}
-            aria-label="Закрыть меню"
-          >
-            <X size={19} />
-          </button>
-        </div>
-        <Navigation
-          pathname={pathname}
-          onNavigate={() => setMobileOpen(false)}
-        />
+        <Navigation pathname={pathname} unreadCount={unreadCount} />
       </aside>
 
       <div className="lg:pl-[212px]">
         <header
-          className={`${immersive ? "lg:hidden" : ""} sticky top-0 z-30 border-b border-[#d9e1ec] bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8`}
+          className={`${immersive ? "lg:hidden" : ""} sticky top-0 z-30 min-h-[65px] border-b border-[#d9e1ec] bg-white/95 px-3 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8 lg:py-3`}
         >
-          <div className="mx-auto flex max-w-[1180px] items-center gap-3">
-            <button
-              type="button"
-              className="flex size-10 shrink-0 items-center justify-center rounded-[8px] border border-[#d9e1ec] bg-white lg:hidden"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Открыть меню"
-              aria-controls="mobile-navigation"
-              aria-expanded={mobileOpen}
-            >
-              <Menu size={19} />
-            </button>
+          <div className="mx-auto flex min-h-10 max-w-[1180px] items-center gap-2.5">
+            <div className="mr-auto lg:hidden">
+              <Brand compact />
+            </div>
             <div className="min-w-0 flex-1">
               <h1 className="truncate font-heading text-[22px] font-extrabold tracking-[-0.04em]">
-                {title}
+                <span className="sr-only lg:not-sr-only">{title}</span>
               </h1>
               <p className="mt-0.5 hidden truncate text-[13px] text-[#526071] sm:block">
                 {description}
@@ -182,8 +140,26 @@ export function AppShell({
               </div>
             ) : null}
             <Link
+              data-tour="tour-nav-settings"
+              href="/settings"
+              aria-label="Настройки"
+              aria-current={pathname === "/settings" || pathname.startsWith("/settings/") ? "page" : undefined}
+              className={`grid size-11 shrink-0 place-items-center rounded-full border lg:hidden ${pathname === "/settings" || pathname.startsWith("/settings/") ? "border-[#cddfff] bg-[#eaf1ff] text-[#1546ad]" : "border-[#d9e1ec] bg-white text-[#526071]"}`}
+            >
+              <Settings size={19} strokeWidth={1.9} aria-hidden="true" />
+            </Link>
+            <Link
+              data-tour="tour-nav-profile"
               href="/profile"
-              className="ml-auto hidden items-center gap-2 rounded-full bg-[#eaf1ff] px-3 py-2 text-[13px] font-semibold text-[#1546ad] sm:flex"
+              aria-label="Профиль"
+              aria-current={pathname === "/profile" || pathname.startsWith("/profile/") ? "page" : undefined}
+              className={`grid size-11 shrink-0 place-items-center rounded-full border lg:hidden ${pathname === "/profile" || pathname.startsWith("/profile/") ? "border-[#cddfff] bg-[#eaf1ff] text-[#1546ad]" : "border-[#d9e1ec] bg-white text-[#526071]"}`}
+            >
+              <UserRound size={19} strokeWidth={1.9} aria-hidden="true" />
+            </Link>
+            <Link
+              href="/profile"
+              className="ml-auto hidden items-center gap-2 rounded-full bg-[#eaf1ff] px-3 py-2 text-[13px] font-semibold text-[#1546ad] lg:flex"
             >
               <span className="size-2 rounded-full bg-[#13a66b]" />
               Профиль
@@ -195,8 +171,8 @@ export function AppShell({
           tabIndex={-1}
           className={
             immersive
-              ? "relative h-[calc(100dvh-65px)] overflow-hidden bg-[#f4f7fb] lg:h-dvh"
-              : "relative min-h-[calc(100dvh-65px)] bg-[#f4f7fb]"
+              ? "relative h-[calc(100dvh-65px-var(--mobile-nav-height)-env(safe-area-inset-bottom))] overflow-hidden bg-[#f4f7fb] lg:h-dvh"
+              : "relative min-h-[calc(100dvh-65px)] bg-[#f4f7fb] pb-[calc(var(--mobile-nav-height)+env(safe-area-inset-bottom))] lg:pb-0"
           }
         >
           {immersive ? (
@@ -214,46 +190,29 @@ export function AppShell({
           )}
         </main>
       </div>
+      <MobileBottomNavigation
+        pathname={pathname}
+        unreadCount={unreadCount}
+      />
     </div>
   );
+
 }
 
 function Navigation({
   pathname,
   onNavigate,
+  items = navigation,
+  unreadCount = 0,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  items?: NavigationItem[];
+  unreadCount?: number;
 }) {
-  const queryClient = useQueryClient();
-  const [eventStreamOpen, setEventStreamOpen] = useState(false);
-  const conversations = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () =>
-      conversationsApi.listConversationItemsApiV1ConversationsGet(),
-    enabled: Boolean(getAccessToken()),
-    retry: 1,
-    refetchInterval: eventStreamOpen ? false : 4_000,
-    refetchIntervalInBackground: false,
-  });
-  useEffect(
-    () =>
-      subscribeToConversationEvents({
-        onChanged: () => {
-          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        },
-        onConnectionChange: (state) => setEventStreamOpen(state === "open"),
-      }),
-    [queryClient],
-  );
-  const unreadCount = (conversations.data ?? []).reduce(
-    (total, conversation) => total + Math.max(0, conversation.unread_count),
-    0,
-  );
-
   return (
     <nav className="flex flex-1 flex-col gap-1" aria-label="Основная навигация">
-      {navigation.map((item) => {
+      {items.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -286,5 +245,62 @@ function Navigation({
         );
       })}
     </nav>
+  );
+}
+
+function MobileBottomNavigation({
+  pathname,
+  unreadCount,
+}: {
+  pathname: string;
+  unreadCount: number;
+}) {
+  const primaryItems = navigation.slice(0, 4);
+
+  return (
+    <nav
+      aria-label="Мобильная навигация"
+        className="fixed inset-x-0 bottom-0 z-[60] border-t border-[#d9e1ec] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(18,39,76,.08)] backdrop-blur-xl lg:hidden"
+    >
+      <div className="mx-auto grid h-[var(--mobile-nav-height)] max-w-[560px] grid-cols-4 px-2">
+        {primaryItems.map((item) => (
+          <MobileNavigationLink
+            key={item.href}
+            item={item}
+            active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+            unreadCount={item.href === "/inbox" ? unreadCount : 0}
+          />
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function MobileNavigationLink({
+  item,
+  active,
+  unreadCount,
+}: {
+  item: NavigationItem;
+  active: boolean;
+  unreadCount: number;
+}) {
+  return (
+    <Link
+      href={item.href}
+      data-tour={`tour-nav-${item.href.slice(1)}`}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold ${active ? "text-[#1546ad]" : "text-[#64717f]"}`}
+    >
+      <span className={`relative grid size-8 place-items-center rounded-full ${active ? "bg-[#eaf1ff]" : ""}`}>
+        <item.icon size={20} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#2463eb] px-1 text-center text-[9px] font-extrabold leading-4 text-white">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        ) : null}
+      </span>
+      <span className="max-w-full truncate" aria-label={item.label}>{item.mobileLabel ?? item.label}</span>
+    </Link>
   );
 }

@@ -518,13 +518,17 @@ function InboxContent() {
               />
             </label>
           </div>
-          <div data-tour="tour-inbox-statuses" className="grid grid-cols-4 items-center gap-0.5 overflow-hidden border-b border-[#e5eaf1] px-3 py-2.5">
+          <div
+            data-tour="tour-inbox-statuses"
+            className="flex items-center gap-1 overflow-x-auto border-b border-[#e5eaf1] px-2 py-2.5 min-[361px]:gap-1.5 min-[361px]:px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {filters.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setFilter(item)}
-                className={`inbox-filter-button min-w-0 whitespace-nowrap rounded-full px-1.5 py-1.5 ${filter === item ? "bg-[#eaf1ff] font-semibold text-[#1546ad]" : "font-medium text-[#526071] hover:bg-[#f4f7fb] hover:text-[#101828]"}`}
+                aria-pressed={filter === item}
+                className={`inbox-filter-button min-h-8 shrink-0 whitespace-nowrap rounded-full border px-2 py-1.5 min-[361px]:px-3 transition-[background-color,border-color,color,box-shadow] ${filter === item ? "border-[#cddfff] bg-[#eaf1ff] font-semibold text-[#1546ad] shadow-[0_2px_7px_rgba(36,99,235,.10)]" : "border-transparent bg-transparent font-medium text-[#526071] hover:border-[#d9e1ec] hover:bg-[#f8fbff] hover:text-[#101828]"}`}
               >
                 {item}
               </button>

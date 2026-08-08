@@ -18,14 +18,17 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (password !== passwordConfirmation) { setError("Пароли не совпадают."); return; }
     if (!accepted) { setError("Примите условия использования и политику конфиденциальности."); return; }
     setIsSubmitting(true);
     try {
@@ -55,6 +58,31 @@ export default function RegisterPage() {
               <button type="button" className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="register-password-confirmation" className="text-[13px] font-semibold">Повторите пароль</label>
+            <div className="flex items-center rounded-[8px] border border-[#d9e1ec] bg-white pr-1 focus-within:border-[#2463eb] focus-within:shadow-[0_0_0_3px_#eaf1ff]">
+              <input
+                id="register-password-confirmation"
+                className="min-h-11 min-w-0 flex-1 rounded-[8px] border-0 bg-transparent px-3.5 text-[14px] outline-none"
+                type={showPasswordConfirmation ? "text" : "password"}
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
+                autoComplete="new-password"
+                placeholder="Введите пароль ещё раз"
+                minLength={8}
+                aria-invalid={Boolean(passwordConfirmation) && password !== passwordConfirmation}
+                required
+              />
+              <button
+                type="button"
+                className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#64717f] hover:bg-[#f4f7fb]"
+                onClick={() => setShowPasswordConfirmation((value) => !value)}
+                aria-label={showPasswordConfirmation ? "Скрыть повторный пароль" : "Показать повторный пароль"}
+              >
+                {showPasswordConfirmation ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
           <div className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-[#526071]">
             <input
               id="register-consent"
@@ -65,10 +93,10 @@ export default function RegisterPage() {
             />
             <label
               htmlFor="register-consent"
-              className="mt-0.5 flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border border-[#d9e1ec] bg-white peer-focus-visible:ring-3 peer-focus-visible:ring-[#eaf1ff] peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb]"
+              className="mt-0.5 flex size-[20px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-2 border-[#7f93ad] bg-[#f8fbff] shadow-[0_1px_3px_rgba(18,39,76,.10)] transition-[transform,background-color,border-color,box-shadow] hover:scale-110 hover:border-[#2463eb] hover:bg-[#eaf1ff] peer-focus-visible:ring-3 peer-focus-visible:ring-[#cddfff] peer-checked:border-[#2463eb] peer-checked:bg-[#2463eb] peer-checked:hover:border-[#1546ad] peer-checked:hover:bg-[#1546ad] peer-checked:hover:shadow-[0_4px_10px_rgba(36,99,235,.24)]"
               aria-label="Принять условия использования и политику конфиденциальности"
             >
-              {accepted ? <Check size={12} strokeWidth={3} className="text-white" /> : null}
+              {accepted ? <Check size={14} strokeWidth={3.2} className="text-white" /> : null}
             </label>
             <span>
               <label htmlFor="register-consent" className="cursor-pointer">Принимаю</label>{" "}

@@ -2016,6 +2016,27 @@ describe("InboxPage live actions", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders status filters as stable scrollable pills with one selected state", async () => {
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Анна", level: 2 });
+    const allFilter = screen.getByRole("button", { name: "Все" });
+    const needsHumanFilter = screen.getByRole("button", { name: "Нужен человек" });
+    const answeredFilter = screen.getByRole("button", { name: "Отвечено" });
+    const closedFilter = screen.getByRole("button", { name: "Закрытые" });
+
+    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    for (const filterButton of [allFilter, needsHumanFilter, answeredFilter, closedFilter]) {
+      expect(filterButton).toHaveClass("shrink-0", "rounded-full", "border", "px-2", "min-[361px]:px-3");
+    }
+
+    fireEvent.click(needsHumanFilter);
+
+    expect(allFilter).toHaveAttribute("aria-pressed", "false");
+    expect(needsHumanFilter).toHaveAttribute("aria-pressed", "true");
+    expect(needsHumanFilter).toHaveClass("border-[#cddfff]", "bg-[#eaf1ff]");
+  });
+
   it("keeps a needs-human chat waiting until a manager actually replies", async () => {
     api.listConversationItemsApiV1ConversationsGet.mockResolvedValueOnce([
       {

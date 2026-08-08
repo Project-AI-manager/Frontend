@@ -38,6 +38,7 @@
 }
 
 :root {
+  --mobile-nav-height: 68px;
   --ink: #101828;
   --muted: #526071;
   --line: #d9e1ec;

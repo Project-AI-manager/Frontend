@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -53,12 +53,13 @@ describe("AppShell", () => {
     expect(
       screen.getByRole("navigation", { name: "Основная навигация" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "База знаний" })).toHaveAttribute(
+    const desktopNavigation = screen.getByRole("navigation", { name: "Основная навигация" });
+    expect(within(desktopNavigation).getByRole("link", { name: "База знаний" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
-    expect(screen.getByRole("link", { name: "Каналы" })).toHaveAttribute(
+    expect(within(desktopNavigation).getByRole("link", { name: "Каналы" })).toHaveAttribute(
       "href",
       "/channels",
     );
@@ -67,27 +68,37 @@ describe("AppShell", () => {
     ).toHaveAttribute("href", "#main-content");
   });
 
-  it("opens an accessible mobile menu and closes it with Escape", () => {
+  it("renders a mobile brand header with Settings and Profile actions", () => {
     renderShell(
       <AppShell title="Диалоги" description="Входящие обращения">
         <p>Содержимое страницы</p>
       </AppShell>,
     );
 
-    const menuButton = screen.getByRole("button", { name: "Открыть меню" });
-    expect(menuButton).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.click(menuButton);
-
-    expect(menuButton).toHaveAttribute("aria-expanded", "true");
     expect(
-      screen.getByRole("dialog", { name: "Меню кабинета" }),
+      screen.getByRole("navigation", { name: "Мобильная навигация" }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Автопилот — на главную" }).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByRole("link", { name: "Настройки" }).some((link) => link.classList.contains("lg:hidden"))).toBe(true);
+    expect(screen.getAllByRole("link", { name: "Профиль" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: "Ещё разделы" })).not.toBeInTheDocument();
+  });
 
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(
-      screen.queryByRole("dialog", { name: "Меню кабинета" }),
-    ).not.toBeInTheDocument();
+  it("keeps the primary mobile destinations visible and marks the active one", () => {
+    navigationState.pathname = "/channels";
+
+    renderShell(
+      <AppShell title="Каналы" description="Каналы связи">
+        <p>Содержимое страницы</p>
+      </AppShell>,
+    );
+
+    const mobileNavigation = screen.getByRole("navigation", {
+      name: "Мобильная навигация",
+    });
+    expect(within(mobileNavigation).getByRole("link", { name: "Диалоги" })).toHaveAttribute("href", "/inbox");
+    expect(within(mobileNavigation).getByRole("link", { name: "Каналы" })).toHaveAttribute("aria-current", "page");
+    expect(within(mobileNavigation).getAllByRole("link")).toHaveLength(4);
   });
 
   it("does not expose mock account labels in the shared shell", () => {
@@ -143,8 +154,6 @@ describe("AppShell", () => {
     expect(
       screen.queryByRole("button", { name: "Выйти" }),
     ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Открыть меню" }));
 
     expect(
       screen.queryByRole("button", { name: "Выйти" }),
