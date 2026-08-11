@@ -13,6 +13,8 @@ const api = vi.hoisted(() => ({
   connectWhatsApp: vi.fn(),
   connectVk: vi.fn(),
   startAvitoOAuth: vi.fn(),
+  startInstagramOAuth: vi.fn(),
+  connectMax: vi.fn(),
 }));
 
 vi.mock("@/components/layout/app-shell", () => ({
@@ -58,6 +60,14 @@ vi.mock("@/lib/api/vk", () => ({
   vkApi: { connect: api.connectVk },
 }));
 
+vi.mock("@/lib/api/instagram", () => ({
+  instagramApi: { startOAuth: api.startInstagramOAuth },
+}));
+
+vi.mock("@/lib/api/max", () => ({
+  maxApi: { connect: api.connectMax },
+}));
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: {
@@ -80,6 +90,8 @@ describe("ChannelsPage", () => {
     api.connectWhatsApp.mockReset();
     api.startAvitoOAuth.mockReset();
     api.connectVk.mockReset();
+    api.startInstagramOAuth.mockReset();
+    api.connectMax.mockReset();
     api.disconnect.mockResolvedValue(undefined);
     api.connectWhatsApp.mockResolvedValue({
       id: "whatsapp-new",
@@ -99,6 +111,7 @@ describe("ChannelsPage", () => {
       created_at: "2026-08-08T00:00:00Z",
       updated_at: "2026-08-08T00:00:00Z",
     });
+    api.connectMax.mockResolvedValue({ id: "max-new", type: "max", name: "MAX", status: "active", settings: {} });
     api.listChannelsApiV1ChannelsGet.mockResolvedValue([
       {
         id: "telegram-account",
@@ -248,6 +261,34 @@ describe("ChannelsPage", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Подключить VK" }));
     expect(screen.getByRole("dialog", { name: "Подключить VK" })).toBeInTheDocument();
+  });
+
+  it("opens Instagram OAuth and MAX token dialogs", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Подключить Instagram" }));
+    expect(screen.getByRole("dialog", { name: "Подключить Instagram" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть подключение Instagram Messaging API" }));
+    fireEvent.click(screen.getByRole("button", { name: "Подключить Max" }));
+    expect(screen.getByRole("dialog", { name: "Подключить MAX" })).toBeInTheDocument();
+  });
+
+  it("offers reconnect for active Instagram and MAX channels", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([
+      { id: "ig-current", type: "instagram", name: "Instagram", status: "active", settings: { username: "shop" } },
+      { id: "max-current", type: "max", name: "MAX магазина", status: "active", settings: { username: "max_shop", bot_id: 42 } },
+    ]);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Меню канала Instagram" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Переподключить…" }));
+    expect(screen.getByRole("dialog", { name: "Переподключить Instagram" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть подключение Instagram Messaging API" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Меню канала Max" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Переподключить…" }));
+    expect(screen.getByRole("dialog", { name: "Переподключить MAX" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Название канала/)).toHaveValue("MAX магазина");
   });
 
   it("offers reconnect and displays the active VK community", async () => {

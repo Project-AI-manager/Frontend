@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { FormEvent, useState } from "react";
 
+import { ChannelConnectDialogShell } from "@/components/settings/channel-connect-dialog-shell";
 import { resolveApiUrl } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
@@ -19,9 +20,6 @@ export function WhatsAppConnectDialog({
   replacing?: boolean;
   replaceChannelId?: string;
 }) {
-  const closeButton = useRef<HTMLButtonElement>(null);
-  const firstInput = useRef<HTMLInputElement>(null);
-  const dialog = useRef<HTMLElement>(null);
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [wabaId, setWabaId] = useState("");
   const [accessToken, setAccessToken] = useState("");
@@ -32,32 +30,6 @@ export function WhatsAppConnectDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectedChannel, setConnectedChannel] = useState<ChannelResponse | null>(null);
   const [copied, setCopied] = useState<"callback" | "verify" | null>(null);
-  const closeRef = useRef(onClose);
-  const submittingRef = useRef(isSubmitting);
-
-  useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    submittingRef.current = isSubmitting;
-  }, [isSubmitting]);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    firstInput.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submittingRef.current) closeRef.current();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-      opener?.focus();
-    };
-  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,25 +61,6 @@ export function WhatsAppConnectDialog({
     }
   }
 
-  function keepFocusInside(event: ReactKeyboardEvent<HTMLElement>) {
-    if (event.key !== "Tab") return;
-    const focusable = Array.from(
-      dialog.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    );
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   async function copySetupValue(kind: "callback" | "verify", value: string) {
     await navigator.clipboard.writeText(value);
     setCopied(kind);
@@ -119,48 +72,13 @@ export function WhatsAppConnectDialog({
   const callbackUrl = webhookPath ? resolveApiUrl(webhookPath) : "";
 
   return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#101828]/35 p-4 backdrop-blur-[2px]"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isSubmitting) onClose();
-      }}
+    <ChannelConnectDialogShell
+      service="WhatsApp Cloud API"
+      title={connectedChannel ? "Завершите настройку webhook" : replacing ? "Переподключить WhatsApp" : "Подключить WhatsApp"}
+      accentClass="text-[#149b50]"
+      busy={isSubmitting}
+      onClose={onClose}
     >
-      <section
-        ref={dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="whatsapp-dialog-title"
-        onKeyDown={keepFocusInside}
-        className="my-auto w-full max-w-[540px] rounded-xl border border-[#d9e1ec] bg-white p-6 shadow-[0_24px_70px_rgba(18,39,76,.20)]"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#149b50]">
-              WhatsApp Cloud API
-            </p>
-            <h2
-              id="whatsapp-dialog-title"
-              className="mt-1 font-heading text-xl font-extrabold tracking-[-.03em]"
-            >
-              {connectedChannel
-                ? "Завершите настройку webhook"
-                : replacing
-                  ? "Переподключить WhatsApp"
-                  : "Подключить WhatsApp"}
-            </h2>
-          </div>
-          <button
-            ref={closeButton}
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Закрыть подключение WhatsApp"
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50"
-          >
-            <X size={19} />
-          </button>
-        </div>
-
         {connectedChannel ? (
           <div className="mt-4 space-y-4 text-sm text-[#526071]">
             <p>
@@ -206,7 +124,6 @@ export function WhatsAppConnectDialog({
           <label className="ap-label">
             Название канала
             <input
-              ref={firstInput}
               autoFocus
               className="ap-input"
               autoComplete="off"
@@ -305,7 +222,6 @@ export function WhatsAppConnectDialog({
           </div>
         </form>
         </>}
-      </section>
-    </div>
+    </ChannelConnectDialogShell>
   );
 }

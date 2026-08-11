@@ -1,11 +1,11 @@
 import { apiClient } from "./client";
 
-export const avitoApi = {
+export const instagramApi = {
   startOAuth: (replaceChannelId?: string) =>
     apiClient<{ authorization_url: string }>({
-      url: "/api/v1/channels/avito/oauth/start",
+      url: "/api/v1/channels/instagram/oauth/start",
       method: "POST",
-      ...(replaceChannelId ? { data: { replace_channel_id: replaceChannelId } } : {}),
+      data: replaceChannelId ? { replace_channel_id: replaceChannelId } : {},
       withCredentials: true,
     }),
 };

@@ -1,12 +1,19 @@
 "use client";
 
-import { ExternalLink, Loader2, X } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 
+import { ChannelConnectDialogShell } from "@/components/settings/channel-connect-dialog-shell";
 import { avitoApi } from "@/lib/api/avito";
 import { getApiErrorMessage } from "@/lib/api/errors";
 
-export function AvitoConnectDialog({ onClose }: { onClose: () => void }) {
+export function AvitoConnectDialog({
+  onClose,
+  replaceChannelId,
+}: {
+  onClose: () => void;
+  replaceChannelId?: string;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,7 +21,7 @@ export function AvitoConnectDialog({ onClose }: { onClose: () => void }) {
     setError("");
     setIsSubmitting(true);
     try {
-      const result = await avitoApi.startOAuth();
+      const result = await avitoApi.startOAuth(replaceChannelId);
       window.location.assign(result.authorization_url);
     } catch (connectError) {
       setError(
@@ -28,17 +35,14 @@ export function AvitoConnectDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#101828]/35 p-4 backdrop-blur-[2px]">
-      <section role="dialog" aria-modal="true" aria-labelledby="avito-dialog-title" className="w-full max-w-[520px] rounded-xl border border-[#d9e1ec] bg-white p-6 shadow-[0_24px_70px_rgba(18,39,76,.20)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#654bd3]">Avito Messenger API</p>
-            <h2 id="avito-dialog-title" className="mt-1 font-heading text-xl font-extrabold tracking-[-.03em]">Подключить Avito</h2>
-          </div>
-          <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Закрыть подключение Avito" className="flex size-10 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50">
-            <X size={19} />
-          </button>
-        </div>
+    <ChannelConnectDialogShell
+      service="Avito Messenger API"
+      title={replaceChannelId ? "Переподключить Avito" : "Подключить Avito"}
+      accentClass="text-[#654bd3]"
+      busy={isSubmitting}
+      maxWidthClass="max-w-[520px]"
+      onClose={onClose}
+    >
         <p className="mt-4 text-sm leading-6 text-[#526071]">
           Вы перейдёте на Avito и разрешите чтение и отправку сообщений. Нужен основной профессиональный аккаунт компании с тарифом, открывающим Messenger API.
         </p>
@@ -53,7 +57,6 @@ export function AvitoConnectDialog({ onClose }: { onClose: () => void }) {
             Перейти в Avito
           </button>
         </div>
-      </section>
-    </div>
+    </ChannelConnectDialogShell>
   );
 }

@@ -16,7 +16,13 @@ describe("AvitoConnectDialog", () => {
   it("starts OAuth and keeps the dialog open on an API error", async () => {
     render(<AvitoConnectDialog onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Перейти в Avito" }));
-    await waitFor(() => expect(api.startOAuth).toHaveBeenCalledOnce());
+    await waitFor(() => expect(api.startOAuth).toHaveBeenCalledWith(undefined));
     expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось начать подключение Avito");
+  });
+
+  it("passes the current channel id when reconnecting", async () => {
+    render(<AvitoConnectDialog replaceChannelId="avito-current" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Перейти в Avito" }));
+    await waitFor(() => expect(api.startOAuth).toHaveBeenCalledWith("avito-current"));
   });
 });

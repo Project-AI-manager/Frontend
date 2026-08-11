@@ -1,14 +1,9 @@
 "use client";
 
-import { Check, Copy, Loader2, X } from "lucide-react";
-import {
-  FormEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Check, Copy, Loader2 } from "lucide-react";
+import { FormEvent, useState } from "react";
 
+import { ChannelConnectDialogShell } from "@/components/settings/channel-connect-dialog-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
 import { vkApi } from "@/lib/api/vk";
@@ -30,10 +25,6 @@ export function VkConnectDialog({
   initialName?: string;
   replaceChannelId?: string;
 }) {
-  const dialog = useRef<HTMLElement>(null);
-  const firstInput = useRef<HTMLInputElement>(null);
-  const closeRef = useRef(onClose);
-  const submittingRef = useRef(false);
   const [groupId, setGroupId] = useState(initialGroupId);
   const [accessToken, setAccessToken] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
@@ -44,29 +35,6 @@ export function VkConnectDialog({
   const [connectedChannel, setConnectedChannel] = useState<ChannelResponse | null>(null);
   const [copied, setCopied] = useState<CopyKind | null>(null);
 
-  useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    submittingRef.current = isSubmitting;
-  }, [isSubmitting]);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    firstInput.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submittingRef.current) closeRef.current();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-      opener?.focus();
-    };
-  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,25 +64,6 @@ export function VkConnectDialog({
     }
   }
 
-  function keepFocusInside(event: ReactKeyboardEvent<HTMLElement>) {
-    if (event.key !== "Tab") return;
-    const focusable = Array.from(
-      dialog.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    );
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   async function copySetupValue(kind: CopyKind, value: string) {
     await navigator.clipboard.writeText(value);
     setCopied(kind);
@@ -125,47 +74,14 @@ export function VkConnectDialog({
     : "";
 
   return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#101828]/35 p-4 backdrop-blur-[2px]"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isSubmitting) onClose();
-      }}
+    <ChannelConnectDialogShell
+      service="VK Callback API"
+      title={connectedChannel ? "Завершите настройку Callback API" : replacing ? "Переподключить VK" : "Подключить VK"}
+      accentClass="text-[#1676d2]"
+      busy={isSubmitting}
+      maxWidthClass="max-w-[560px]"
+      onClose={onClose}
     >
-      <section
-        ref={dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="vk-dialog-title"
-        onKeyDown={keepFocusInside}
-        className="my-auto w-full max-w-[560px] rounded-xl border border-[#d9e1ec] bg-white p-6 shadow-[0_24px_70px_rgba(18,39,76,.20)]"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#1676d2]">
-              VK Callback API
-            </p>
-            <h2
-              id="vk-dialog-title"
-              className="mt-1 font-heading text-xl font-extrabold tracking-[-.03em]"
-            >
-              {connectedChannel
-                ? "Завершите настройку Callback API"
-                : replacing
-                  ? "Переподключить VK"
-                  : "Подключить VK"}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Закрыть подключение VK"
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50"
-          >
-            <X size={19} />
-          </button>
-        </div>
-
         {connectedChannel ? (
           <div className="mt-4 space-y-4 text-sm text-[#526071]">
             <p className="leading-6">
@@ -240,7 +156,6 @@ export function VkConnectDialog({
               <label className="ap-label">
                 Название канала
                 <input
-                  ref={firstInput}
                   autoFocus
                   className="ap-input"
                   autoComplete="off"
@@ -327,8 +242,7 @@ export function VkConnectDialog({
             </form>
           </>
         )}
-      </section>
-    </div>
+    </ChannelConnectDialogShell>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ChannelIcon } from "@/components/channels/channel-icon";
@@ -10,6 +10,8 @@ import { TelegramConnectDialog } from "@/components/settings/telegram-connect-di
 import { WhatsAppConnectDialog } from "@/components/settings/whatsapp-connect-dialog";
 import { AvitoConnectDialog } from "@/components/settings/avito-connect-dialog";
 import { VkConnectDialog } from "@/components/settings/vk-connect-dialog";
+import { InstagramConnectDialog } from "@/components/settings/instagram-connect-dialog";
+import { MaxConnectDialog } from "@/components/settings/max-connect-dialog";
 import { channelsManagementApi } from "@/lib/api/channels";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
@@ -35,6 +37,10 @@ export default function ChannelsPage() {
   const [avitoDialogOpen, setAvitoDialogOpen] = useState(false);
   const [vkDialogOpen, setVkDialogOpen] = useState(false);
   const [replacingVk, setReplacingVk] = useState(false);
+  const [instagramDialogOpen, setInstagramDialogOpen] = useState(false);
+  const [replacingInstagram, setReplacingInstagram] = useState(false);
+  const [maxDialogOpen, setMaxDialogOpen] = useState(false);
+  const [replacingMax, setReplacingMax] = useState(false);
   const [menuChannelId, setMenuChannelId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const channelsQuery = useQuery({
@@ -43,6 +49,23 @@ export default function ChannelsPage() {
     retry: 1,
     retryDelay: 0,
   });
+
+  useEffect(() => {
+    const instagramResult = new URLSearchParams(window.location.search).get("instagram");
+    if (!instagramResult) return;
+    const showFeedback = window.setTimeout(() => {
+      setFeedback(instagramResult === "connected" ? "Instagram подключён" : instagramResult === "cancelled" ? "Подключение Instagram отменено" : "Не удалось подключить Instagram");
+    }, 0);
+    if (instagramResult === "connected") void client.invalidateQueries({ queryKey: ["channels"] });
+    const url = new URL(window.location.href);
+    url.searchParams.delete("instagram");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    const hideFeedback = window.setTimeout(() => setFeedback(null), 4000);
+    return () => {
+      window.clearTimeout(showFeedback);
+      window.clearTimeout(hideFeedback);
+    };
+  }, [client]);
 
   const disconnect = useMutation({
     mutationFn: (channelId: string) => channelsManagementApi.disconnect(channelId),
@@ -119,6 +142,24 @@ export default function ChannelsPage() {
                   setReplacingVk(true);
                   setVkDialogOpen(true);
                 }}
+                onConnectInstagram={() => {
+                  setReplacingInstagram(false);
+                  setInstagramDialogOpen(true);
+                }}
+                onReconnectInstagram={() => {
+                  setMenuChannelId(null);
+                  setReplacingInstagram(true);
+                  setInstagramDialogOpen(true);
+                }}
+                onConnectMax={() => {
+                  setReplacingMax(false);
+                  setMaxDialogOpen(true);
+                }}
+                onReconnectMax={() => {
+                  setMenuChannelId(null);
+                  setReplacingMax(true);
+                  setMaxDialogOpen(true);
+                }}
                 onToggleMenu={(channelId) =>
                   setMenuChannelId((current) => current === channelId ? null : channelId)
                 }
@@ -148,7 +189,7 @@ export default function ChannelsPage() {
           }}
         />
       ) : null}
-      {avitoDialogOpen ? <AvitoConnectDialog onClose={() => setAvitoDialogOpen(false)} /> : null}
+      {avitoDialogOpen ? <AvitoConnectDialog replaceChannelId={activeChannelId(channelsQuery.data, "avito")} onClose={() => setAvitoDialogOpen(false)} /> : null}
       {vkDialogOpen ? (
         <VkConnectDialog
           replacing={replacingVk}
@@ -159,6 +200,18 @@ export default function ChannelsPage() {
           onConnected={async () => {
             await client.invalidateQueries({ queryKey: ["channels"] });
           }}
+        />
+      ) : null}
+      {instagramDialogOpen ? (
+        <InstagramConnectDialog replaceChannelId={replacingInstagram ? activeChannelId(channelsQuery.data, "instagram") : undefined} onClose={() => setInstagramDialogOpen(false)} />
+      ) : null}
+      {maxDialogOpen ? (
+        <MaxConnectDialog
+          replacing={replacingMax}
+          replaceChannelId={replacingMax ? activeChannelId(channelsQuery.data, "max") : undefined}
+          initialName={replacingMax ? activeChannel(channelsQuery.data, "max")?.name ?? "" : ""}
+          onClose={() => setMaxDialogOpen(false)}
+          onConnected={async () => { await client.invalidateQueries({ queryKey: ["channels"] }); }}
         />
       ) : null}
     </AppShell>
@@ -176,6 +229,10 @@ function ChannelsCard({
   onConnectAvito,
   onConnectVk,
   onReconnectVk,
+  onConnectInstagram,
+  onReconnectInstagram,
+  onConnectMax,
+  onReconnectMax,
   onToggleMenu,
   onDisconnect,
 }: {
@@ -189,6 +246,10 @@ function ChannelsCard({
   onConnectAvito: () => void;
   onConnectVk: () => void;
   onReconnectVk: () => void;
+  onConnectInstagram: () => void;
+  onReconnectInstagram: () => void;
+  onConnectMax: () => void;
+  onReconnectMax: () => void;
   onToggleMenu: (channelId: string) => void;
   onDisconnect: (channelId: string) => void;
 }) {
@@ -255,6 +316,14 @@ function ChannelsCard({
                         <button type="button" role="menuitem" onClick={onReconnectVk} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
                           Переподключить…
                         </button>
+                      ) : item.type === "instagram" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectInstagram} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Переподключить…
+                        </button>
+                      ) : item.type === "max" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectMax} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Переподключить…
+                        </button>
                       ) : null}
                       <button type="button" role="menuitem" onClick={() => onDisconnect(channel.id)} disabled={disconnectingChannelId === channel.id} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#b93838] hover:bg-[#fdeded] disabled:opacity-50">
                         {disconnectingChannelId === channel.id ? "Отключаем…" : "Отключить канал"}
@@ -262,20 +331,16 @@ function ChannelsCard({
                     </div>
                   ) : null}
                 </div>
-              ) : item.type === "telegram" || item.type === "whatsapp" || item.type === "avito" || item.type === "vk" ? (
+              ) : (
                 <button
                   data-tour={item.type === "telegram" ? "tour-channels-actions" : undefined}
                   type="button"
-                  onClick={item.type === "telegram" ? onConnectTelegram : item.type === "whatsapp" ? onConnectWhatsApp : item.type === "avito" ? onConnectAvito : onConnectVk}
+                  onClick={item.type === "telegram" ? onConnectTelegram : item.type === "whatsapp" ? onConnectWhatsApp : item.type === "avito" ? onConnectAvito : item.type === "vk" ? onConnectVk : item.type === "instagram" ? onConnectInstagram : onConnectMax}
                   aria-label={`Подключить ${item.name}`}
                   className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
                 >
                   Подключить
                 </button>
-              ) : (
-                <span className="ml-auto text-[12px] font-semibold text-[#64717f]">
-                  Скоро
-                </span>
               )}
             </article>
           );
@@ -376,6 +441,18 @@ function channelIdentity(channel: ChannelResponse) {
     ? String(channel.settings.group_id).trim()
     : "";
   if (groupId) return `Сообщество ${groupId}`;
+  const displayName = typeof channel.settings.display_name === "string"
+    ? channel.settings.display_name.trim()
+    : "";
+  if (displayName) return displayName;
+  const instagramUserId = typeof channel.settings.instagram_user_id === "string" || typeof channel.settings.instagram_user_id === "number"
+    ? String(channel.settings.instagram_user_id).trim()
+    : "";
+  if (instagramUserId) return `Instagram ${instagramUserId}`;
+  const botId = typeof channel.settings.bot_id === "string" || typeof channel.settings.bot_id === "number"
+    ? String(channel.settings.bot_id).trim()
+    : "";
+  if (botId) return `Бот ${botId}`;
   return channel.name || "Подключённый аккаунт";
 }
 

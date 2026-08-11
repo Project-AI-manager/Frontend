@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle2, Loader2, QrCode, Smartphone, X } from "lucide-react";
+import { CheckCircle2, Loader2, QrCode, Smartphone } from "lucide-react";
 import QRCode from "qrcode";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { ChannelConnectDialogShell } from "@/components/settings/channel-connect-dialog-shell";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { telegramApi } from "@/lib/api/telegram";
 
@@ -18,7 +19,6 @@ export function TelegramConnectDialog({
   onConnected: () => Promise<void>;
   replacing?: boolean;
 }) {
-  const closeButton = useRef<HTMLButtonElement>(null);
   const [step, setStep] = useState<Step>("method");
   const [channelId, setChannelId] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,20 +43,6 @@ export function TelegramConnectDialog({
   const finish = useCallback(async () => {
     await connectedRef.current();
     closeRef.current();
-  }, []);
-
-  useEffect(() => {
-    closeButton.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
   }, []);
 
   useEffect(() => {
@@ -183,16 +169,14 @@ export function TelegramConnectDialog({
       : "Двухэтапная аутентификация";
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#101828]/35 p-4 backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) onClose(); }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="telegram-dialog-title" className="w-full max-w-[460px] rounded-xl border border-[#d9e1ec] bg-white p-6 shadow-[0_24px_70px_rgba(18,39,76,.20)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[.12em] text-[#2463eb]">Telegram</p>
-            <h2 id="telegram-dialog-title" className="mt-1 font-heading text-xl font-extrabold tracking-[-.03em]">{title}</h2>
-          </div>
-          <button ref={closeButton} type="button" onClick={onClose} disabled={isSubmitting} aria-label="Закрыть подключение Telegram" className="flex size-10 shrink-0 items-center justify-center rounded-lg text-[#64717f] hover:bg-[#f4f7fb] disabled:opacity-50"><X size={19} /></button>
-        </div>
-
+    <ChannelConnectDialogShell
+      service="Telegram"
+      title={title}
+      accentClass="text-[#2463eb]"
+      busy={isSubmitting}
+      maxWidthClass="max-w-[460px]"
+      onClose={onClose}
+    >
         <p className="mt-3 text-sm leading-6 text-[#526071]">
           {step === "method" && (replacing
             ? "Выберите способ входа в новый аккаунт. После начала авторизации текущий канал будет приостановлен до завершения подключения."
@@ -267,8 +251,7 @@ export function TelegramConnectDialog({
           </div>
         </form>
         )}
-      </section>
-    </div>
+    </ChannelConnectDialogShell>
   );
 }
 
