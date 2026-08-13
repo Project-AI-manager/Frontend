@@ -9,6 +9,7 @@ type ConversationEventsOptions = {
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const reconnectDelays = [1_000, 2_000, 5_000, 10_000, 20_000];
+const streamWatchdogMs = 25_000;
 const subscribers = new Set<ConversationEventsOptions>();
 let stopSharedConnection: (() => void) | null = null;
 let currentState: ConversationEventConnection = "connecting";
@@ -51,7 +52,29 @@ function openSharedConnection() {
   let stopped = false;
   let controller: AbortController | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
   let attempt = 0;
+
+  function clearWatchdog() {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+
+  function armWatchdog() {
+    clearWatchdog();
+    watchdogTimer = setTimeout(() => {
+      broadcastState("fallback");
+      controller?.abort();
+      if (!stopped && !reconnectTimer) {
+        const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
+        attempt += 1;
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          void connect();
+        }, delay);
+      }
+    }, streamWatchdogMs);
+  }
 
   async function connect() {
     if (stopped) return;
@@ -81,9 +104,11 @@ function openSharedConnection() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      armWatchdog();
       while (!stopped) {
         const { value, done } = await reader.read();
         if (done) break;
+        armWatchdog();
         buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
         let boundary = buffer.indexOf("\n\n");
         while (boundary !== -1) {
@@ -99,18 +124,24 @@ function openSharedConnection() {
         }
       }
       if (!stopped) throw new Error("SSE stream closed");
-    } catch (error) {
-      if (stopped || (error instanceof DOMException && error.name === "AbortError")) return;
+    } catch {
+      clearWatchdog();
+      if (stopped) return;
       broadcastState("fallback");
+      if (reconnectTimer) return;
       const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
       attempt += 1;
-      reconnectTimer = setTimeout(() => void connect(), delay);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void connect();
+      }, delay);
     }
   }
 
   void connect();
   return () => {
     stopped = true;
+    clearWatchdog();
     controller?.abort();
     if (reconnectTimer) clearTimeout(reconnectTimer);
   };

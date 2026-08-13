@@ -74,4 +74,33 @@ describe("conversation SSE transport", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     unsubscribe();
   });
+
+  it("falls back and reconnects when an open stream stops receiving keepalives", async () => {
+    vi.useFakeTimers();
+    const states: string[] = [];
+    const stalledStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("event: ready\ndata: {}\n\n"));
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, body: stalledStream })
+      .mockResolvedValue({ ok: true, body: streamFrom("event: ready\ndata: {}\n\n") });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const unsubscribe = subscribeToConversationEvents({
+      onChanged: vi.fn(),
+      onConnectionChange: (state) => states.push(state),
+    });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(states).toContain("open");
+
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(states.at(-1)).toBe("fallback");
+    await vi.advanceTimersByTimeAsync(1_000);
+    await Promise.resolve();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
 });

@@ -114,7 +114,10 @@ function InboxContent() {
     queryKey: ["conversations"],
     queryFn: () => api.listConversationItemsApiV1ConversationsGet(),
     retry: 1,
-    refetchInterval: eventConnection === "open" ? false : 4_000,
+    // Keep a low-frequency safety poll even with an open SSE stream. Some
+    // reverse proxies leave fetch streams formally open while silently
+    // buffering events, which otherwise freezes the visible inbox.
+    refetchInterval: 4_000,
     refetchIntervalInBackground: false,
   });
   const currentUser = useQuery({
@@ -133,7 +136,7 @@ function InboxContent() {
     retry: 1,
     refetchInterval: (query) => {
       if (hasAwaitingReceipt(query.state.data)) return 1_000;
-      return eventConnection === "open" ? false : 4_000;
+      return eventConnection === "open" ? 2_000 : 4_000;
     },
     refetchIntervalInBackground: false,
   });
