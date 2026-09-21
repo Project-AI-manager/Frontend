@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
-import Head from "next/head";
 import Script from "next/script";
 
 import { OnePageRobotMount } from "@/components/landing/one-page-robot-mount";
@@ -101,6 +100,14 @@ function prepareOnePage(source: string) {
     .one-page-robot-stage { position: relative; width: 100%; min-height: 660px; overflow: visible; border: 0 !important; outline: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
     .one-page-robot-crop { position: absolute; inset: -6% -18% -1%; overflow: visible; -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 69%, rgba(0,0,0,.94) 76%, rgba(0,0,0,.58) 84%, rgba(0,0,0,.16) 91%, transparent 97%); mask-image: linear-gradient(to bottom, #000 0%, #000 69%, rgba(0,0,0,.94) 76%, rgba(0,0,0,.58) 84%, rgba(0,0,0,.16) 91%, transparent 97%); }
     .one-page-robot-canvas { position: absolute; top: -3%; left: 50%; width: 104%; height: 124%; transform: translateX(-50%); }
+    .one-page-robot-stage--static { display: grid; place-items: center; overflow: hidden; }
+    .one-page-robot-static { position: relative; width: min(360px, 76vw); aspect-ratio: 1; border-radius: 32px; background: linear-gradient(135deg, rgba(36,99,235,.14), rgba(255,255,255,.4)); box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 22px 54px rgba(18,39,76,.10); }
+    .one-page-robot-static::before { content: ""; position: absolute; inset: 13%; border-radius: 28px; background: linear-gradient(145deg, #fff, #eaf1ff); box-shadow: 0 18px 50px rgba(36,99,235,.14); }
+    .one-page-robot-static-orb { position: absolute; left: 50%; top: 27%; width: 42%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle at 34% 28%, #fff 0 11%, #8eb0ff 12% 32%, #2463eb 33% 100%); box-shadow: 0 18px 36px rgba(36,99,235,.28); }
+    .one-page-robot-static-panel { position: absolute; left: 50%; bottom: 21%; display: grid; width: 50%; gap: 8px; transform: translateX(-50%); }
+    .one-page-robot-static-panel span { display: block; height: 10px; border-radius: 999px; background: rgba(36,99,235,.18); }
+    .one-page-robot-static-panel span:nth-child(2) { width: 78%; }
+    .one-page-robot-static-panel span:nth-child(3) { width: 58%; }
     .home-robot-stage { position: absolute; z-index: 1; top: 76px; left: calc(50% - 66px); width: min(720px, calc(50% + 56px)); min-height: 660px; border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }
     .hero-metrics { position: relative; z-index: 4; }
     @media (max-width: 980px) { .home-robot-stage { position: relative; top: auto; left: auto; width: min(100% - 40px, var(--max)); min-height: 540px; margin: -54px auto 28px; } .one-page-robot-stage { min-height: 540px; } .one-page-robot-crop { inset: -6% 0 -1%; } .one-page-robot-canvas { top: -2%; width: 124%; height: 120%; } }
@@ -116,9 +123,6 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <link rel="preload" href="/spline/friendly-robot.splinecode" as="fetch" crossOrigin="anonymous" />
-      </Head>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
       <div dangerouslySetInnerHTML={{ __html: content }} />
       <OnePageRobotMount />
