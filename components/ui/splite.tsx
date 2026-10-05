@@ -10,6 +10,7 @@ interface SplineSceneProps {
   className?: string;
   globalEvents?: boolean;
   paused?: boolean;
+  resolutionScale?: number;
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -21,6 +22,7 @@ export function SplineScene({
   className,
   globalEvents = false,
   paused = false,
+  resolutionScale = 0.94,
   onLoad = noop,
   onError = noop,
 }: SplineSceneProps) {
@@ -55,7 +57,8 @@ export function SplineScene({
           const width = canvas.clientWidth;
           const height = canvas.clientHeight;
           if (!width || !height) return;
-          const quality = matchMedia("(max-width: 767px), (pointer: coarse)").matches ? 0.82 : 0.94;
+          const deviceScale = matchMedia("(max-width: 767px), (pointer: coarse)").matches ? 0.72 : 1;
+          const quality = Math.min(1, Math.max(0.35, resolutionScale * deviceScale));
           app?.setSize(Math.ceil(width * quality), Math.ceil(height * quality));
         };
         syncSceneSize();
@@ -77,7 +80,7 @@ export function SplineScene({
       app?.dispose();
       if (appRef.current === app) appRef.current = null;
     };
-  }, [onError, onLoad, scene]);
+  }, [onError, onLoad, resolutionScale, scene]);
 
   useEffect(() => {
     globalEventsRef.current = globalEvents;

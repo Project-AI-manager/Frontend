@@ -1,11 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Mail, RefreshCw, UserRound } from "lucide-react";
+import { Bell, Mail, UserRound } from "lucide-react";
 import { useMemo } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getUsers } from "@/lib/api/generated/users/users";
 import { notificationsApi } from "@/lib/api/notifications";
@@ -22,9 +24,13 @@ export default function ProfilePage() {
     <AppShell title="Профиль" description="Личные данные и уведомления." immersive>
       <div className="relative h-full min-h-0 overflow-y-auto px-5 py-6 sm:px-8 sm:py-8">
         {userQuery.isLoading ? (
-          <ProfileSkeleton />
+          <LoadingState label="Загружаем профиль…" className="min-h-[420px]" />
         ) : userQuery.error || !userQuery.data ? (
-          <ProfileError error={userQuery.error} onRetry={() => userQuery.refetch()} />
+          <ErrorState
+            title="Профиль не загрузился"
+            message={getApiErrorMessage(userQuery.error, "Ошибка запроса к серверу.")}
+            onRetry={() => void userQuery.refetch()}
+          />
         ) : (
           <ProfileContent user={userQuery.data} />
         )}
@@ -126,27 +132,6 @@ function NotificationRow({ label, checked, disabled, onChange }: { label: string
       <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] transition-colors disabled:opacity-50 ${checked ? "justify-end bg-[#2463eb]" : "justify-start bg-[#d9e1ec]"}`}>
         <span className="size-5 rounded-full bg-white shadow-sm" />
       </button>
-    </div>
-  );
-}
-
-function ProfileError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
-  return (
-    <div className="flex min-h-72 w-full flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center">
-      <RefreshCw className="text-[#2463eb]" />
-      <h2 className="mt-4 text-xl font-extrabold">Профиль не загрузился</h2>
-      <p className="mt-2 text-sm text-[#526071]">{getApiErrorMessage(error, "Не удалось получить данные пользователя.")}</p>
-      <button type="button" onClick={onRetry} className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white">Повторить</button>
-    </div>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div role="status" aria-label="Загружаем профиль" className="flex w-full animate-pulse flex-col gap-4">
-      <div className="h-[230px] rounded-lg border border-[#e5eaf1] bg-[#eef3fb]" />
-      <div className="h-[190px] rounded-lg border border-[#e5eaf1] bg-[#eef3fb]" />
-      <div className="h-[110px] rounded-lg border border-[#e5eaf1] bg-[#eef3fb]" />
     </div>
   );
 }

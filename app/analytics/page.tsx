@@ -6,12 +6,12 @@ import {
   CalendarDays,
   Download,
   Inbox,
-  RefreshCcw,
-  TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { analyticsApi } from "@/lib/api/analytics";
 import type { AnalyticsOverviewResponse } from "@/lib/api/analytics";
 import { getApiDownloadErrorMessage, getApiErrorMessage } from "@/lib/api/errors";
@@ -214,20 +214,18 @@ export default function AnalyticsPage() {
 
         <main data-tour="tour-analytics-content" className="relative min-h-0 flex-1 overflow-y-auto px-8 pt-6 pb-7">
           {overview.isLoading ? (
-            <AnalyticsSkeleton />
+            <LoadingState label="Загружаем аналитику…" className="min-h-[520px]" />
           ) : overview.isError ? (
-            <AnalyticsState
-              kind="error"
+            <ErrorState
               title="Аналитика не загрузилась"
-              text={getApiErrorMessage(
+              message={getApiErrorMessage(
                 overview.error,
-                "Не удалось получить данные с сервера.",
+                "Ошибка запроса к серверу.",
               )}
-              onRetry={() => overview.refetch()}
+              onRetry={() => void overview.refetch()}
             />
           ) : isEmpty ? (
             <AnalyticsState
-              kind="empty"
               title="Данных пока недостаточно"
               text="Графики появятся, когда наберётся хотя бы день переписок."
             />
@@ -255,8 +253,8 @@ export default function AnalyticsPage() {
               <DailyChart period={period} data={data?.daily_series ?? []} />
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_1fr]">
-                <DialogBreakdown data={data!} />
-                <ReplyOverview data={data!} />
+                <ChannelBreakdown data={data!} />
+                <ReplySourceBreakdown data={data!} />
               </div>
             </div>
           )}
@@ -375,157 +373,165 @@ function formatRange(from: string, to: string) {
   return `${formatter.format(new Date(`${from}T00:00:00Z`))} — ${formatter.format(new Date(`${to}T00:00:00Z`))} ${year}`;
 }
 
-function DialogBreakdown({ data }: { data: AnalyticsOverviewResponse }) {
-  const items = [
-    { label: "В работе", value: data.dialogs_open, color: "bg-[#2463eb]" },
-    { label: "Ответил автопилот", value: data.dialogs_auto, color: "bg-[#6d96ee]" },
-    { label: "Нужен менеджер", value: data.dialogs_escalated, color: "bg-[#e89120]" },
-    { label: "Закрыто", value: data.dialogs_closed, color: "bg-[#9aa7b5]" },
-  ];
+function ChannelBreakdown({ data }: { data: AnalyticsOverviewResponse }) {
+  const items = data.channels_breakdown ?? [];
+  const total = items.reduce((sum, item) => sum + item.count, 0);
 
   return (
-    <article className="flex flex-col gap-3.5 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-      <div className="flex items-baseline justify-between gap-4">
+    <article className="flex flex-col gap-4 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+      <div>
         <h2 className="font-heading text-base font-extrabold tracking-[-.02em]">
-          Распределение диалогов
+          Где пишут клиенты?
         </h2>
-        <span className="text-[13px] text-[#64717f] tabular-nums">
-          {formatNumber(data.dialogs_total)} всего
-        </span>
+        <p className="mt-1 text-[12px] leading-5 text-[#64717f]">
+          Уникальные диалоги с входящими сообщениями по каналам.
+        </p>
       </div>
-      <div className="flex flex-col gap-3">
-        {items.map((item) => {
-          const percent = data.dialogs_total ? Math.round((item.value / data.dialogs_total) * 100) : 0;
-          return (
-          <div key={item.label} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-4 text-sm">
-              <span className="text-[#101828]">{item.label}</span>
-              <span className="text-[#526071] tabular-nums">{formatNumber(item.value)} · {percent}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#f4f7fb]">
-              <div
-                className={`h-full rounded-full ${item.color}`}
-                style={{ width: `${percent}%` }}
+      {items.length ? (
+        <div className="flex flex-col gap-3.5">
+          {items.map((item) => {
+            const percent = total ? Math.round((item.count / total) * 100) : 0;
+            return (
+              <div key={item.channel_type} className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-4 text-sm">
+                  <span className="font-medium text-[#101828]">{channelTypeLabel(item.channel_type)}</span>
+                  <span className="text-[#526071] tabular-nums">
+                    {formatNumber(item.count)} {formatDialogs(item.count, ["диалог", "диалога", "диалогов"])}
+                    <span className="ml-1.5 text-[#8792a0]">{percent}%</span>
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-[#f1f4f8]">
+                  <div
+                    className={`h-full rounded-full ${channelBarColor(item.channel_type)}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="rounded-lg bg-[#f8fbff] px-4 py-5 text-sm text-[#64717f]">
+          За выбранный период входящих диалогов нет.
+        </p>
+      )}
+    </article>
+  );
+}
+
+function ReplySourceBreakdown({ data }: { data: AnalyticsOverviewResponse }) {
+  const items = [
+    { label: "Автопилот", count: data.ai_replies_count, color: "bg-[#2463eb]" },
+    { label: "Менеджеры", count: data.manager_replies_count, color: "bg-[#8b6be8]" },
+  ];
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+
+  return (
+    <article className="flex flex-col gap-4 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
+      <div>
+        <h2 className="font-heading text-base font-extrabold tracking-[-.02em]">
+          Кто отвечает клиентам?
+        </h2>
+        <p className="mt-1 text-[12px] leading-5 text-[#64717f]">
+          Сколько ответов отправили Автопилот и менеджеры за выбранный период.
+        </p>
+      </div>
+      {total ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-baseline justify-between gap-4 rounded-lg bg-[#f8fbff] px-4 py-3">
+            <span className="text-sm font-medium text-[#526071]">Всего отправлено</span>
+            <span className="font-heading text-lg font-extrabold text-[#101828] tabular-nums">
+              {formatNumber(total)} {formatDialogs(total, ["сообщение", "сообщения", "сообщений"])}
+            </span>
+          </div>
+          <div role="img" aria-label="Распределение исходящих сообщений между автопилотом и менеджерами" className="flex h-3 overflow-hidden rounded-full bg-[#f1f4f8]">
+            {items.map((item) => (
+              <span
+                key={item.label}
+                className={`h-full ${item.color}`}
+                style={{ width: `${(item.count / total) * 100}%` }}
               />
-            </div>
+            ))}
           </div>
-          );
-        })}
-      </div>
+          <div className="flex flex-col gap-3">
+            {items.map((item) => {
+              const percent = Math.round((item.count / total) * 100);
+              return (
+                <div key={item.label} className="flex items-center justify-between gap-4">
+                  <span className="flex items-center gap-2.5 text-sm font-medium text-[#101828]">
+                    <span className={`size-2.5 rounded-full ${item.color}`} aria-hidden="true" />
+                    {item.label}
+                  </span>
+                  <span className="text-sm text-[#526071] tabular-nums">
+                    {formatNumber(item.count)} {formatDialogs(item.count, ["сообщение", "сообщения", "сообщений"])}
+                    <span className="ml-1.5 text-[#8792a0]">{percent}%</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-[#f8fbff] px-4 py-5">
+          <p className="text-sm font-semibold text-[#526071]">Пока нет ответов клиентам</p>
+          <p className="mt-1 text-sm leading-5 text-[#64717f]">
+            Здесь появится количество сообщений от Автопилота и менеджеров за выбранный период.
+          </p>
+        </div>
+      )}
     </article>
   );
 }
 
-function ReplyOverview({ data }: { data: AnalyticsOverviewResponse }) {
-  const items = [
-    { label: "Ответов автопилота", value: formatNumber(data.ai_replies_count) },
-    { label: "Ответов менеджеров", value: formatNumber(data.manager_replies_count) },
-    { label: "Сообщений от клиентов", value: formatNumber(data.inbound_messages_count) },
-    { label: "Средняя уверенность", value: `${Math.round(data.avg_ai_confidence * 100)}%` },
-  ];
-  return (
-    <article className="flex flex-col gap-3.5 rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="font-heading text-base font-extrabold tracking-[-.02em]">
-          Ответы и сообщения
-        </h2>
-        <span className="text-[13px] text-[#64717f]">за выбранный период</span>
-      </div>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#e5eaf1] bg-[#e5eaf1]">
-        {items.map((item) => (
-          <div key={item.label} className="bg-white p-4">
-            <p className="text-[12px] text-[#64717f]">{item.label}</p>
-            <p className="mt-1 font-heading text-xl font-extrabold tracking-[-.03em] tabular-nums text-[#101828]">{item.value}</p>
-          </div>
-        ))}
-      </div>
-    </article>
-  );
+function channelTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    telegram: "Telegram",
+    telegram_bot: "Telegram-бот",
+    whatsapp: "WhatsApp",
+    avito: "Avito",
+    vk: "VK",
+    instagram: "Instagram",
+    max: "MAX",
+    web: "Сайт",
+    unknown: "Другой канал",
+  };
+  return labels[type] ?? type;
 }
 
-function AnalyticsSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Загружаем аналитику"
-      className="flex animate-pulse flex-col gap-3 py-1"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <div
-          key={index}
-          className="h-[118px] rounded-lg border border-[#e5eaf1] bg-[linear-gradient(90deg,#f4f7fb_0%,#eaf1ff_45%,#f4f7fb_90%)] bg-[length:200%_100%]"
-        />
-      ))}
-    </div>
-  );
+function channelBarColor(type: string) {
+  const colors: Record<string, string> = {
+    telegram: "bg-[#26a5e4]",
+    telegram_bot: "bg-[#74c4ec]",
+    whatsapp: "bg-[#25d366]",
+    avito: "bg-[#7b61d1]",
+    vk: "bg-[#0077ff]",
+    instagram: "bg-[#d9468d]",
+    max: "bg-[#5577e8]",
+    web: "bg-[#64748b]",
+  };
+  return colors[type] ?? "bg-[#9aa7b5]";
 }
 
 function AnalyticsState({
-  kind,
   title,
   text,
-  onRetry,
 }: {
-  kind: "empty" | "error";
   title: string;
   text: string;
-  onRetry?: () => void;
 }) {
-  const isError = kind === "error";
-
   return (
-    <div
-      className={`flex min-h-[300px] flex-col items-center gap-3 rounded-lg border px-8 py-14 text-center ${
-        isError
-          ? "border-[#f3cfcf] bg-[#fdeded]"
-          : "border-[#d9e1ec] bg-[#f8fbff]"
-      }`}
-    >
+    <div className="flex min-h-[300px] flex-col items-center gap-3 rounded-lg border border-[#d9e1ec] bg-[#f8fbff] px-8 py-14 text-center">
       <div
-        className={`flex size-12 items-center justify-center rounded-full border bg-white ${
-          isError ? "border-[#f3cfcf]" : "border-[#d9e1ec]"
-        }`}
+        className="flex size-12 items-center justify-center rounded-full border border-[#d9e1ec] bg-white"
       >
-        {isError ? (
-          <TriangleAlert
-            size={22}
-            strokeWidth={1.75}
-            className="text-[#d84545]"
-            aria-hidden="true"
-          />
-        ) : (
-          <Inbox
-            size={22}
-            strokeWidth={1.75}
-            className="text-[#2463eb]"
-            aria-hidden="true"
-          />
-        )}
+        <Inbox size={22} strokeWidth={1.75} className="text-[#2463eb]" aria-hidden="true" />
       </div>
-      <h2
-        className={`font-heading text-base font-extrabold tracking-[-.02em] ${
-          isError ? "text-[#a72f2f]" : "text-[#101828]"
-        }`}
-      >
+      <h2 className="font-heading text-base font-extrabold tracking-[-.02em] text-[#101828]">
         {title}
       </h2>
-      <p
-        className={`max-w-[340px] text-sm leading-[1.6] ${
-          isError ? "text-[#a72f2f]" : "text-[#526071]"
-        }`}
-      >
+      <p className="max-w-[340px] text-sm leading-[1.6] text-[#526071]">
         {text}
       </p>
-      {isError ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 flex min-h-10 items-center gap-2 rounded-lg border border-[#d84545] bg-white px-[18px] text-sm font-semibold text-[#a72f2f] hover:bg-[#fdeded]"
-        >
-          <RefreshCcw size={16} strokeWidth={1.75} aria-hidden="true" />
-          Повторить
-        </button>
-      ) : null}
     </div>
   );
 }

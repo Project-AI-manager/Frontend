@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, FileText, Loader2, MoreHorizontal, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowDown, FileText, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { apiClient } from "@/lib/api/client";
 import { getApiErrorMessage, getKnowledgeUploadErrorMessage } from "@/lib/api/errors";
 import type { KnowledgeDocumentResponse } from "@/lib/api/generated/ai.schemas";
@@ -14,12 +16,6 @@ import { formatRelativeServerTime, parseServerDateTime } from "@/lib/date-time";
 const api = getKnowledge();
 const supportedFormats = ".pdf,.docx,.xlsx,.md,.txt";
 const feedbackDismissDelayMs = 3_000;
-
-type KnowledgeReindexResponse = {
-  documents_count: number;
-  chunks_count: number;
-  updated_at: string | null;
-};
 
 export default function KnowledgePage() {
   const client = useQueryClient();
@@ -85,9 +81,10 @@ export default function KnowledgePage() {
       setNotice(`Файл добавлен: ${document.chunks_count} ${chunkWord(document.chunks_count)} проиндексировано.`);
       await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
-    onError: (mutationError) => {
+    onError: async (mutationError) => {
       setNotice(null);
       setError(getKnowledgeUploadErrorMessage(mutationError));
+      await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
   });
 
@@ -115,23 +112,6 @@ export default function KnowledgePage() {
       setError(getApiErrorMessage(mutationError, "Не удалось убрать файл."));
     },
     onSettled: () => client.invalidateQueries({ queryKey: ["knowledge", "documents"] }),
-  });
-
-  const reindex = useMutation({
-    mutationFn: () => apiClient<KnowledgeReindexResponse>({
-      url: "/api/v1/knowledge/reindex",
-      method: "POST",
-    }),
-    onSuccess: async (result) => {
-      setError(null);
-      setLastIndexedAt(result.updated_at);
-      setNotice(`База знаний обновлена: ${result.documents_count} ${fileWord(result.documents_count)}, ${result.chunks_count} ${chunkWord(result.chunks_count)}.`);
-      await client.invalidateQueries({ queryKey: ["knowledge", "documents"] });
-    },
-    onError: (mutationError) => {
-      setNotice(null);
-      setError(getApiErrorMessage(mutationError, "Не удалось обновить базу знаний. Повторите попытку через несколько секунд."));
-    },
   });
 
   async function addFiles(files: FileList | File[]) {
@@ -162,8 +142,8 @@ export default function KnowledgePage() {
         </header>
 
         <main data-tour="tour-knowledge-overview" className="relative flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-8 pb-7 pt-6">
-          {documents.isLoading ? <CardSkeleton /> : documents.error ? (
-            <State title="Файлы не загрузились" text={getApiErrorMessage(documents.error, "Ошибка запроса к серверу.")} action="Повторить" onAction={() => documents.refetch()} />
+          {documents.isLoading ? <LoadingState label="Загружаем документы…" className="min-h-[360px]" /> : documents.error ? (
+            <ErrorState title="Файлы не загрузились" message={getApiErrorMessage(documents.error, "Ошибка запроса к серверу.")} onRetry={() => void documents.refetch()} />
           ) : shown.length === 0 ? (
             search.trim() ? (
               <State title="По запросу ничего не найдено" text="Попробуйте изменить поисковый запрос." />
@@ -186,7 +166,7 @@ export default function KnowledgePage() {
                   disabled={archive.isPending}
                 />
               ))}
-              <UploadCard onClick={() => fileInput.current?.click()} onFiles={addFiles} />
+              <UploadCard isUploading={upload.isPending} onClick={() => fileInput.current?.click()} onFiles={addFiles} />
             </div>
           )}
 
@@ -212,10 +192,6 @@ export default function KnowledgePage() {
                   {notice}
                 </p>
               ) : null}
-              <button data-tour="tour-knowledge-index" type="button" onClick={() => reindex.mutate()} disabled={reindex.isPending || !activeDocuments.length} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[#2463eb] bg-[#2463eb] px-[18px] text-sm font-semibold text-white shadow-[0_11px_25px_rgba(36,99,235,.2)] hover:bg-[#1546ad] disabled:opacity-60 sm:w-auto">
-                {reindex.isPending ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} strokeWidth={1.85} />}
-                {reindex.isPending ? "Создаём векторную базу…" : "Обновить базу знаний"}
-              </button>
             </div>
           </footer>
         </main>
@@ -226,7 +202,13 @@ export default function KnowledgePage() {
 
 function DocumentCard({ document, menuOpen, onToggleMenu, onArchive, disabled }: { document: KnowledgeDocumentResponse; menuOpen: boolean; onToggleMenu: () => void; onArchive: () => void; disabled: boolean }) {
   const extension = displayExtension(document);
-  const isReady = document.status === "ready";
+  const statusLabel = document.status === "ready"
+    ? "В базе"
+    : document.status === "processing"
+      ? "Индексируется"
+      : document.status === "failed"
+        ? "Ошибка индексации"
+        : "Не в базе";
   return (
     <article className="relative flex min-h-[168px] flex-col gap-3 rounded-lg border border-[#d9e1ec] bg-white p-4 shadow-[0_10px_22px_rgba(18,39,76,.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(18,39,76,.09)]">
       <div className="flex items-start gap-3">
@@ -241,17 +223,17 @@ function DocumentCard({ document, menuOpen, onToggleMenu, onArchive, disabled }:
         </div>
       ) : null}
       <h2 className="truncate text-sm font-semibold leading-[1.4]" title={document.title}>{document.title}</h2>
-      <span className={`w-fit rounded-[5px] px-[9px] py-[3px] text-[11px] font-extrabold uppercase tracking-[.08em] ${isReady ? "bg-[#e6f7f0] text-[#0c7a4e]" : "bg-[#fff5df] text-[#94600b]"}`}>{isReady ? "В базе" : "Не в базе"}</span>
+      <span className={`w-fit rounded-[5px] px-[9px] py-[3px] text-[11px] font-extrabold uppercase tracking-[.08em] ${document.status === "ready" ? "bg-[#e6f7f0] text-[#0c7a4e]" : document.status === "failed" ? "bg-[#fdeded] text-[#a72f2f]" : "bg-[#fff5df] text-[#94600b]"}`}>{statusLabel}</span>
       <div className="mt-auto h-px bg-[#e5eaf1]" />
       <p className="text-[13px] tabular-nums text-[#64717f]">{fileSize(document)} · {updatedLabel(document.updated_at)}</p>
     </article>
   );
 }
 
-function UploadCard({ onClick, onFiles }: { onClick: () => void; onFiles: (files: FileList | File[]) => Promise<void> }) {
-  return <button data-tour="tour-knowledge-upload" type="button" onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={(event: DragEvent<HTMLButtonElement>) => { event.preventDefault(); void onFiles(event.dataTransfer.files); }} className="flex min-h-[168px] flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-[#c9d6e8] bg-white/75 p-4 text-left transition hover:border-[#2463eb] hover:bg-white">
-    <span className="flex size-9 items-center justify-center rounded-lg border border-[#2463eb] text-[#2463eb]"><Plus size={18} strokeWidth={1.85} /></span>
-    <strong className="font-heading text-sm font-extrabold tracking-[-0.02em] text-[#1546ad]">Перетащите файлы</strong>
+function UploadCard({ isUploading, onClick, onFiles }: { isUploading: boolean; onClick: () => void; onFiles: (files: FileList | File[]) => Promise<void> }) {
+  return <button data-tour="tour-knowledge-upload" type="button" aria-busy={isUploading} onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={(event: DragEvent<HTMLButtonElement>) => { event.preventDefault(); void onFiles(event.dataTransfer.files); }} className="flex min-h-[168px] flex-col items-start justify-center gap-2 rounded-lg border border-dashed border-[#c9d6e8] bg-white/75 p-4 text-left transition hover:border-[#2463eb] hover:bg-white">
+    <span className="flex size-9 items-center justify-center rounded-lg border border-[#2463eb] text-[#2463eb]">{isUploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} strokeWidth={1.85} />}</span>
+    <strong className="font-heading text-sm font-extrabold tracking-[-0.02em] text-[#1546ad]">{isUploading ? "Загружаем и индексируем…" : "Перетащите файлы"}</strong>
     <span className="text-[13px] leading-[1.5] text-[#526071]">PDF, DOCX, XLSX, MD, TXT</span>
   </button>;
 }
@@ -304,13 +286,11 @@ function EmptyKnowledgeDropzone({ isUploading, onClick, onFiles }: { isUploading
       </span>
       <h2 className="mt-4 font-heading font-extrabold">{isDragging ? "Отпустите файлы, чтобы загрузить" : "В базе знаний пока нет файлов"}</h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-[#526071]">Перетащите файлы сюда из Проводника или нажмите на эту область, чтобы выбрать их.</p>
-      <span className="mt-4 rounded-lg bg-[#2463eb] px-4 py-2.5 text-sm font-semibold text-white">{isUploading ? "Загружаем…" : "Выбрать файлы"}</span>
+      <span className="mt-4 rounded-lg bg-[#2463eb] px-4 py-2.5 text-sm font-semibold text-white">{isUploading ? "Загружаем и индексируем…" : "Выбрать файлы"}</span>
       <p id="knowledge-supported-formats" className="mt-3 text-[13px] leading-5 text-[#64717f]">Поддерживаемые форматы: PDF, DOCX, XLSX, MD и TXT</p>
     </button>
   );
 }
-
-function CardSkeleton() { return <div role="status" aria-label="Загружаем документы" className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-[168px] animate-pulse rounded-lg bg-[#e5eaf1]" />)}</div>; }
 
 function State({ title, text, action, onAction }: { title: string; text?: string; action?: string; onAction?: () => void }) { return <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center"><FileText size={28} className="text-[#2463eb]" /><h2 className="mt-4 font-heading font-extrabold">{title}</h2>{text ? <p className="mt-2 text-sm text-[#526071]">{text}</p> : null}{action ? <button type="button" onClick={onAction} className="mt-4 min-h-10 rounded-lg bg-[#2463eb] px-4 text-sm font-semibold text-white">{action}</button> : null}</div>; }
 function normalizeDocuments(value?: KnowledgeDocumentResponse[]) { return Array.isArray(value) ? value : []; }

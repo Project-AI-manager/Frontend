@@ -1,17 +1,20 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, RefreshCw } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ChannelIcon } from "@/components/channels/channel-icon";
 import { TelegramConnectDialog } from "@/components/settings/telegram-connect-dialog";
+import { TelegramBotConnectDialog } from "@/components/settings/telegram-bot-connect-dialog";
 import { WhatsAppConnectDialog } from "@/components/settings/whatsapp-connect-dialog";
 import { AvitoConnectDialog } from "@/components/settings/avito-connect-dialog";
 import { VkConnectDialog } from "@/components/settings/vk-connect-dialog";
 import { InstagramConnectDialog } from "@/components/settings/instagram-connect-dialog";
 import { MaxConnectDialog } from "@/components/settings/max-connect-dialog";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { channelsManagementApi } from "@/lib/api/channels";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type { ChannelResponse } from "@/lib/api/generated/ai.schemas";
@@ -19,21 +22,32 @@ import { getChannels } from "@/lib/api/generated/channels/channels";
 
 const channelsApi = getChannels();
 
-const channelCatalog = [
+const channelCatalog: Array<{ type: string; mark: string; name: string; whatsappMode?: "personal" | "business"; comingSoon?: boolean }> = [
   { type: "telegram", mark: "TG", name: "Telegram" },
-  { type: "whatsapp", mark: "WA", name: "WhatsApp" },
-  { type: "avito", mark: "AV", name: "Avito" },
+  { type: "telegram_bot", mark: "TB", name: "Telegram-бот" },
+  { type: "whatsapp", mark: "WA", name: "WhatsApp", whatsappMode: "personal" },
+  { type: "whatsapp", mark: "WA", name: "WhatsApp Business", whatsappMode: "business" },
+  { type: "avito", mark: "AV", name: "Avito Premium" },
+  { type: "avito", mark: "AV", name: "Avito для обычных аккаунтов", comingSoon: true },
   { type: "vk", mark: "VK", name: "VK" },
   { type: "instagram", mark: "IG", name: "Instagram" },
   { type: "max", mark: "MAX", name: "Max" },
 ] as const;
+type ChannelCatalogEntry = (typeof channelCatalog)[number] & {
+  key: string;
+  channelOverride?: ChannelResponse;
+  displayName: string;
+};
 
 export default function ChannelsPage() {
   const client = useQueryClient();
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
   const [replacingTelegram, setReplacingTelegram] = useState(false);
+  const [telegramBotDialogOpen, setTelegramBotDialogOpen] = useState(false);
   const [whatsAppDialogOpen, setWhatsAppDialogOpen] = useState(false);
+  const [whatsAppMethod, setWhatsAppMethod] = useState<"personal" | "business">("personal");
   const [replacingWhatsApp, setReplacingWhatsApp] = useState(false);
+  const [replaceWhatsAppChannelId, setReplaceWhatsAppChannelId] = useState<string | undefined>();
   const [avitoDialogOpen, setAvitoDialogOpen] = useState(false);
   const [vkDialogOpen, setVkDialogOpen] = useState(false);
   const [replacingVk, setReplacingVk] = useState(false);
@@ -85,14 +99,14 @@ export default function ChannelsPage() {
     >
       <div className="relative h-full min-h-0 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-          {channelsQuery.isLoading ? <ChannelsSkeleton /> : null}
+          {channelsQuery.isLoading ? <LoadingState label="Загружаем каналы…" className="min-h-[530px]" /> : null}
 
           {channelsQuery.error ? (
-            <StateCard
-              title="Статусы каналов недоступны"
-              text={getApiErrorMessage(
+            <ErrorState
+              title="Каналы не загрузились"
+              message={getApiErrorMessage(
                 channelsQuery.error,
-                "Ошибка запроса. Подключение Telegram и WhatsApp по-прежнему доступно.",
+                "Ошибка запроса к серверу.",
               )}
               onRetry={() => void channelsQuery.refetch()}
             />
@@ -123,13 +137,22 @@ export default function ChannelsPage() {
                   setReplacingTelegram(true);
                   setTelegramDialogOpen(true);
                 }}
-                onConnectWhatsApp={() => {
+                onConnectTelegramBot={() => setTelegramBotDialogOpen(true)}
+                onReconnectTelegramBot={() => {
+                  setMenuChannelId(null);
+                  setTelegramBotDialogOpen(true);
+                }}
+                onConnectWhatsApp={(method) => {
                   setReplacingWhatsApp(false);
+                  setReplaceWhatsAppChannelId(undefined);
+                  setWhatsAppMethod(method);
                   setWhatsAppDialogOpen(true);
                 }}
-                onReconnectWhatsApp={() => {
+                onReconnectWhatsApp={(channelId) => {
                   setMenuChannelId(null);
                   setReplacingWhatsApp(true);
+                  setReplaceWhatsAppChannelId(channelId);
+                  setWhatsAppMethod("business");
                   setWhatsAppDialogOpen(true);
                 }}
                 onConnectAvito={() => setAvitoDialogOpen(true)}
@@ -179,10 +202,19 @@ export default function ChannelsPage() {
           }}
         />
       ) : null}
+      {telegramBotDialogOpen ? (
+        <TelegramBotConnectDialog
+          onClose={() => setTelegramBotDialogOpen(false)}
+          onConnected={async () => {
+            await client.invalidateQueries({ queryKey: ["channels"] });
+          }}
+        />
+      ) : null}
       {whatsAppDialogOpen ? (
         <WhatsAppConnectDialog
           replacing={replacingWhatsApp}
-          replaceChannelId={replacingWhatsApp ? activeChannelId(channelsQuery.data, "whatsapp") : undefined}
+          initialMethod={whatsAppMethod}
+          replaceChannelId={replaceWhatsAppChannelId}
           onClose={() => setWhatsAppDialogOpen(false)}
           onConnected={async () => {
             await client.invalidateQueries({ queryKey: ["channels"] });
@@ -224,6 +256,8 @@ function ChannelsCard({
   disconnectingChannelId,
   onConnectTelegram,
   onReconnectTelegram,
+  onConnectTelegramBot,
+  onReconnectTelegramBot,
   onConnectWhatsApp,
   onReconnectWhatsApp,
   onConnectAvito,
@@ -241,8 +275,10 @@ function ChannelsCard({
   disconnectingChannelId: string | null;
   onConnectTelegram: () => void;
   onReconnectTelegram: () => void;
-  onConnectWhatsApp: () => void;
-  onReconnectWhatsApp: () => void;
+  onConnectTelegramBot: () => void;
+  onReconnectTelegramBot: () => void;
+  onConnectWhatsApp: (method: "personal" | "business") => void;
+  onReconnectWhatsApp: (channelId: string) => void;
   onConnectAvito: () => void;
   onConnectVk: () => void;
   onReconnectVk: () => void;
@@ -253,37 +289,83 @@ function ChannelsCard({
   onToggleMenu: (channelId: string) => void;
   onDisconnect: (channelId: string) => void;
 }) {
+  const displayCatalog = channelCatalog.flatMap<ChannelCatalogEntry>((item) => {
+    if (item.type !== "whatsapp") {
+      return [{ ...item, key: item.comingSoon ? `${item.type}-coming-soon` : item.type, channelOverride: undefined, displayName: item.name }];
+    }
+    const personalMode = item.whatsappMode === "personal";
+    const matchingWhatsAppChannels = channels.filter((candidate) =>
+      candidate.type === "whatsapp" && isPersonalWhatsAppChannel(candidate) === personalMode,
+    );
+    // Personal QR sessions are single active-device connections. Older
+    // disconnected records stay in the database, but should not appear as
+    // another connectable account or be mistaken for Cloud API channels.
+    const visibleWhatsAppChannels = personalMode
+      ? matchingWhatsAppChannels.filter(isConnected)
+      : matchingWhatsAppChannels;
+    const entries: ChannelCatalogEntry[] = visibleWhatsAppChannels.map((channel, index) => ({
+          ...item,
+          key: `whatsapp-${item.whatsappMode}-${channel.id}`,
+          channelOverride: channel,
+          displayName: personalMode
+            ? personalWhatsAppTitle(channel, index)
+            : channel.name || `${item.name} ${index + 1}`,
+        }));
+    if (!personalMode || visibleWhatsAppChannels.length === 0) {
+      entries.push({ ...item, key: `whatsapp-${item.whatsappMode}-add`, channelOverride: undefined, displayName: item.name });
+    }
+    return entries;
+  });
+
   return (
     <section data-tour="tour-channels-grid" className="flex flex-col gap-[18px] rounded-lg border border-[#d9e1ec] bg-white p-6 shadow-[0_10px_22px_rgba(18,39,76,.07)]">
-      <h2 className="font-heading text-lg font-extrabold tracking-[-.03em]">
-        Каналы связи
-      </h2>
+      <h2 className="font-heading text-lg font-extrabold tracking-[-.03em]">Каналы связи</h2>
       <div className="h-px shrink-0 bg-[#e5eaf1]" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {channelCatalog.map((item) => {
-          const channel = findChannel(channels, item.type);
+        {displayCatalog.map((item) => {
+          const channel = item.comingSoon ? undefined : item.type === "whatsapp"
+            ? item.channelOverride
+            : findChannel(channels, item.type);
           const connected = isConnected(channel);
 
           return (
             <article
-              key={item.type}
+              key={item.key}
               className="relative flex min-h-[148px] items-center gap-5 rounded-xl border border-[#d9e1ec] bg-white px-5 py-5 transition-[border-color,background,box-shadow] hover:border-[#c9d6e8] hover:bg-[#f8fbff] hover:shadow-[0_14px_30px_rgba(18,39,76,.06)]"
             >
-              <ChannelMark type={item.type} label={item.name} />
+              <ChannelMark type={item.type} label={item.displayName} />
               <span className="flex min-w-0 flex-col gap-1.5">
-                <span className="truncate font-heading text-lg font-extrabold tracking-[-.025em]">{item.name}</span>
+                <span className="truncate font-heading text-lg font-extrabold tracking-[-.025em]">{item.displayName}</span>
+                {item.type === "whatsapp" && !connected ? (
+                  <span className="text-[13px] text-[#64717f]">
+                    {item.whatsappMode === "personal" ? "Личный аккаунт · подключение по QR" : "Бизнес-аккаунт · официальный Meta API"}
+                  </span>
+                ) : null}
+                {item.comingSoon ? (
+                  <span className="text-[13px] text-[#64717f]">
+                    Проверяем безопасный способ подключения без Messenger API
+                  </span>
+                ) : null}
                 {connected && channel ? (
                   <span className="truncate text-[13px] text-[#526071]" title={channelIdentity(channel)}>
-                    {channelIdentity(channel)}
+                    {item.type === "whatsapp" && item.whatsappMode === "personal"
+                      ? "Личный аккаунт · QR"
+                      : channelIdentity(channel)}
                   </span>
                 ) : null}
                 <span
-                  className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.06em] ${connected ? "text-[#0c7a4e]" : "text-[#94600b]"}`}
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.06em] ${connected && item.type !== "telegram_bot" ? "text-[#0c7a4e]" : "text-[#94600b]"}`}
                 >
                   <span
-                    className={`size-1.5 rounded-full ${connected ? "bg-[#13a66b]" : "bg-[#e89120]"}`}
+                    className={`size-1.5 rounded-full ${connected && item.type !== "telegram_bot" ? "bg-[#13a66b]" : "bg-[#e89120]"}`}
                   />
-                  {connected ? "Работает" : "Не подключено"}
+                  {connected
+                    ? "Работает"
+                    : item.comingSoon
+                      ? "Изучаем подключение"
+                      : item.type === "telegram_bot" && channel?.status === "pending"
+                      ? "Токен проверен · нужен HTTPS webhook"
+                      : "Не подключено"}
                 </span>
               </span>
               {connected ? (
@@ -304,10 +386,16 @@ function ChannelsCard({
                         <button type="button" role="menuitem" onClick={onReconnectTelegram} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
                           Заменить аккаунт…
                         </button>
-                      ) : item.type === "whatsapp" ? (
-                        <button type="button" role="menuitem" onClick={onReconnectWhatsApp} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
-                          Переподключить…
+                      ) : item.type === "telegram_bot" ? (
+                        <button type="button" role="menuitem" onClick={onReconnectTelegramBot} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                          Обновить токен…
                         </button>
+                      ) : item.type === "whatsapp" ? (
+                        channel.settings.transport === "whatsmeow" ? null : (
+                          <button type="button" role="menuitem" onClick={() => onReconnectWhatsApp(channel.id)} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
+                            Переподключить…
+                          </button>
+                        )
                       ) : item.type === "avito" ? (
                         <button type="button" role="menuitem" onClick={onConnectAvito} className="flex min-h-10 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-[#1546ad] hover:bg-[#eaf1ff]">
                           Переподключить…
@@ -335,11 +423,12 @@ function ChannelsCard({
                 <button
                   data-tour={item.type === "telegram" ? "tour-channels-actions" : undefined}
                   type="button"
-                  onClick={item.type === "telegram" ? onConnectTelegram : item.type === "whatsapp" ? onConnectWhatsApp : item.type === "avito" ? onConnectAvito : item.type === "vk" ? onConnectVk : item.type === "instagram" ? onConnectInstagram : onConnectMax}
-                  aria-label={`Подключить ${item.name}`}
-                  className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff]"
+                  onClick={item.comingSoon ? undefined : item.type === "telegram" ? onConnectTelegram : item.type === "telegram_bot" ? onConnectTelegramBot : item.type === "whatsapp" ? () => onConnectWhatsApp(item.whatsappMode ?? "personal") : item.type === "avito" ? onConnectAvito : item.type === "vk" ? onConnectVk : item.type === "instagram" ? onConnectInstagram : onConnectMax}
+                  disabled={item.comingSoon}
+                  aria-label={item.type === "telegram_bot" && channel?.status === "pending" ? "Настроить Telegram-бота" : `Подключить ${item.name}`}
+                  className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg border border-[#2463eb] px-4 text-[13px] font-semibold text-[#1546ad] hover:bg-[#eaf1ff] disabled:cursor-not-allowed disabled:border-[#d9e1ec] disabled:text-[#64717f] disabled:hover:bg-transparent"
                 >
-                  Подключить
+                  {item.comingSoon ? "В разработке" : item.type === "telegram_bot" && channel?.status === "pending" ? "Настроить" : "Подключить"}
                 </button>
               )}
             </article>
@@ -353,6 +442,7 @@ function ChannelsCard({
 function ChannelMark({ type, label }: { type: string; label: string }) {
   const styles: Record<string, string> = {
     telegram: "border-[#b9dffc] bg-[#e9f6ff] text-[#168bd2]",
+    telegram_bot: "border-[#b9dffc] bg-[#e9f6ff] text-[#168bd2]",
     whatsapp: "border-[#bdebd0] bg-[#ecfbf2] text-[#149b50]",
     avito: "border-[#d8cdfd] bg-[#f3efff] text-[#654bd3]",
     vk: "border-[#bddaff] bg-[#edf5ff] text-[#1676d2]",
@@ -408,6 +498,19 @@ function isConnected(channel?: ChannelResponse) {
   );
 }
 
+function isPersonalWhatsAppChannel(channel: ChannelResponse) {
+  if (channel.type.toLocaleLowerCase("ru-RU") !== "whatsapp") return false;
+  return channel.settings.transport === "whatsmeow" || /@s\.whatsapp\.net\b/i.test(channel.name);
+}
+
+function personalWhatsAppTitle(channel: ChannelResponse, index: number) {
+  const configuredPhone = channel.settings.phone_masked ?? channel.settings.display_phone_number;
+  const phone = typeof configuredPhone === "string" ? configuredPhone.trim() : "";
+  const jidPhone = channel.name.match(/(\+?\d+)(?::\d+)?@s\.whatsapp\.net\b/i)?.[1];
+  const account = phone || (jidPhone ? (jidPhone.startsWith("+") ? jidPhone : `+${jidPhone}`) : "");
+  return account ? `WhatsApp · ${account}` : channel.name || `WhatsApp ${index + 1}`;
+}
+
 function channelIdentity(channel: ChannelResponse) {
   const username = typeof channel.settings.username === "string"
     ? channel.settings.username.trim().replace(/^@/, "")
@@ -454,39 +557,4 @@ function channelIdentity(channel: ChannelResponse) {
     : "";
   if (botId) return `Бот ${botId}`;
   return channel.name || "Подключённый аккаунт";
-}
-
-function ChannelsSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Загружаем каналы"
-      className="h-[530px] animate-pulse rounded-lg bg-[#e5eaf1]"
-    />
-  );
-}
-
-function StateCard({
-  title,
-  text,
-  onRetry,
-}: {
-  title: string;
-  text: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center">
-      <RefreshCw className="text-[#2463eb]" />
-      <h2 className="mt-4 text-xl font-extrabold">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-[#526071]">{text}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white"
-      >
-        Повторить
-      </button>
-    </div>
-  );
 }

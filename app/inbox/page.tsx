@@ -24,6 +24,8 @@ import {
 } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import {
   downloadConversationExport,
   getAuthenticatedAttachment,
@@ -69,7 +71,7 @@ export default function InboxPage() {
           title="Диалоги"
           description="Все обращения клиентов в одном месте"
         >
-          <State title="Загружаем диалоги…" />
+          <LoadingState label="Загружаем диалоги…" className="min-h-[calc(100vh-65px)] rounded-none border-0 bg-[#f4f7fb]" />
         </AppShell>
       }
     >
@@ -539,16 +541,13 @@ function InboxContent() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {list.isLoading ? (
-              <ListSkeleton />
+              <LoadingState label="Загружаем диалоги…" className="min-h-full rounded-none border-0 bg-transparent shadow-none" />
             ) : list.error ? (
-              <State
+              <ErrorState
                 title="Список диалогов не загрузился"
-                text={getApiErrorMessage(
-                  list.error,
-                  "Ошибка запроса к серверу.",
-                )}
-                action="Повторить"
-                onAction={() => list.refetch()}
+                message={getApiErrorMessage(list.error, "Ошибка запроса к серверу.")}
+                onRetry={() => void list.refetch()}
+                className="min-h-64 rounded-none border-0 bg-transparent shadow-none"
               />
             ) : (list.data ?? []).length === 0 ? (
               <EmptyChatsState />
@@ -581,15 +580,13 @@ function InboxContent() {
           {!effectiveSelectedId ? (
             <State title="Выберите диалог" text="Переписка откроется здесь." />
           ) : thread.isLoading ? (
-            <div className="relative grid flex-1 place-items-center">
-              <Loader2 className="animate-spin text-[#2463eb]" />
-            </div>
+            <LoadingState label="Загружаем переписку…" className="min-h-0 flex-1 rounded-none border-0 bg-transparent shadow-none" />
           ) : thread.error ? (
-            <State
+            <ErrorState
               title="Диалог не загрузился"
-              text={getApiErrorMessage(thread.error, "Попробуйте ещё раз.")}
-              action="Повторить"
-              onAction={() => thread.refetch()}
+              message={getApiErrorMessage(thread.error, "Ошибка запроса к серверу.")}
+              onRetry={() => void thread.refetch()}
+              className="min-h-64 rounded-none border-0 bg-transparent shadow-none"
             />
           ) : thread.data ? (
             <>
@@ -1461,18 +1458,6 @@ function CustomerAvatarShell({
   );
 }
 
-function ListSkeleton() {
-  return (
-    <div className="space-y-3 p-4">
-      {Array.from({ length: 7 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-[84px] animate-pulse rounded-lg bg-[#e5eaf1]"
-        />
-      ))}
-    </div>
-  );
-}
 function EmptyChatsState() {
   return (
     <div className="m-4 flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-[#f8fbff] px-8 py-14 text-center">

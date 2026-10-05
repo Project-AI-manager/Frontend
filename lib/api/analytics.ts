@@ -10,6 +10,11 @@ export type AnalyticsDailyItem = {
   dialogs: number;
 };
 
+export type AnalyticsChannelBreakdownItem = {
+  channel_type: string;
+  count: number;
+};
+
 export type AnalyticsOverviewResponse = {
   date_from: string;
   date_to: string;
@@ -30,6 +35,7 @@ export type AnalyticsOverviewResponse = {
   knowledge_documents_ready: number;
   knowledge_chunks_count: number;
   pending_candidates_count: number;
+  channels_breakdown: AnalyticsChannelBreakdownItem[];
   status_breakdown: AnalyticsStatusBreakdownItem[];
   daily_series: AnalyticsDailyItem[];
 };

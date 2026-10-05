@@ -6,6 +6,10 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: "/robot/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         source: "/spline/:path*",
         headers: [
           {

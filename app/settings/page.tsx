@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { settingsApi } from "@/lib/api/settings";
 
@@ -29,13 +30,13 @@ export default function SettingsPage() {
       <div className="relative h-full min-h-0 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {loading ? (
-            <SettingsSkeleton />
+            <LoadingState label="Загружаем настройки…" className="min-h-[420px]" />
           ) : error || !aiQuery.data || !billingQuery.data ? (
-            <StateCard
+            <ErrorState
               title="Настройки не загрузились"
-              text={getApiErrorMessage(
+              message={getApiErrorMessage(
                 error,
-                "Не удалось получить настройки с сервера.",
+                "Ошибка запроса к серверу.",
               )}
               onRetry={() => {
                 void aiQuery.refetch();
@@ -278,44 +279,5 @@ function TopUpForm() {
         Пополнить
       </button>
     </form>
-  );
-}
-
-function SettingsSkeleton() {
-  return (
-    <div className="flex flex-col gap-4" role="status" aria-label="Загружаем настройки">
-      {[226, 174].map((height) => (
-        <div
-          key={height}
-          className="animate-pulse rounded-lg bg-[#e5eaf1]"
-          style={{ height }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function StateCard({
-  title,
-  text,
-  onRetry,
-}: {
-  title: string;
-  text: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-[#d9e1ec] bg-white p-8 text-center">
-      <RefreshCw className="text-[#2463eb]" />
-      <h2 className="mt-4 text-xl font-extrabold">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-[#526071]">{text}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-5 rounded-lg bg-[#2463eb] px-5 py-2.5 text-sm font-semibold text-white"
-      >
-        Повторить
-      </button>
-    </div>
   );
 }

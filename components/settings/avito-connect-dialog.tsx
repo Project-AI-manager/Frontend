@@ -24,11 +24,14 @@ export function AvitoConnectDialog({
       const result = await avitoApi.startOAuth(replaceChannelId);
       window.location.assign(result.authorization_url);
     } catch (connectError) {
+      const message = getApiErrorMessage(
+        connectError,
+        "Не удалось начать подключение Avito. Проверьте доступ приложения и повторите попытку.",
+      );
       setError(
-        getApiErrorMessage(
-          connectError,
-          "Не удалось начать подключение Avito. Проверьте доступ приложения и повторите попытку.",
-        ),
+        message === "Avito OAuth is not configured"
+          ? "Подключение Avito пока недоступно. Попробуйте позже или обратитесь в поддержку."
+          : message,
       );
       setIsSubmitting(false);
     }
@@ -37,7 +40,7 @@ export function AvitoConnectDialog({
   return (
     <ChannelConnectDialogShell
       service="Avito Messenger API"
-      title={replaceChannelId ? "Переподключить Avito" : "Подключить Avito"}
+      title={replaceChannelId ? "Переподключить Avito Premium" : "Подключить Avito Premium"}
       accentClass="text-[#654bd3]"
       busy={isSubmitting}
       maxWidthClass="max-w-[520px]"
@@ -45,6 +48,9 @@ export function AvitoConnectDialog({
     >
         <p className="mt-4 text-sm leading-6 text-[#526071]">
           Вы перейдёте на Avito и разрешите чтение и отправку сообщений. Нужен основной профессиональный аккаунт компании с тарифом, открывающим Messenger API.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-[#526071]">
+          Подключается ваш аккаунт Avito: после вашего согласия Avito автоматически выдаст приложению отдельный токен. Вводить API-ключи не нужно.
         </p>
         <div className="mt-4 rounded-lg border border-[#d9e1ec] bg-[#f8fbff] p-4 text-sm leading-6 text-[#415066]">
           После авторизации Авито подключит защищённый webhook. Новые текстовые обращения появятся в общем Inbox и смогут получать ответы «Автопилота».

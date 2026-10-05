@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WhatsAppConnectDialog } from "@/components/settings/whatsapp-connect-dialog";
 
-const api = vi.hoisted(() => ({ connect: vi.fn() }));
+const api = vi.hoisted(() => ({ connect: vi.fn(), startPersonalQr: vi.fn(), getPersonalQrStatus: vi.fn() }));
 
 vi.mock("@/lib/api/whatsapp", () => ({
-  whatsappApi: { connect: api.connect },
+  whatsappApi: { connect: api.connect, startPersonalQr: api.startPersonalQr, getPersonalQrStatus: api.getPersonalQrStatus },
 }));
 
 describe("WhatsAppConnectDialog", () => {
@@ -27,6 +27,7 @@ describe("WhatsAppConnectDialog", () => {
     const onClose = vi.fn();
     const onConnected = vi.fn().mockResolvedValue(undefined);
     render(<WhatsAppConnectDialog onClose={onClose} onConnected={onConnected} />);
+    fireEvent.click(screen.getByRole("button", { name: /WhatsApp Business/ }));
 
     fireEvent.change(screen.getByLabelText("Название канала"), {
       target: { value: " WhatsApp магазина " },
@@ -74,6 +75,7 @@ describe("WhatsAppConnectDialog", () => {
         onConnected={vi.fn().mockResolvedValue(undefined)}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: /WhatsApp Business/ }));
 
     for (const [label, value] of [
       ["Название канала", "WhatsApp"],

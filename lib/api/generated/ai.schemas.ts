@@ -36,6 +36,11 @@ export interface AnalyticsDailySeriesItem {
   dialogs: number;
 }
 
+export interface AnalyticsChannelBreakdownItem {
+  channel_type: string;
+  count: number;
+}
+
 export interface AnalyticsOverviewResponse {
   /** @format date */
   date_from: string;
@@ -58,6 +63,7 @@ export interface AnalyticsOverviewResponse {
   knowledge_documents_ready: number;
   knowledge_chunks_count: number;
   pending_candidates_count: number;
+  channels_breakdown: AnalyticsChannelBreakdownItem[];
   status_breakdown: AnalyticsStatusBreakdownItem[];
   daily_series: AnalyticsDailySeriesItem[];
 }

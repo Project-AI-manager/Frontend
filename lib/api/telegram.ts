@@ -42,10 +42,21 @@ export type TelegramQRStatusResponse = {
   display_name: string;
 };
 
+export type TelegramBotConnectRequest = {
+  bot_token: string;
+  name?: string;
+};
+
 export const telegramApi = {
   startAccount: (data: TelegramAccountStartRequest) =>
     apiClient<TelegramAccountStartResponse>({
       url: "/api/v1/channels/telegram/account/start",
+      method: "POST",
+      data,
+    }),
+  connectBot: (data: TelegramBotConnectRequest) =>
+    apiClient<import("./generated/ai.schemas").ChannelResponse>({
+      url: "/api/v1/channels/telegram/bot",
       method: "POST",
       data,
     }),

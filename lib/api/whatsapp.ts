@@ -11,11 +11,28 @@ export type WhatsAppConnectRequest = {
   replace_channel_id?: string;
 };
 
+export type WhatsAppPersonalQRResponse = {
+  channel_id: string;
+  status: "waiting" | "active" | "expired" | "error" | "disconnected";
+  qr: string;
+  error: string;
+};
+
 export const whatsappApi = {
   connect: (data: WhatsAppConnectRequest) =>
     apiClient<ChannelResponse>({
       url: "/api/v1/channels/whatsapp",
       method: "POST",
       data,
+    }),
+  startPersonalQr: () =>
+    apiClient<WhatsAppPersonalQRResponse>({
+      url: "/api/v1/channels/whatsapp/personal/qr/start",
+      method: "POST",
+    }),
+  getPersonalQrStatus: (channelId: string) =>
+    apiClient<WhatsAppPersonalQRResponse>({
+      url: `/api/v1/channels/whatsapp/personal/qr/${channelId}/status`,
+      method: "GET",
     }),
 };

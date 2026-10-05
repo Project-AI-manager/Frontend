@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ChannelsPage from "@/app/channels/page";
@@ -8,6 +8,7 @@ const api = vi.hoisted(() => ({
   listChannelsApiV1ChannelsGet: vi.fn(),
   disconnect: vi.fn(),
   startAccount: vi.fn(),
+  connectTelegramBot: vi.fn(),
   confirmCode: vi.fn(),
   confirmPassword: vi.fn(),
   connectWhatsApp: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock("@/lib/api/generated/channels/channels", () => ({
 vi.mock("@/lib/api/telegram", () => ({
   telegramApi: {
     startAccount: api.startAccount,
+    connectBot: api.connectTelegramBot,
     confirmCode: api.confirmCode,
     confirmPassword: api.confirmPassword,
   },
@@ -124,6 +126,7 @@ describe("ChannelsPage", () => {
       },
     ]);
     api.startAccount.mockResolvedValue({ channel_id: "channel-new", status: "code_required" });
+    api.connectTelegramBot.mockResolvedValue({ id: "telegram-bot-new", type: "telegram_bot", name: "Бот", status: "active", settings: {} });
     api.confirmCode.mockResolvedValue({ channel_id: "channel-new", status: "password_required", display_name: "" });
     api.confirmPassword.mockResolvedValue({ channel_id: "channel-new", status: "active", display_name: "Тимур" });
   });
@@ -151,6 +154,7 @@ describe("ChannelsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("Каналы связи")).toBeInTheDocument();
     expect(screen.getByText("Telegram")).toBeInTheDocument();
+    expect(screen.getByText("Telegram-бот")).toBeInTheDocument();
     expect(screen.getByText("WhatsApp")).toBeInTheDocument();
     expect(screen.getByText("VK")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Логотип VK" })).toBeInTheDocument();
@@ -160,7 +164,8 @@ describe("ChannelsPage", () => {
     expect(screen.getByRole("button", { name: "Меню канала Telegram" })).toBeInTheDocument();
     expect(screen.getByText("@timur")).toBeInTheDocument();
     expect(screen.getByText("Работает")).toBeInTheDocument();
-    expect(screen.getAllByText("Не подключено")).toHaveLength(5);
+    expect(screen.getByText("WhatsApp Business")).toBeInTheDocument();
+    expect(screen.getAllByText("Не подключено")).toHaveLength(7);
   });
 
   it("shows which Telegram account is connected and exposes reconnection", async () => {
@@ -217,11 +222,82 @@ describe("ChannelsPage", () => {
     api.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Подключить WhatsApp" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Подключить WhatsApp Business" }));
 
     expect(
-      screen.getByRole("dialog", { name: "Подключить WhatsApp" }),
+      screen.getByRole("dialog", { name: "WhatsApp Business" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens personal WhatsApp QR connection from its own channel card", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Подключить WhatsApp" }));
+
+    expect(screen.getByRole("dialog", { name: "Личный аккаунт WhatsApp" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Получить QR-код" })).toBeInTheDocument();
+  });
+
+  it("connects a Telegram bot separately by its BotFather token", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([]);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Подключить Telegram-бот" }));
+    expect(screen.getByRole("dialog", { name: "Подключить Telegram-бота" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Токен бота"), {
+      target: { value: "123456789:abcdefghijklmnopqrstuvwxyz" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Подключить бота" }));
+
+    await waitFor(() =>
+      expect(api.connectTelegramBot).toHaveBeenCalledWith({ bot_token: "123456789:abcdefghijklmnopqrstuvwxyz" }),
+    );
+  });
+
+  it("shows that a locally validated bot still needs a public HTTPS webhook", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([
+      {
+        id: "telegram-bot-pending",
+        type: "telegram_bot",
+        name: "Бот магазина",
+        status: "pending",
+        settings: { bot_username: "shop_bot", webhook_configured: false },
+      },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText("Токен проверен · нужен HTTPS webhook")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Настроить Telegram-бота" }));
+    expect(screen.getByText(/На локальном адресе Telegram не сможет доставлять сообщения/)).toBeInTheDocument();
+  });
+
+  it("shows one active personal WhatsApp by phone and keeps Business separate", async () => {
+    api.listChannelsApiV1ChannelsGet.mockResolvedValue([
+      {
+        id: "whatsapp-personal-active",
+        type: "whatsapp",
+        name: "WhatsApp · 79274934757:61@s.whatsapp.net",
+        status: "active",
+        settings: { transport: "whatsmeow" },
+      },
+      {
+        id: "whatsapp-personal-old",
+        type: "whatsapp",
+        name: "WhatsApp · 79274934757:60@s.whatsapp.net",
+        status: "disabled",
+        settings: {},
+      },
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText("WhatsApp · +79274934757")).toBeInTheDocument();
+    expect(screen.getByText("Личный аккаунт · QR")).toBeInTheDocument();
+    expect(screen.queryByText("WhatsApp · 79274934757:60@s.whatsapp.net")).not.toBeInTheDocument();
+    expect(screen.getByText("WhatsApp Business")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Подключить WhatsApp" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Подключить WhatsApp Business" })).toBeInTheDocument();
   });
 
   it("offers reconnect for an active WhatsApp channel", async () => {
@@ -238,11 +314,11 @@ describe("ChannelsPage", () => {
     ]);
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Меню канала WhatsApp" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Переподключить…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Меню канала WhatsApp Business" }));
+    fireEvent.click(within(screen.getByRole("menu", { name: "Действия с каналом WhatsApp Business" })).getByRole("menuitem", { name: "Переподключить…" }));
 
     expect(
-      screen.getByRole("dialog", { name: "Переподключить WhatsApp" }),
+      screen.getByRole("dialog", { name: "Переподключить WhatsApp Business" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Phone Number ID 123456789")).toBeInTheDocument();
   });

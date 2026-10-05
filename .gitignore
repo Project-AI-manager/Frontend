@@ -22,3 +22,4 @@ CLAUDE.md
 
 # Local downloaded channel-icon drafts (the UI uses maintained SVG/code icons).
 /public/channel-icons/*.png
+.env*
